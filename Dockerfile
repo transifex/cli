@@ -1,4 +1,4 @@
-FROM golang:1.16.0-alpine AS build
+FROM --platform=${BUILDPLATFORM} golang:1.16.0-alpine AS build
 RUN apk update
 RUN apk add --no-cache git
 
@@ -6,13 +6,14 @@ RUN go env -w GO111MODULE=on
 
 WORKDIR /src
 
-COPY go.mod .
-COPY go.sum .
+COPY /src/go.mod ./
+COPY /src/go.sum ./
 
 RUN go mod download
 
-COPY . .
+COPY /src ./
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o /bin/cli .
 
-RUN go build -o cli .
+FROM scratch AS bin
+COPY --from=build /bin/cli /
 
-CMD ["sh"]
