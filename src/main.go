@@ -197,8 +197,8 @@ func getConfigDirPath() (string, error) {
 
 func getConfigFilePath(configDirPath string) (string, error) {
 	configFilePath := filepath.Join(configDirPath, "config")
-	_, err := os.Stat(configFilePath)
-	if os.IsNotExist(err) {
+	configFile, err := os.Stat(configFilePath)
+	if os.IsNotExist(err) || configFile.IsDir() {
 		return "", fmt.Errorf("Cannot find file: 'config' in the '%s' directory", configDirPath)
 	}
 	return configFilePath, nil
@@ -206,13 +206,13 @@ func getConfigFilePath(configDirPath string) (string, error) {
 
 func getRootConfigFilePath(configDirPath string) (string, error) {
 	rootConfPath := filepath.Join(configDirPath, ".transifexrc")
-	_, err := os.Stat(rootConfPath)
-	if !os.IsNotExist(err) {
+	rcFile, err := os.Stat(rootConfPath)
+	if !os.IsNotExist(err) && !rcFile.IsDir() {
 		return rootConfPath, nil
 	}
 	rootConfPath = filepath.Join(getHomeDir(), ".transifexrc")
-	_, err = os.Stat(rootConfPath)
-	if !os.IsNotExist(err) {
+	rcFile, err = os.Stat(rootConfPath)
+	if !os.IsNotExist(err) && !rcFile.IsDir() {
 		return rootConfPath, nil
 	}
 	return "", fmt.Errorf("Cannot find file: '.transifexrc'")
