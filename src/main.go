@@ -183,10 +183,10 @@ func getCurrentWorkingDir() string {
 func getConfigDirPath() (string, error) {
 	path := getCurrentWorkingDir()
 	for {
-		_, err := os.Stat(filepath.Join(path, ".tx"))
-		if os.IsNotExist(err) {
+		configDir, err := os.Stat(filepath.Join(path, ".tx"))
+		if os.IsNotExist(err) || !configDir.IsDir() {
 			if path == filepath.Dir(path) {
-				return "", fmt.Errorf("Cannot find dir: '.tx'")
+				return "", fmt.Errorf("Cannot find directory: '.tx'")
 			}
 			path = filepath.Dir(path)
 			continue
