@@ -43,6 +43,7 @@ func main() {
 				Action: func(c *cli.Context) error {
 					fmt.Printf("Root config file: %s\n", c.App.Metadata["RootConfigFilePath"])
 					fmt.Printf("Config file : %s\n", c.App.Metadata["ConfigFilePath"])
+					fmt.Printf("Project dir: %s\n", c.App.Metadata["ProjectDir"])
 					configJSON, _ := JSONMarshal(c.App.Metadata["Config"])
 					fmt.Printf("Config:\n%s\n\n", string(configJSON))
 
@@ -52,6 +53,22 @@ func main() {
 					// delete(fileMappings, "DEFAULT")
 					fileMappingsJSON, _ := JSONMarshal(fileMappings)
 					fmt.Printf("FileMappings:\n%s\n", string(fileMappingsJSON))
+					return nil
+				},
+			},
+			{
+				Name:    "getorgs",
+				Aliases: []string{"go"},
+				Usage:   "Yolo",
+				Action: func(c *cli.Context) error {
+					config := c.App.Metadata["Config"].(*Config)
+					organizations := getOrganizations(config.Token, config.RestHostname)
+					for _, organization := range organizations {
+						projects := getProjects(organization.ID, config.Token, config.RestHostname)
+						for _, project := range projects {
+							getResources(project.ID, config.Token, config.RestHostname)
+						}
+					}
 					return nil
 				},
 			},
