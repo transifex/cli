@@ -1,10 +1,48 @@
 package main
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
 )
+
+type Connection struct {
+	Host string
+	Auth string
+}
+
+func (c Connection) JsonApiRequest(method string, path string, queryParams map[string]string) (*http.Response, error) {
+	// certPEM := []byte("xxxx") // load from file https://raw.githubusercontent.com/transifex/transifex-client/master/txclib/cacert.pem
+	// certPool := x509.NewCertPool()
+	// if !certPool.AppendCertsFromPEM(certPEM) {
+	// 	log.Fatal("AppendCertsFromPEM failed")
+	// }
+
+	// https://golang.org/src/crypto/x509/ check roots
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.TLSClientConfig = &tls.Config{
+		InsecureSkipVerify: true,
+		// RootCAs:            certPool,
+	}
+	tr.Proxy = http.ProxyFromEnvironment
+	client := &http.Client{Transport: tr}
+
+	url := fmt.Sprintf("%s/%s", c.Host, path)
+	req, _ := http.NewRequest("GET", url, nil)
+
+	q := req.URL.Query()
+	for k, v := range queryParams {
+		q.Add(k, v)
+	}
+	req.URL.RawQuery = q.Encode()
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.Auth))
+	req.Header.Set("Content-Type", "application/vnd.api+json")
+
+	resp, _ := client.Do(req)
+	return resp, nil
+}
 
 type Organization struct {
 	Attributes struct {
@@ -31,22 +69,13 @@ type OrganizationList struct {
 	Links Links          `json:"links"`
 }
 
-func getOrganizations(token string, baseURL string) []Organization {
-	req, _ := http.NewRequest("GET", baseURL+"/organizations", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Content-Type", "application/vnd.api+json")
-
-	client := &http.Client{}
-	resp, _ := client.Do(req)
-
+func (c Connection) getOrganizations() []Organization {
+	resp, _ := c.JsonApiRequest("GET", "organizations", make(map[string]string))
 	var output OrganizationList
+	defer resp.Body.Close()
 	decoder := json.NewDecoder(resp.Body)
 	decoder.DisallowUnknownFields()
 	decoder.Decode(&output)
-	org, _ := JSONMarshal(output.Data)
-	fmt.Printf(string(org))
-	links, _ := JSONMarshal(output.Links)
-	fmt.Printf(string(links))
 	return output.Data
 }
 
@@ -105,22 +134,13 @@ type ProjectList struct {
 	Links Links     `json:"links"`
 }
 
-func getProjects(organizationID string, token string, baseURL string) []Project {
-	req, _ := http.NewRequest("GET", baseURL+"/projects?filter[organization]="+organizationID, nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Content-Type", "application/vnd.api+json")
-
-	client := &http.Client{}
-	resp, _ := client.Do(req)
-
+func (c Connection) getProjects(organizationID string) []Project {
+	resp, _ := c.JsonApiRequest("GET", "projects", map[string]string{"filter[organization]": organizationID})
 	var output ProjectList
+	defer resp.Body.Close()
 	decoder := json.NewDecoder(resp.Body)
 	decoder.DisallowUnknownFields()
 	decoder.Decode(&output)
-	org, _ := JSONMarshal(output.Data)
-	fmt.Printf(string(org))
-	links, _ := JSONMarshal(output.Links)
-	fmt.Printf(string(links))
 	return output.Data
 }
 
@@ -170,21 +190,12 @@ type ResourceList struct {
 	Links Links      `json:"links"`
 }
 
-func getResources(projectID string, token string, baseURL string) []Resource {
-	req, _ := http.NewRequest("GET", baseURL+"/resources?filter[project]="+projectID, nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Content-Type", "application/vnd.api+json")
-
-	client := &http.Client{}
-	resp, _ := client.Do(req)
-
+func (c Connection) getResources(projectID string) []Resource {
+	resp, _ := c.JsonApiRequest("GET", "resources", map[string]string{"filter[project]": projectID})
 	var output ResourceList
+	defer resp.Body.Close()
 	decoder := json.NewDecoder(resp.Body)
 	decoder.DisallowUnknownFields()
 	decoder.Decode(&output)
-	org, _ := JSONMarshal(output.Data)
-	fmt.Printf(string(org))
-	links, _ := JSONMarshal(output.Links)
-	fmt.Printf(string(links))
 	return output.Data
 }

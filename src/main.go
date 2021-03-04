@@ -62,11 +62,15 @@ func main() {
 				Usage:   "Yolo",
 				Action: func(c *cli.Context) error {
 					config := c.App.Metadata["Config"].(*Config)
-					organizations := getOrganizations(config.Token, config.RestHostname)
+					connection := Connection{Auth: config.Token, Host: config.RestHostname}
+					organizations := connection.getOrganizations()
 					for _, organization := range organizations {
-						projects := getProjects(organization.ID, config.Token, config.RestHostname)
+						projects := connection.getProjects(organization.ID)
 						for _, project := range projects {
-							getResources(project.ID, config.Token, config.RestHostname)
+							resources := connection.getResources(project.ID)
+							for _, resource := range resources {
+								fmt.Println(resource)
+							}
 						}
 					}
 					return nil
