@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -44,14 +43,14 @@ func main() {
 				Action: func(c *cli.Context) error {
 					fmt.Printf("Root config file: %s\n", c.App.Metadata["RootConfigFilePath"])
 					fmt.Printf("Config file : %s\n", c.App.Metadata["ConfigFilePath"])
-					configJSON, _ := json.MarshalIndent(c.App.Metadata["Config"], "", "  ")
+					configJSON, _ := JSONMarshal(c.App.Metadata["Config"])
 					fmt.Printf("Config:\n%s\n\n", string(configJSON))
 
 					// I wanted to see how to transform an interface to a map
 					fileMappings := c.App.Metadata["FileMappings"].(map[string]FileMapping)
 					// Now for example you could delete a key since it is a map
 					// delete(fileMappings, "DEFAULT")
-					fileMappingsJSON, _ := json.MarshalIndent(fileMappings, "", "  ")
+					fileMappingsJSON, _ := JSONMarshal(fileMappings)
 					fmt.Printf("FileMappings:\n%s\n", string(fileMappingsJSON))
 					return nil
 				},
