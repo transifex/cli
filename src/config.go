@@ -95,7 +95,10 @@ func setMetadata(context *cli.Context) error {
 	var err error
 
 	if context.IsSet("config") {
-		configDirPath = context.String("config")
+		configDirPath, err = filepath.Abs(context.String("config"))
+		if os.IsNotExist(err) {
+			return fmt.Errorf("Cannot find directory: '%s'", configDirPath)
+		}
 		_, err = os.Stat(configDirPath)
 		if os.IsNotExist(err) {
 			return fmt.Errorf("Cannot find directory: '%s'", configDirPath)
@@ -212,16 +215,25 @@ func setMetadata(context *cli.Context) error {
 		}
 
 		for languageCode, languagePath := range translationOverrides {
+			languagePath = filepath.Join(projectDir, languagePath)
 			_, err := os.Stat(languagePath)
 			if !os.IsNotExist(err) {
 				languageMappings[languageCode] = languagePath
 			}
 		}
 
+		sourceFilePath := filepath.Join(
+			projectDir, section.Key("source_file").String(),
+		)
+		_, err := os.Stat(sourceFilePath)
+		if os.IsNotExist(err) {
+			return fmt.Errorf("Could not find source_file: '%s'", sourceFilePath)
+		}
+
 		fileMappings[section.Name()] = FileMapping{
 			Name:                 section.Name(),
 			FileFilter:           fileFilter,
-			SourceFile:           section.Key("source_file").String(),
+			SourceFile:           sourceFilePath,
 			SourceLang:           section.Key("source_lang").String(),
 			FileType:             section.Key("type").String(),
 			TranslationOverrides: translationOverrides,
