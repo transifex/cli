@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/user"
@@ -29,6 +30,7 @@ type FileMapping struct {
 	FileType             string
 	TranslationOverrides map[string]string
 	LanguageOverrides    map[string]string
+	LanguageMappings     map[string]string
 }
 
 func formatConfigFile(c *cli.Context) error {
@@ -82,6 +84,8 @@ func setMetadata(context *cli.Context) error {
 			return err
 		}
 	}
+	projectDir := getProjectDir(configDirPath)
+	context.App.Metadata["ProjectDir"] = projectDir
 
 	rootConfigFilePath, err := getRootConfigFilePath(configDirPath)
 	if err != nil {
@@ -104,6 +108,7 @@ func setMetadata(context *cli.Context) error {
 		return fmt.Errorf("Could not parse file: '%s'", rootConfigFilePath)
 	}
 	fileMappings := make(map[string]FileMapping)
+
 	for _, section := range cfg.Sections() {
 		if section.Name() == "DEFAULT" {
 			continue
@@ -149,14 +154,58 @@ func setMetadata(context *cli.Context) error {
 			languageOvverides[remoteCode] = localCode
 		}
 
+		fileFilter := section.Key("file_filter").String()
+		childDirs := strings.Split(fileFilter, "/")
+		directory := projectDir
+		languageCodes := []string{}
+		for _, childDir := range childDirs {
+			if childDir == "<lang>" {
+				paths, err := ioutil.ReadDir(directory)
+				if err != nil {
+					log.Fatal(err)
+				}
+				for _, path := range paths {
+					if path.IsDir() {
+						languageCodes = append(languageCodes, path.Name())
+					}
+				}
+				break
+			} else {
+				directory = filepath.Join(directory, childDir)
+			}
+			_, err := os.Stat(directory)
+			if os.IsNotExist(err) {
+				continue
+			}
+		}
+
+		languageMappings := make(map[string]string)
+		for _, languageCode := range languageCodes {
+			languagePath := strings.Replace(fileFilter, "<lang>", languageCode, -1)
+			languagePath = filepath.Join(projectDir, languagePath)
+			_, err := os.Stat(languagePath)
+			if !os.IsNotExist(err) {
+				languageMappings[languageCode] = languagePath
+			}
+		}
+
+		for languageCode, languagePath := range translationOverrides {
+			fmt.Println(languageCode, languagePath)
+			_, err := os.Stat(languagePath)
+			if !os.IsNotExist(err) {
+				languageMappings[languageCode] = languagePath
+			}
+		}
+
 		fileMappings[section.Name()] = FileMapping{
 			Name:                 section.Name(),
-			FileFilter:           section.Key("file_filter").String(),
+			FileFilter:           fileFilter,
 			SourceFile:           section.Key("source_file").String(),
 			SourceLang:           section.Key("source_lang").String(),
 			FileType:             section.Key("type").String(),
 			TranslationOverrides: translationOverrides,
 			LanguageOverrides:    languageOvverides,
+			LanguageMappings:     languageMappings,
 		}
 	}
 	context.App.Metadata["FileMappings"] = fileMappings
@@ -193,6 +242,11 @@ func getConfigDirPath() (string, error) {
 		}
 		return filepath.Join(path, ".tx"), nil
 	}
+}
+
+func getProjectDir(configDirPath string) string {
+	parent := filepath.Dir(configDirPath)
+	return parent
 }
 
 func getConfigFilePath(configDirPath string) (string, error) {
@@ -262,15 +316,6 @@ func main() {
 					// delete(fileMappings, "DEFAULT")
 					fileMappingsJSON, _ := json.MarshalIndent(fileMappings, "", "  ")
 					fmt.Printf("FileMappings:\n%s\n", string(fileMappingsJSON))
-					return nil
-				},
-			},
-			{
-				Name:    "complete",
-				Aliases: []string{"c"},
-				Usage:   "complete a task on the list",
-				Action: func(c *cli.Context) error {
-					fmt.Println("completed task: ", c.Args().First())
 					return nil
 				},
 			},
