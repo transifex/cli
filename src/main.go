@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -14,10 +15,10 @@ import (
 )
 
 type Config struct {
-	Hostname string
-	Username string
-	Password string
-	Token    string
+	RestHostname string
+	Username     string
+	Password     string
+	Token        string
 }
 
 type FileMapping struct {
@@ -28,6 +29,41 @@ type FileMapping struct {
 	FileType             string
 	TranslationOverrides map[string]string
 	LanguageOverrides    map[string]string
+}
+
+func formatConfigFile(c *cli.Context) error {
+	config := c.App.Metadata["Config"].(*Config)
+	rootCfg, _ := ini.Load(c.App.Metadata["RootConfigFilePath"])
+	section := rootCfg.Section(c.App.Metadata["ActiveHost"].(string))
+	if config.Token == "" {
+		if config.Username == "api" {
+			fmt.Printf(
+				"Found old configuration editing `%s` file\n\n",
+				c.App.Metadata["RootConfigFilePath"],
+			)
+			section.NewKey("token", config.Password)
+		} else {
+			reader := bufio.NewReader(os.Stdin)
+			fmt.Printf("No api token found. Generate one from transifex?\n")
+			fmt.Printf("Type `yes` to continue\n")
+			fmt.Printf("-> ")
+			text, _ := reader.ReadString('\n')
+			text = strings.Replace(text, "\n", "", -1)
+			if strings.Compare("yes", text) != 0 {
+				return cli.Exit("Aborting...", 0)
+			}
+			fmt.Printf("Not implemented. Adding test token\n")
+			config.Token = "TestToken"
+		}
+		rootCfg.SaveTo(c.App.Metadata["RootConfigFilePath"].(string))
+	}
+	if config.RestHostname == "" {
+		fmt.Printf("No rest_hostname found adding `rest-api.transifex.com`\n")
+		config.RestHostname = "rest-api.transifex.com"
+		section.NewKey("rest_hostname", config.RestHostname)
+		rootCfg.SaveTo(c.App.Metadata["RootConfigFilePath"].(string))
+	}
+	return nil
 }
 
 func setMetadata(context *cli.Context) error {
@@ -73,13 +109,19 @@ func setMetadata(context *cli.Context) error {
 			continue
 		}
 		if section.Name() == "main" {
+			var token string
+			token = section.Key("token").String()
+			if context.IsSet("token") {
+				token = context.String("token")
+			}
 			hostKey := section.Key("host").String()
+			context.App.Metadata["ActiveHost"] = hostKey
 			hostSection := rootCfg.Section(hostKey)
-			context.App.Metadata["Config"] = Config{
-				Hostname: hostSection.Key("hostname").String(),
-				Username: hostSection.Key("username").String(),
-				Password: hostSection.Key("password").String(),
-				Token:    "",
+			context.App.Metadata["Config"] = &Config{
+				RestHostname: hostSection.Key("rest_hostname").String(),
+				Username:     hostSection.Key("username").String(),
+				Password:     hostSection.Key("password").String(),
+				Token:        token,
 			}
 			continue
 		}
@@ -181,13 +223,28 @@ func main() {
 		&cli.StringFlag{
 			Name:    "config",
 			Aliases: []string{"c"},
-			//Value:   filepath.Join(getCurrentWorkingDir(), ".tx/config"),
-			Usage: "Load configuration from `FILE`",
+			Usage:   "Load configuration from `FILE`",
+		},
+		&cli.StringFlag{
+			Name:    "token",
+			Aliases: []string{"t"},
+			Usage:   "The api token to use",
+			EnvVars: []string{"TX_TOKEN"},
 		},
 	}
-
 	app := &cli.App{
-		Before: setMetadata,
+		Before: func(c *cli.Context) error {
+			var err error
+			err = setMetadata(c)
+			if err != nil {
+				return err
+			}
+			err = formatConfigFile(c)
+			if err != nil {
+				return err
+			}
+			return nil
+		},
 		Commands: []*cli.Command{
 			{
 				Name:    "showconf",
