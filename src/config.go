@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -139,14 +140,14 @@ func setMetadata(context *cli.Context) error {
 			continue
 		}
 		if section.Name() == "main" {
-			var token string
-			token = section.Key("token").String()
-			if context.IsSet("token") {
-				token = context.String("token")
-			}
 			hostKey := section.Key("host").String()
 			context.App.Metadata["ActiveHost"] = hostKey
 			hostSection := rootCfg.Section(hostKey)
+			var token string
+			token = hostSection.Key("token").String()
+			if context.IsSet("token") {
+				token = context.String("token")
+			}
 			context.App.Metadata["Config"] = &Config{
 				RestHostname: hostSection.Key("rest_hostname").String(),
 				Username:     hostSection.Key("username").String(),
@@ -258,12 +259,11 @@ func formatConfigFile(c *cli.Context) error {
 			)
 			section.NewKey("token", config.Password)
 		} else {
-			// reader := bufio.NewReader(os.Stdin)
+			reader := bufio.NewReader(os.Stdin)
 			fmt.Printf("No api token found. Generate one from transifex?\n")
 			fmt.Printf("Type `yes` to continue\n")
 			fmt.Printf("-> ")
-			// text, _ := reader.ReadString('\n')
-			text := "yes"
+			text, _ := reader.ReadString('\n')
 			text = strings.Replace(text, "\n", "", -1)
 			if strings.Compare("yes", text) != 0 {
 				return cli.Exit("Aborting...", 0)
@@ -275,7 +275,7 @@ func formatConfigFile(c *cli.Context) error {
 	}
 	if config.RestHostname == "" {
 		fmt.Printf("No rest_hostname found adding `rest-api.transifex.com`\n")
-		config.RestHostname = "rest-api.transifex.com"
+		config.RestHostname = "https://rest-api.transifex.com"
 		section.NewKey("rest_hostname", config.RestHostname)
 		rootCfg.SaveTo(c.App.Metadata["RootConfigFilePath"].(string))
 	}
