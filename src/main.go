@@ -27,6 +27,7 @@ type FileMapping struct {
 	SourceLang           string
 	FileType             string
 	TranslationOverrides map[string]string
+	LanguageOverrides    map[string]string
 }
 
 func setMetadata(context *cli.Context) error {
@@ -86,8 +87,24 @@ func setMetadata(context *cli.Context) error {
 		translationOverrides := make(map[string]string)
 		for _, key := range section.Keys() {
 			if strings.HasPrefix(key.Name(), "trans.") {
-				translationOverrides[key.Name()] = key.String()
+				languageCode := strings.TrimPrefix(key.Name(), "trans.")
+				translationOverrides[languageCode] = key.String()
 			}
+		}
+
+		languageOvverides := make(map[string]string)
+		languagePairs := strings.Split(section.Key("lang_map").String(), ",")
+		for _, element := range languagePairs {
+			pair := strings.Split(element, ":")
+			if len(pair) != 2 {
+				continue
+			}
+			remoteCode := strings.TrimSpace(pair[0])
+			localCode := strings.TrimSpace(pair[1])
+			if len(remoteCode) == 0 || len(localCode) == 0 {
+				continue
+			}
+			languageOvverides[remoteCode] = localCode
 		}
 
 		fileMappings[section.Name()] = FileMapping{
@@ -97,6 +114,7 @@ func setMetadata(context *cli.Context) error {
 			SourceLang:           section.Key("source_lang").String(),
 			FileType:             section.Key("type").String(),
 			TranslationOverrides: translationOverrides,
+			LanguageOverrides:    languageOvverides,
 		}
 	}
 	context.App.Metadata["FileMappings"] = fileMappings
