@@ -77,6 +77,47 @@ func main() {
 				},
 			},
 			{
+				Name:  "git",
+				Usage: "Yolo",
+				Action: func(c *cli.Context) error {
+
+					dir := c.App.Metadata["ProjectDir"].(string)
+					gitDir, err := getGitDir(dir)
+					if err == nil {
+						fmt.Println("Working inside a git dir")
+						fmt.Println(gitDir)
+						fmt.Println("")
+						branch, err := getGitBranch(gitDir)
+						if err == nil {
+							fmt.Println("For branch")
+							fmt.Println(branch)
+						} else {
+							return err
+						}
+						fmt.Println("")
+						fmt.Println("Getting last commit date of src/main.go")
+						date, err := lastCommitDate(gitDir, "src/main.go")
+						if err == nil {
+							fmt.Println(date)
+						} else {
+							return err
+						}
+
+						fmt.Println("")
+						fmt.Println("Getting lat modified date of src/main.go")
+						info, err := os.Stat("src/main.go")
+						if err == nil {
+							fmt.Println(info.ModTime())
+						} else {
+							return err
+						}
+					} else {
+						return err
+					}
+					return nil
+				},
+			},
+			{
 				Name:    "template",
 				Aliases: []string{"t"},
 				Usage:   "options for task templates",
