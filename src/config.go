@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/user"
@@ -181,39 +180,7 @@ func setMetadata(context *cli.Context) error {
 		}
 
 		fileFilter := section.Key("file_filter").String()
-		childDirs := strings.Split(fileFilter, "/")
-		directory := projectDir
-		languageCodes := []string{}
-		for _, childDir := range childDirs {
-			if childDir == "<lang>" {
-				paths, err := ioutil.ReadDir(directory)
-				if err != nil {
-					log.Fatal(err)
-				}
-				for _, path := range paths {
-					if path.IsDir() {
-						languageCodes = append(languageCodes, path.Name())
-					}
-				}
-				break
-			} else {
-				directory = filepath.Join(directory, childDir)
-			}
-			_, err := os.Stat(directory)
-			if os.IsNotExist(err) {
-				continue
-			}
-		}
-
-		languageMappings := make(map[string]string)
-		for _, languageCode := range languageCodes {
-			languagePath := strings.Replace(fileFilter, "<lang>", languageCode, -1)
-			languagePath = filepath.Join(projectDir, languagePath)
-			_, err := os.Stat(languagePath)
-			if !os.IsNotExist(err) {
-				languageMappings[languageCode] = languagePath
-			}
-		}
+		languageMappings := getExistingLanuagePaths(projectDir, fileFilter)
 
 		for languageCode, languagePath := range translationOverrides {
 			languagePath = filepath.Join(projectDir, languagePath)

@@ -37,6 +37,20 @@ func main() {
 		},
 		Commands: []*cli.Command{
 			{
+				Name:    "regex",
+				Aliases: []string{"re"},
+				Usage:   "Print the active configuration",
+				Action: func(c *cli.Context) error {
+					projectDir := c.App.Metadata["ProjectDir"].(string)
+					expression := c.Args().Get(0)
+					fmt.Println(expression)
+					existingPaths := getExistingLanuagePaths(projectDir, expression)
+					fmt.Println(existingPaths)
+					fmt.Println(getPathForLanguage(projectDir, expression, "de"))
+					return nil
+				},
+			},
+			{
 				Name:    "showconf",
 				Aliases: []string{"sc"},
 				Usage:   "Print the active configuration",
