@@ -1,27 +1,33 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"os"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/urfave/cli/v2"
 	"gopkg.in/ini.v1"
 )
 
+// Config holds the root configuration
 type Config struct {
-	RestHostname string
-	Username     string
-	Password     string
-	Token        string
+	ActiveHost string
+	Hostname   string
+	Username   string
+	Password   string
+	Token      string
 }
 
+// FileMapping holds the file configuration
 type FileMapping struct {
-	Name                 string
+	ID                   string
+	OrganizationSlug     string
+	ProjectSlug          string
+	ResourceSlug         string
 	FileFilter           string
 	SourceFile           string
 	SourceLang           string
@@ -31,6 +37,7 @@ type FileMapping struct {
 	LanguageMappings     map[string]string
 }
 
+// Returns the current working directory as a string.
 func getHomeDir() string {
 	usr, err := user.Current()
 	if err != nil {
@@ -39,6 +46,7 @@ func getHomeDir() string {
 	return usr.HomeDir
 }
 
+// Returns the absolute path of current working directory.
 func getCurrentWorkingDir() string {
 	path, err := os.Getwd()
 	if err != nil {
@@ -47,6 +55,8 @@ func getCurrentWorkingDir() string {
 	return path
 }
 
+// Try to find the config directory '.tx/' working backwards from the
+// current working directory. If found it returns the absolute path.
 func getConfigDirPath() (string, error) {
 	path := getCurrentWorkingDir()
 	for {
@@ -67,6 +77,8 @@ func getProjectDir(configDirPath string) string {
 	return parent
 }
 
+// Checks if the config file exists in the given configDirPath.
+// If found it returns the absolute path.
 func getConfigFilePath(configDirPath string) (string, error) {
 	configFilePath := filepath.Join(configDirPath, "config")
 	configFile, err := os.Stat(configFilePath)
@@ -76,6 +88,10 @@ func getConfigFilePath(configDirPath string) (string, error) {
 	return configFilePath, nil
 }
 
+// Checks if the root config file exists.
+// The file can exist in the config directory or in the user's home directory.
+// Both are checked in that order.
+// If found it returns the absolute path.
 func getRootConfigFilePath(configDirPath string) (string, error) {
 	rootConfPath := filepath.Join(configDirPath, ".transifexrc")
 	rcFile, err := os.Stat(rootConfPath)
@@ -90,6 +106,57 @@ func getRootConfigFilePath(configDirPath string) (string, error) {
 	return "", fmt.Errorf("Cannot find file: '.transifexrc'")
 }
 
+// Parses the root config file, creates a Config object
+// and adds it to the cli context metadata as "Config"
+func loadRootConfig(c *cli.Context, rootConfigFilePath string, activeHost string) error {
+	rootCfg, err := ini.Load(rootConfigFilePath)
+	if err != nil {
+		return fmt.Errorf("Could not parse file: '%s'", rootConfigFilePath)
+	}
+	hostSection := rootCfg.Section(activeHost)
+	token := hostSection.Key("token").String()
+	if c.IsSet("token") {
+		token = c.String("token")
+	}
+	hostname := hostSection.Key("rest_hostname").String()
+	if c.IsSet("hostname") {
+		hostname = c.String("hostname")
+	}
+	c.App.Metadata["Config"] = &Config{
+		ActiveHost: activeHost,
+		Hostname:   hostname,
+		Username:   hostSection.Key("username").String(),
+		Password:   hostSection.Key("password").String(),
+		Token:      token,
+	}
+	return nil
+}
+
+// Given a language mapping (`lang_map = pt_PT: pt-pt, pt_BR: pt-br`)
+// create a map txLanguageCode -> localLanguageCode
+func getLanguageOverrides(langMappings string) map[string]string {
+	languageOvverides := make(map[string]string)
+	languagePairs := strings.Split(langMappings, ",")
+	for _, element := range languagePairs {
+		pair := strings.Split(element, ":")
+		if len(pair) != 2 {
+			continue
+		}
+		remoteCode := strings.TrimSpace(pair[0])
+		localCode := strings.TrimSpace(pair[1])
+		if len(remoteCode) == 0 || len(localCode) == 0 {
+			continue
+		}
+		languageOvverides[remoteCode] = localCode
+	}
+	return languageOvverides
+}
+
+// Parses the config file, creates a map[string]FileMapping with the object
+// with "<project_slug>.<resource_slug>" as keys
+// and adds it to the cli context metadata as "FileMappings".
+// In addition it adds the following usefull info in the cli context:
+// ProjectDir, RootConfigFilePath, ConfigFilePath
 func setMetadata(context *cli.Context) error {
 	var configDirPath string
 	var err error
@@ -128,31 +195,21 @@ func setMetadata(context *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("Could not parse file: '%s'", configFilePath)
 	}
-	rootCfg, err := ini.Load(rootConfigFilePath)
-	if err != nil {
-		return fmt.Errorf("Could not parse file: '%s'", rootConfigFilePath)
-	}
-	fileMappings := make(map[string]FileMapping)
 
+	mainSection := cfg.Section("main")
+	activeHost := mainSection.Key("host").String()
+	if err = loadRootConfig(context, rootConfigFilePath, activeHost); err != nil {
+		return err
+	}
+	langMappings := mainSection.Key("lang_map").String()
+	globalLanguageOverrides := getLanguageOverrides(langMappings)
+
+	fileMappings := make(map[string]FileMapping)
 	for _, section := range cfg.Sections() {
 		if section.Name() == "DEFAULT" {
 			continue
 		}
 		if section.Name() == "main" {
-			hostKey := section.Key("host").String()
-			context.App.Metadata["ActiveHost"] = hostKey
-			hostSection := rootCfg.Section(hostKey)
-			var token string
-			token = hostSection.Key("token").String()
-			if context.IsSet("token") {
-				token = context.String("token")
-			}
-			context.App.Metadata["Config"] = &Config{
-				RestHostname: hostSection.Key("rest_hostname").String(),
-				Username:     hostSection.Key("username").String(),
-				Password:     hostSection.Key("password").String(),
-				Token:        token,
-			}
 			continue
 		}
 
@@ -164,30 +221,13 @@ func setMetadata(context *cli.Context) error {
 			}
 		}
 
-		languageOvverides := make(map[string]string)
-		languagePairs := strings.Split(section.Key("lang_map").String(), ",")
-		for _, element := range languagePairs {
-			pair := strings.Split(element, ":")
-			if len(pair) != 2 {
+		langMappings := section.Key("lang_map").String()
+		languageOverrides := getLanguageOverrides(langMappings)
+		for txLanguageCode, localLanguageCode := range globalLanguageOverrides {
+			if _, ok := languageOverrides[txLanguageCode]; ok {
 				continue
 			}
-			remoteCode := strings.TrimSpace(pair[0])
-			localCode := strings.TrimSpace(pair[1])
-			if len(remoteCode) == 0 || len(localCode) == 0 {
-				continue
-			}
-			languageOvverides[remoteCode] = localCode
-		}
-
-		fileFilter := section.Key("file_filter").String()
-		languageMappings := getExistingLanuagePaths(projectDir, fileFilter)
-
-		for languageCode, languagePath := range translationOverrides {
-			languagePath = filepath.Join(projectDir, languagePath)
-			_, err := os.Stat(languagePath)
-			if !os.IsNotExist(err) {
-				languageMappings[languageCode] = languagePath
-			}
+			languageOverrides[txLanguageCode] = localLanguageCode
 		}
 
 		sourceFilePath := filepath.Join(
@@ -198,53 +238,38 @@ func setMetadata(context *cli.Context) error {
 			return fmt.Errorf("Could not find source_file: '%s'", sourceFilePath)
 		}
 
-		fileMappings[section.Name()] = FileMapping{
-			Name:                 section.Name(),
+		resourceID := section.Name()
+		var organizationSlug string
+		var projectSlug string
+		var resourceSlug string
+		if match, _ := regexp.MatchString(ResourceIDRegex, section.Name()); match {
+			idParts := strings.Split(section.Name(), ":")
+			organizationSlug = idParts[1]
+			projectSlug = idParts[3]
+			resourceSlug = idParts[5]
+		} else {
+			idParts := strings.Split(section.Name(), ".")
+			projectSlug = idParts[0]
+			resourceSlug = idParts[1]
+		}
+		fileFilter := section.Key("file_filter").String()
+		fileMapping := FileMapping{
+			ID:                   resourceID,
+			OrganizationSlug:     organizationSlug,
+			ProjectSlug:          projectSlug,
+			ResourceSlug:         resourceSlug,
 			FileFilter:           fileFilter,
 			SourceFile:           sourceFilePath,
 			SourceLang:           section.Key("source_lang").String(),
 			FileType:             section.Key("type").String(),
 			TranslationOverrides: translationOverrides,
-			LanguageOverrides:    languageOvverides,
-			LanguageMappings:     languageMappings,
+			LanguageOverrides:    languageOverrides,
 		}
+		languageMappings := getExistingLanuagePaths(projectDir, &fileMapping)
+		fileMapping.LanguageMappings = languageMappings
+		fileMappings[section.Name()] = fileMapping
 	}
 	context.App.Metadata["FileMappings"] = fileMappings
 
-	return nil
-}
-
-func formatConfigFile(c *cli.Context) error {
-	config := c.App.Metadata["Config"].(*Config)
-	rootCfg, _ := ini.Load(c.App.Metadata["RootConfigFilePath"])
-	section := rootCfg.Section(c.App.Metadata["ActiveHost"].(string))
-	if config.Token == "" {
-		if config.Username == "api" {
-			fmt.Printf(
-				"Found old configuration editing `%s` file\n\n",
-				c.App.Metadata["RootConfigFilePath"],
-			)
-			section.NewKey("token", config.Password)
-		} else {
-			reader := bufio.NewReader(os.Stdin)
-			fmt.Printf("No api token found. Generate one from transifex?\n")
-			fmt.Printf("Type `yes` to continue\n")
-			fmt.Printf("-> ")
-			text, _ := reader.ReadString('\n')
-			text = strings.Replace(text, "\n", "", -1)
-			if strings.Compare("yes", text) != 0 {
-				return cli.Exit("Aborting...", 0)
-			}
-			fmt.Printf("Not implemented. Adding test token\n")
-			config.Token = "TestToken"
-		}
-		rootCfg.SaveTo(c.App.Metadata["RootConfigFilePath"].(string))
-	}
-	if config.RestHostname == "" {
-		fmt.Printf("No rest_hostname found adding `rest-api.transifex.com`\n")
-		config.RestHostname = "https://rest-api.transifex.com"
-		section.NewKey("rest_hostname", config.RestHostname)
-		rootCfg.SaveTo(c.App.Metadata["RootConfigFilePath"].(string))
-	}
 	return nil
 }
