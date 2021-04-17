@@ -1,0 +1,23 @@
+# If a `transifexrc` file is found in the `.tx` folder it takes precedence
+# over the one in the $HOME directory
+
+# Host section (can have multiple).
+# Host is chosen by the `.tx/config` host variable
+[https://www.transifex.com]
+
+# Legacy config. API v2.5 host
+api_hostname  = https://api.transifex.com
+
+# Legacy config. API v2 host
+hostname      = https://www.transifex.com
+
+# Legacy config. Username. If the username is `api` the password is an API token
+username      = __username_or_api__
+
+# Legacy config. User password OR API token if the username is `api`.
+password      = __password_or_api_token__
+
+# API v3 host
+rest_hostname = https://rest.api.transifex.com
+# API token
+token         = __api_token__
