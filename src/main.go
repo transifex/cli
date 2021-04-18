@@ -3,10 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -65,144 +63,32 @@ func main() {
 				},
 			},
 			{
-				Name:    "download",
-				Aliases: []string{"d"},
-				Usage:   "Download files",
-				Subcommands: []*cli.Command{
-					{
-						Name:  "translations",
-						Usage: "Download translations for resource and language",
-						Flags: []cli.Flag{
-							&cli.StringFlag{
-								Name:     "pid",
-								Aliases:  []string{"p"},
-								Required: true,
-								Usage:    "The id of the project",
-							},
-							&cli.StringFlag{
-								Name:    "rid",
-								Aliases: []string{"r"},
-								Usage:   "The id of the resource",
-							},
-							&cli.StringFlag{
-								Name:    "lid",
-								Aliases: []string{"l"},
-								Usage:   "The id of the language",
-							},
-							&cli.StringFlag{
-								Name:     "out",
-								Aliases:  []string{"o"},
-								Required: true,
-								Usage:    "The out path",
-							},
-						},
-						Action: func(c *cli.Context) error {
-							config := c.App.Metadata["Config"].(*Config)
-							client := NewClient(config.Token, config.Hostname)
-
-							projectID := c.String("pid")
-
-							project, err := client.getProject(projectID)
-							if err != nil {
-								return err
-							}
-
-							sourceLanguage := project.Relationships.SourceLanguage.Data.ID
-
-							var resourceID *string = nil
-							if c.IsSet("rid") {
-								rid := c.String("rid")
-								resourceID = &rid
-							}
-
-							var languageID *string = nil
-							if c.IsSet("lid") {
-								lid := c.String("lid")
-								languageID = &lid
-							}
-
-							stats, err := client.getProjectLanguageStats(projectID, resourceID, languageID)
-							if err != nil {
-								return err
-							}
-
-							uploads := make(map[string]string)
-							mappings := make(map[string]map[string]string)
-							for _, stat := range *stats {
-								rid := stat.Relationships.Resource.Data.ID
-								lid := stat.Relationships.Language.Data.ID
-
-								if lid == sourceLanguage {
-									continue
-								}
-
-								resp, err := client.createResourceTranslationsDownload(
-									rid, lid, "default", false,
-								)
-								if err != nil {
-									return err
-								}
-
-								languagePath := strings.Replace(c.String("out"), "<resource>", rid, -1)
-								languagePath = strings.Replace(languagePath, "<lang>", lid, -1)
-
-								uploads[*resp.ID] = languagePath
-								mappings[*resp.ID] = map[string]string{
-									"language": resp.Relationships.Language.Data.ID,
-									"resource": resp.Relationships.Resource.Data.ID,
-								}
-							}
-
-							ch := make(chan string)
-							for uploadID, path := range uploads {
-								go func(uploadID string, path string, ch chan<- string) {
-									ctx, cancelFunc := context.WithTimeout(context.Background(), 120*time.Second)
-									defer cancelFunc()
-									result, err := client.pollResourceTranslationsDownload(
-										ctx, uploadID, 1*time.Second,
-									)
-									if err != nil {
-										ch <- "error"
-									}
-
-									if result.Attributes.Content != nil {
-										abs, _ := filepath.Abs(path)
-										fmt.Println("writing to ", abs+"/"+mappings[uploadID]["resource"]+mappings[uploadID]["language"])
-										fileInfo, err := os.Stat(path)
-										if err != nil {
-											ch <- err.Error()
-											return
-										}
-										if fileInfo.IsDir() {
-											err := ioutil.WriteFile(
-												abs+"/"+mappings[uploadID]["resource"]+mappings[uploadID]["language"],
-												*result.Attributes.Content,
-												0644,
-											)
-											if err != nil {
-												ch <- err.Error()
-											}
-										} else {
-											err := ioutil.WriteFile(abs, *result.Attributes.Content, 0644)
-											if err != nil {
-												ch <- err.Error()
-											}
-										}
-										ch <- "ok"
-									} else {
-										ch <- "something went wrong"
-									}
-								}(uploadID, path, ch)
-							}
-
-							for range uploads {
-								<-ch
-							}
-
-							return nil
-						},
+				Name:    "pull",
+				Aliases: []string{"p"},
+				Usage:   "Pull translation files",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:  "force",
+						Value: false,
+						Usage: "Whether to skip timestamp checks",
+					},
+					&cli.BoolFlag{
+						Name:  "all",
+						Value: false,
+						Usage: "Whether non existing files as well",
+					},
+					&cli.BoolFlag{
+						Name:  "disable-overwrite",
+						Value: false,
+						Usage: "Whether skip existing files",
+					},
+					&cli.BoolFlag{
+						Name:  "use-git-timestamps",
+						Value: false,
+						Usage: "Whether to use git commit timestamps instead of file timestamps",
 					},
 				},
+				Action: pullCommand,
 			},
 			{
 				Name:    "upload",
@@ -447,47 +333,6 @@ func main() {
 							return nil
 						},
 					},
-				},
-			},
-			{
-				Name:  "git",
-				Usage: "Yolo",
-				Action: func(c *cli.Context) error {
-
-					dir := c.App.Metadata["ProjectDir"].(string)
-					gitDir, err := getGitDir(dir)
-					if err == nil {
-						fmt.Println("Working inside a git dir")
-						fmt.Println(gitDir)
-						fmt.Println("")
-						branch, err := getGitBranch(gitDir)
-						if err == nil {
-							fmt.Println("For branch")
-							fmt.Println(branch)
-						} else {
-							return err
-						}
-						fmt.Println("")
-						fmt.Println("Getting last commit date of src/main.go")
-						date, err := lastCommitDate(gitDir, "src/main.go")
-						if err == nil {
-							fmt.Println(date)
-						} else {
-							return err
-						}
-
-						fmt.Println("")
-						fmt.Println("Getting lat modified date of src/main.go")
-						info, err := os.Stat("src/main.go")
-						if err == nil {
-							fmt.Println(info.ModTime())
-						} else {
-							return err
-						}
-					} else {
-						return err
-					}
-					return nil
 				},
 			},
 			{

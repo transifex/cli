@@ -52,21 +52,29 @@ func getGitBranch(gitDir string) (string, error) {
 	return head.Name().Short(), nil
 }
 
-func lastCommitDate(gitDir string, fileName string) (time.Time, error) {
-	var commitDate time.Time
+func lastCommitDate(projectDir string, filePath string) (time.Time, error) {
+	gitDir, err := getGitDir(projectDir)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	filePath, err = filepath.Rel(gitDir, filePath)
+	if err != nil {
+		return time.Time{}, err
+	}
 
 	repo, err := git.PlainOpen(gitDir)
 	if err != nil {
-		return commitDate, err
+		return time.Time{}, err
 	}
-
-	cIter, _ := repo.Log(&git.LogOptions{FileName: &fileName, Order: git.LogOrderCommitterTime})
+	cIter, _ := repo.Log(&git.LogOptions{FileName: &filePath, Order: git.LogOrderCommitterTime})
 	if err != nil {
-		return commitDate, err
+		return time.Time{}, err
 	}
 	commit, err := cIter.Next()
 	if err != nil {
-		return commitDate, err
+		// fmt.Println(err) prints just `EOF`
+		return time.Time{}, err
 	}
 	return commit.Author.When, nil
 }
