@@ -87,6 +87,21 @@ func main() {
 						Value: false,
 						Usage: "Whether to use git commit timestamps instead of file timestamps",
 					},
+					&cli.BoolFlag{
+						Name:  "skip",
+						Value: false,
+						Usage: "Whether to continue with downloading and write files to disk even if a download has failed",
+					},
+					&cli.BoolFlag{
+						Name:  "xliff",
+						Value: false,
+						Usage: "",
+					},
+					&cli.IntFlag{
+						Name:  "parallel",
+						Value: 1,
+						Usage: "Whether to use git commit timestamps instead of file timestamps",
+					},
 				},
 				Action: pullCommand,
 			},
