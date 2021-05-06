@@ -25,6 +25,7 @@ type Config struct {
 // FileMapping holds the file configuration
 type FileMapping struct {
 	ID                   string
+	ProjectDir           string
 	OrganizationSlug     string
 	ProjectSlug          string
 	ResourceSlug         string
@@ -255,6 +256,7 @@ func setMetadata(context *cli.Context) error {
 		fileFilter := section.Key("file_filter").String()
 		fileMapping := FileMapping{
 			ID:                   resourceID,
+			ProjectDir:           projectDir,
 			OrganizationSlug:     organizationSlug,
 			ProjectSlug:          projectSlug,
 			ResourceSlug:         resourceSlug,

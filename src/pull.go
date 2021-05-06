@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -14,31 +15,69 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func pullCommand(c *cli.Context) error {
+// PullFlags represent the flags that can be passed in the pull command.
+type PullFlags struct {
+	AllFlag           bool     // whenther to download non existing files as well
+	ForceFlag         bool     // whether to skip comparing timestamps
+	SkipExisting      bool     // whether to skip downloading existing files
+	UseGitTimestamps  bool     // whether to use git intead of local file timestamps
+	IgnoreErrors      bool     // whether to write successful downloads even if one has failed
+	Xliff             bool     // whether to download the xliff file format
+	MaxDownlads       int      // how many downloads to do concurrently
+	ResourceRegex     string   // the final regex that will be checked against a resource slug
+	MinimumPercentage *float64 //
+}
+
+// PullCommand will pull files from the transifex API.
+// First it will retrieve each resource's `resource_language_stats`
+// The for each language it will download the file when the following criteria are met:
+// 1. The file exist localy
+// 2. The current file timestamp is older than the last resource language statistic update
+// 3. The language is not the source language
+// The files will be downloaded serially and will be written to disk only if they are all successful
+// The FileMapping configuration will be used to derive the filepath locations for each resource and language
+func PullCommand(c *cli.Context) error {
 	// Get config
 	config := c.App.Metadata["Config"].(*Config)
-	projectDir := c.App.Metadata["ProjectDir"].(string)
 	fileMappings := c.App.Metadata["FileMappings"].(map[string]FileMapping)
 
-	// Get flags
-	allFlag := c.Bool("all")
-	forceFlag := c.Bool("force")
-	skipExisting := c.Bool("disable-overwrite")
-	useGitTimestamps := c.Bool("use-git-timestamps")
-	ignoreErrors := c.Bool("skip")
-	xliff := c.Bool("xliff")
-	maxDownlads := c.Int("parallel")
+	// If a resource regex is passed validate and prepare it
+	resourceRegex := c.String("resource")
+	if resourceRegex != "" {
+		if isValid, _ := regexp.MatchString(`^[-\w\*]+$`, resourceRegex); !isValid {
+			return fmt.Errorf("Not valid resource regex `%s`", resourceRegex)
+		}
+		resourceRegex = strings.Replace(resourceRegex, "*", `[-\w]+`, -1) + "$"
+	}
 
-	// Init client
+	var minimumPercentage *float64
+	if c.IsSet("minimum-perc") {
+		tmp := c.Float64("minimum-perc")
+		minimumPercentage = &tmp
+	}
+	// Get flags
+	pullFlags := PullFlags{
+		AllFlag:           c.Bool("all"),
+		ForceFlag:         c.Bool("force"),
+		SkipExisting:      c.Bool("disable-overwrite"),
+		UseGitTimestamps:  c.Bool("use-git-timestamps"),
+		IgnoreErrors:      c.Bool("skip"),
+		Xliff:             c.Bool("xliff"),
+		MaxDownlads:       c.Int("parallel"),
+		ResourceRegex:     resourceRegex,
+		MinimumPercentage: minimumPercentage,
+	}
+
 	client := NewClient(config.Token, config.Hostname)
 
 	// Context will be used to cancel downloads.
 	// When the --skip flag is not passed when a download fails no files are written
-	// to disk. When a download fails it calls the cancel() func which aborts other downloads.
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	// to disk. When a download fails it calls the cancelFunc() func which aborts other downloads.
+	cancelContext, cancelFunc := context.WithCancel(context.Background())
+	defer cancelFunc()
 
-	var wg sync.WaitGroup
+	// Controls when the command will exit.
+	var globalLock sync.WaitGroup
 
 	// The write file lock synchronizes the downloads. When a download finishes successfully
 	// it will mark it as finished `writeFileLock.Done()`.
@@ -46,7 +85,8 @@ func pullCommand(c *cli.Context) error {
 	writeFileLockCh := make(chan struct{})
 
 	// Controls how many downloads will be performed at the same time.
-	guardMaxDownloads := make(chan struct{}, maxDownlads)
+	guardMaxDownloads := make(chan struct{}, pullFlags.MaxDownlads)
+	defer close(guardMaxDownloads)
 
 	for _, fileMapping := range fileMappings {
 
@@ -58,111 +98,71 @@ func pullCommand(c *cli.Context) error {
 			return err
 		}
 		for _, resourceLanguageStat := range *resourceLanguageStats {
-			// <-ctx.Done() means a download has failed (`cancel()` was called)
-			// default continue execution
+			// <-cancelContext.Done() means a download has failed (`cancelFunc()` was called)
+			// by default continue execution
 			select {
-			case <-ctx.Done():
+			case <-cancelContext.Done():
 				return nil
 			default:
 			}
 
-			languageID := resourceLanguageStat.Relationships.Language.Data.ID
-			// It blows my mind that we don't have access to the language code anywhere in the response.
-			txLanguageCode := strings.Split(languageID, ":")[1]
-			if txLanguageCode == fileMapping.SourceLang {
-				continue
+			shouldSkip, err := skipDownload(&pullFlags, &fileMapping, &resourceLanguageStat)
+			if err != nil {
+				return err
 			}
-
-			localLanguageCode := getLocalLanguageCode(txLanguageCode, &fileMapping)
-
-			_, isExistingFile := fileMapping.LanguageMappings[localLanguageCode]
-
-			// If no --all flag was provided we update only files that exist locally
-			if !allFlag && !isExistingFile {
+			if shouldSkip {
 				continue
-			}
-			// if the --disable-overwrite flag is passed skip existing files
-			if skipExisting && isExistingFile {
-				continue
-			}
-
-			languagePath := getLanguagePath(localLanguageCode, projectDir, &fileMapping)
-
-			// Check timestamp only for existing files
-			if isExistingFile {
-				var localLastUpdate time.Time
-				var txLastUpdate time.Time
-				if useGitTimestamps {
-					localLastUpdate, err = lastCommitDate(projectDir, languagePath)
-					if err != nil {
-						return err
-					}
-				} else {
-					fileInfo, err := os.Stat(languagePath)
-					if err != nil {
-						return err
-					}
-					localLastUpdate = fileInfo.ModTime()
-				}
-
-				datelayout := "2006-01-02T15:04:05Z"
-				txLastUpdate, err = time.Parse(datelayout, resourceLanguageStat.Attributes.LastUpdate)
-				if err != nil {
-					return err
-				}
-				hasUpdate := localLastUpdate.Before(txLastUpdate)
-
-				// If no --force flag was provided we update only local files
-				// that before the last update in transifex
-				if !hasUpdate && !forceFlag {
-					continue
-				}
 			}
 
 			// Will block if `maxDownloads` is reached (channel is filled)
 			guardMaxDownloads <- struct{}{}
 
 			// Add 1 to wait groups
-			wg.Add(1)
+			globalLock.Add(1)
 			writeFileLock.Add(1)
+			languageID := resourceLanguageStat.Relationships.Language.Data.ID
 			go func() {
 				// Substracts 1 from wait group when goroutine exits
-				defer wg.Done()
+				defer globalLock.Done()
 
-				content, err := downloadFile(client, resourceID, languageID, xliff, languagePath)
+				languagePath := getLanguagePathFromID(languageID, &fileMapping)
+
+				content, err := downloadFile(client, resourceID, languageID, &pullFlags)
+
 				if err != nil {
 					fmt.Printf(err.Error())
-					// Cancel signal. Cancels other downloads
-					cancel()
-					return
+					// If the `--skip` flag is not passed cancel all downloads
+					if !pullFlags.IgnoreErrors {
+						cancelFunc()
+					}
 				}
 
 				fmt.Printf("Download completed for resource `%s` and language `%s`\n", resourceID, languageID)
+
 				// Mark download complete
 				writeFileLock.Done()
 				// Read one entry
 				// Will make another download possible if `maxDownloads` is reached
 				<-guardMaxDownloads
 
-				// If the `skip` flag was passed all files or no files will be downloaded
-				if !ignoreErrors {
-					// Wait for all downloads to be finished or check for cancel signal.
-					// If the channel `writeFileLockCh` closes the file will be written to disk.
-					// If the `cancel()` func is called it will exit.
+				// If we are not ignoring errors we have to wait
+				// for all downloads to be finished successfully or receive the cancel signal.
+				if !pullFlags.IgnoreErrors {
 					select {
-					case <-ctx.Done():
+					// If the `cancelFunc()` func is called it will exit.
+					case <-cancelContext.Done():
 						return
+					// If the channel `writeFileLockCh` closes the file will can be written to disk.
 					case <-writeFileLockCh:
 					}
 				}
 
-				if xliff {
+				fmt.Printf("Writing resource `%s` and language `%s` to path `%s`\n", resourceID, languageID, languagePath)
+
+				if pullFlags.Xliff {
 					ext := path.Ext(languagePath)
 					languagePath = languagePath[0:len(languagePath)-len(ext)] + ".xlf"
-
 				}
-
-				fmt.Printf("Writing resource `%s` and language `%s` to path `%s`\n", resourceID, languageID, languagePath)
 
 				if _, err = os.Stat(languagePath); os.IsNotExist(err) {
 					os.MkdirAll(filepath.Dir(languagePath), os.ModePerm)
@@ -186,24 +186,24 @@ func pullCommand(c *cli.Context) error {
 	}()
 
 	// Wait for all downloads to finish
-	wg.Wait()
+	globalLock.Wait()
 	return nil
 }
 
-func downloadFile(client *Client, resourceID string, languageID string, xliff bool, path string) (*[]byte, error) {
+func downloadFile(client *Client, resourceID string, languageID string, pullFlags *PullFlags) (*[]byte, error) {
 	resourceTranslationDownload, err := client.createResourceTranslationsDownload(
-		resourceID, languageID, "default", xliff,
+		resourceID, languageID, "default", pullFlags.Xliff,
 	)
 	fmt.Printf("Downloading resource `%s` and language `%s`\n", resourceID, languageID)
 	if err != nil {
 		return nil, err
 	}
 
-	ctx, cancelFunc := context.WithTimeout(context.Background(), 120*time.Second)
+	cancelContext, cancelFunc := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancelFunc()
 
 	result, err := client.pollResourceTranslationsDownload(
-		ctx, *resourceTranslationDownload.ID, 1*time.Second,
+		cancelContext, *resourceTranslationDownload.ID, 1*time.Second,
 	)
 
 	if result.Attributes.Content != nil {
@@ -211,4 +211,78 @@ func downloadFile(client *Client, resourceID string, languageID string, xliff bo
 	} else {
 		return nil, fmt.Errorf("Error compiling file for resource `%s` and language `%s`", resourceID, languageID)
 	}
+}
+
+func skipDownload(pullArgs *PullFlags, fileMapping *FileMapping, resourceLanguageStat *ResourceLanguageStats) (bool, error) {
+
+	if pullArgs.ResourceRegex != "" {
+		isMatch, err := regexp.MatchString(pullArgs.ResourceRegex, fileMapping.ResourceSlug)
+		if !isMatch || err != nil {
+			return true, err
+		}
+	}
+
+	// It blows my mind that we don't have access to the language code anywhere in the response.
+	txLanguageCode := strings.Split(resourceLanguageStat.Relationships.Language.Data.ID, ":")[1]
+	if txLanguageCode == fileMapping.SourceLang {
+		return true, nil
+	}
+
+	localLanguageCode := getLocalLanguageCode(txLanguageCode, fileMapping)
+
+	_, isExistingFile := fileMapping.LanguageMappings[localLanguageCode]
+
+	// If no --all flag was provided we update only files that exist locally
+	if !pullArgs.AllFlag && !isExistingFile {
+		return true, nil
+	}
+	// if the --disable-overwrite flag is passed skip existing files
+	if pullArgs.SkipExisting && isExistingFile {
+		return true, nil
+	}
+
+	if pullArgs.MinimumPercentage != nil {
+		part := resourceLanguageStat.Attributes.TranslatedStrings
+		total := resourceLanguageStat.Attributes.TotalStrings
+		currentPercentage := (float64(part) * float64(100)) / float64(total)
+		if currentPercentage < *pullArgs.MinimumPercentage {
+			return true, nil
+		}
+	}
+
+	// Check timestamp only for existing files
+	if isExistingFile {
+		languagePath := getLanguagePathFromID(
+			resourceLanguageStat.Relationships.Language.Data.ID,
+			fileMapping,
+		)
+		var localLastUpdate time.Time
+		var err error
+		if pullArgs.UseGitTimestamps {
+			localLastUpdate, err = lastCommitDate(fileMapping.ProjectDir, languagePath)
+			if err != nil {
+				return true, err
+			}
+		} else {
+			fileInfo, err := os.Stat(languagePath)
+			if err != nil {
+				return true, err
+			}
+			localLastUpdate = fileInfo.ModTime()
+		}
+
+		datelayout := "2006-01-02T15:04:05Z"
+		txLastUpdate, err := time.Parse(datelayout, resourceLanguageStat.Attributes.LastUpdate)
+		if err != nil {
+			return true, err
+		}
+		hasUpdate := localLastUpdate.Before(txLastUpdate)
+
+		// If no --force flag was provided we update only local files
+		// that were last updated before the last update in transifex
+		if !hasUpdate && !pullArgs.ForceFlag {
+			return true, nil
+		}
+	}
+	return false, nil
 }

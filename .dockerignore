@@ -1,0 +1,4 @@
+bin/
+# Ignore local configuration and translation files
+/locale
+/.tx

@@ -100,10 +100,20 @@ func main() {
 					&cli.IntFlag{
 						Name:  "parallel",
 						Value: 1,
+						Usage: "How many files to downloads simultaneously",
+					},
+					&cli.StringFlag{
+						Name:  "resource",
+						Value: "",
+						Usage: "Whether to use git commit timestamps instead of file timestamps",
+					},
+					&cli.StringFlag{
+						Name:  "minimum-perc",
+						Value: "",
 						Usage: "Whether to use git commit timestamps instead of file timestamps",
 					},
 				},
-				Action: pullCommand,
+				Action: PullCommand,
 			},
 			{
 				Name:    "upload",

@@ -74,11 +74,19 @@ func getTxLanguageCode(localLanguageCode string, fileMapping *FileMapping) strin
 
 // Given the local language code return the absoloute path to the file
 // even if the file does not currently exist
-func getLanguagePath(localLanguageCode string, projectDir string, fileMapping *FileMapping) string {
+func getLanguagePathFromLocalCode(localLanguageCode string, projectDir string, fileMapping *FileMapping) string {
 	if val, ok := fileMapping.TranslationOverrides[localLanguageCode]; ok {
 		return filepath.Join(projectDir, val)
 	}
 	return filepath.Join(projectDir, strings.Replace(fileMapping.FileFilter, "<lang>", localLanguageCode, -1))
+}
+
+// Given the language ID return the absoloute path to the file
+// even if the file does not currently exist
+func getLanguagePathFromID(languageID string, fileMapping *FileMapping) string {
+	txLanguageCode := strings.Split(languageID, ":")[1]
+	localLanguageCode := getLocalLanguageCode(txLanguageCode, fileMapping)
+	return getLanguagePathFromLocalCode(localLanguageCode, fileMapping.ProjectDir, fileMapping)
 }
 
 func searchDir(re *regexp.Regexp, dir string) ([]string, error) {
