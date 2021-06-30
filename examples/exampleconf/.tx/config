@@ -1,0 +1,32 @@
+[main]
+# Points to `$HOME/.transifexrc` (RootConfig) host configuration
+# If a `.transifexrc` is found in the .tx directory it takes precedence
+host = https://www.transifex.com
+
+# Example global language mapping (tranisfex language -> local languages)
+lang_map = de: de-Br, pt_BR: foo
+
+
+# Holds resource configuration (FileMapping)
+# NOTE: Add your resource ID
+[o:__organization_slug__:p:__project_slug__:r:__resource_slug__]
+
+# The "regex" that finds local transaltion file locations
+file_filter = locale/<lang>/ui.po
+
+# The source file location
+source_file = locale/ui.pot
+
+# Source language
+source_lang = en
+
+# File format
+type = PO
+
+# Example resource language mapping (tranisfex language -> local languages)
+lang_map = pt_PT: pt-pt, pt_BR: pt-br
+
+# Overrides file locations for specific languages
+# NOTE: It uses the local language codes the
+trans.pt-pt = locale/other/pt_PT/ui.po
+trans.fr_CA = locale/other/fr_CA/ui.po

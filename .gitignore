@@ -1,0 +1,10 @@
+bin/
+# Ignore local configuration and translation files
+/locale
+/.tx
+.idea/
+tags
+cli
+.vscode
+
+local_example/

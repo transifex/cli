@@ -1,0 +1,7 @@
+version: "3.5"
+services:
+  cli-test:
+    image: go-cli:${TEST_TAG:-devel}
+    volumes:
+      - .:/src/github.com/transifex/cli
+    command: sh -c "scripts/tests.sh"
