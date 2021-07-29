@@ -87,7 +87,7 @@ func Main() {
 			},
 			{
 				Name:  "push",
-				Usage: "tx push [options] [resource_id...]",
+				Usage: "tx push [options] [[resource_id...]...]",
 				Flags: []cli.Flag{
 					&cli.BoolFlag{
 						Name:    "source",
@@ -251,7 +251,7 @@ func Main() {
 			},
 			{
 				Name:  "pull",
-				Usage: "tx pull [options] [resource_id...]",
+				Usage: "tx pull [options] [[resource_id...]...]",
 				Flags: []cli.Flag{
 					&cli.BoolFlag{
 						Name:  "xliff",
@@ -550,6 +550,79 @@ func Main() {
 					err := txlib.InitCommand()
 					if err != nil {
 						return cli.Exit(pterm.Error.Sprint(err), 1)
+					}
+					return nil
+				},
+			},
+			{
+				Name:  "delete",
+				Usage: "tx delete [options] [resource_id...]",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "resources",
+						Aliases: []string{"r"},
+						Usage:   "Resource ids to delete",
+					},
+					&cli.BoolFlag{
+						Name:    "force",
+						Aliases: []string{"f"},
+						Usage: "Whether to continue if there are " +
+							"translations in the resources",
+					},
+					&cli.BoolFlag{
+						Name:    "skip",
+						Aliases: []string{"s"},
+						Usage:   "Whether to skip on errors",
+					},
+				},
+				Action: func(c *cli.Context) error {
+					cfg, err := config.LoadFromPaths(c.String("root-config"),
+						c.String("config"))
+					if err != nil {
+						return err
+					}
+
+					hostname, token, err := txlib.GetHostAndToken(
+						&cfg, c.String("hostname"), c.String("token"),
+					)
+					if err != nil {
+						return err
+					}
+
+					client, err := txlib.GetClient(c.String("cacert"))
+					if err != nil {
+						return err
+					}
+
+					api := jsonapi.Connection{
+						Host:   hostname,
+						Token:  token,
+						Client: client,
+						Headers: map[string]string{
+							"Integration": "txclient",
+						},
+					}
+
+					// Get extra resource ids
+					resourceIds := c.Args().Slice()
+					if c.String("resources") != "" {
+						extraResourceIds := strings.Split(
+							c.String("resources"),
+							",",
+						)
+						resourceIds = append(resourceIds, extraResourceIds...)
+					}
+
+					// Construct arguments
+					arguments := txlib.DeleteCommandArguments{
+						ResourceIds: resourceIds,
+						Force:       c.Bool("force"),
+						Skip:        c.Bool("skip"),
+					}
+					// Proceed with deletion
+					err = txlib.DeleteCommand(&cfg, api, &arguments)
+					if err != nil {
+						return cli.Exit(err, 1)
 					}
 					return nil
 				},

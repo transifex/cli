@@ -310,3 +310,85 @@ func TestGetResources(t *testing.T) {
 		}
 	}
 }
+
+func TestDeleteResource(t *testing.T) {
+	responseIndex := 0
+	responses := []string{
+		`{"data": [
+			{"type": "organizations",
+			 "id": "o:orgslug",
+			 "attributes": {"name": "Org Name", "slug": "orgslug"}},
+			{"type": "organizations",
+			 "id": "orgslug2",
+			 "attributes": {"name": "Org Name2", "slug": "orgslug2"}}
+		]}`,
+		`{"data": [
+            {
+                "type": "projects",
+                "id": "o:orgslug:p:projslug",
+                "attributes": {"name": "Proj Name", "slug": "projslug"},
+                "relationships": {
+                    "organization": {
+                        "data": {"type": "organizations", "id": "o:orgslug"},
+                        "links": {"related": "/organizations/o:orgslug"}
+                    }
+                }
+            }
+        ]}`,
+		`{"data": [
+            {
+                "type": "resources",
+                "id": "o:orgslug:p:projslug:r:resslug",
+                "attributes": {"name": "Res Name", "slug": "resslug"},
+                "relationships": {
+                    "project": {
+                        "data": {"type": "projects",
+                                 "id": "o:orgslug:p:projslug"},
+                        "links": {"related": "/projects/o:orgslug:p:projslug"}
+                    }
+                }
+            },
+            {
+                "type": "resources",
+                "id": "o:orgslug:p:projslug:r:resslug2",
+                "attributes": {"name": "Res Name2", "slug": "resslug2"},
+                "relationships": {
+                    "project": {
+                        "data": {"type": "projects",
+                                 "id": "o:orgslug:p:projslug"},
+                        "links": {"related": "/projects/o:orgslug:p:projslug"}
+                    }
+                }
+            }
+        ]}`,
+		`{}`,
+		`{errors:[{}]}`,
+	}
+	api := jsonapi.Connection{
+		RequestMethod: func(
+			method, path string, payload []byte, contentType string,
+		) ([]byte, error) {
+			response := responses[responseIndex]
+			responseIndex += 1
+			return []byte(response), nil
+		},
+	}
+
+	organization, err := GetOrganization(&api, "orgslug")
+	if err != nil {
+		t.Error(err)
+	}
+	project, err := GetProject(&api, organization, "projslug")
+	if err != nil {
+		t.Error(err)
+	}
+	resource, err := GetResource(&api, project, "resslug")
+	if err != nil {
+		t.Errorf("Got error while getting project: %s", err)
+	}
+
+	err = DeleteResource(&api, resource)
+	if err != nil {
+		t.Errorf("Got error while deleting resource: %s", err)
+	}
+}
