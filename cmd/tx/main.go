@@ -627,6 +627,67 @@ func Main() {
 					return nil
 				},
 			},
+			{
+				Name:  "status",
+				Usage: "tx status [resource_id...]",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "resources",
+						Aliases: []string{"r"},
+						Usage: "Resource ids to get status for that are " +
+							"included in your config file",
+					},
+				},
+				Action: func(c *cli.Context) error {
+					cfg, err := config.LoadFromPaths(c.String("root-config"),
+						c.String("config"))
+					if err != nil {
+						return err
+					}
+
+					hostname, token, err := txlib.GetHostAndToken(
+						&cfg, c.String("hostname"), c.String("token"),
+					)
+					if err != nil {
+						return err
+					}
+
+					client, err := txlib.GetClient(c.String("cacert"))
+					if err != nil {
+						return err
+					}
+
+					api := jsonapi.Connection{
+						Host:   hostname,
+						Token:  token,
+						Client: client,
+						Headers: map[string]string{
+							"Integration": "txclient",
+						},
+					}
+
+					// Get extra resource ids
+					resourceIds := c.Args().Slice()
+					if c.String("resources") != "" {
+						extraResourceIds := strings.Split(
+							c.String("resources"),
+							",",
+						)
+						resourceIds = append(resourceIds, extraResourceIds...)
+					}
+
+					// Construct arguments
+					arguments := txlib.StatusCommandArguments{
+						ResourceIds: resourceIds,
+					}
+					// Proceed with deletion
+					err = txlib.StatusCommand(&cfg, api, &arguments)
+					if err != nil {
+						return cli.Exit(err, 1)
+					}
+					return nil
+				},
+			},
 		},
 		Flags: flags,
 	}

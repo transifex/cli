@@ -592,3 +592,24 @@ tx delete -r project_slug.\*
   print a warning and move on to the next resource.
 - `--force`: In case you want to proceed to a deletion even if resources have
   translations use the `-f/--force` flag.
+
+### Getting the local status of the project
+The status command displays the existing configuration in a human readable format. It lists all resources that have been initialized under the local repo/directory and all their associated translation files:
+
+```
+tx status
+myproject -> default (1 of 1)
+Translation Files:
+ - en: po/smolt.pot (source)
+ - ar: po/ar.po
+ - as: po/as.po
+ - bg: po/bg.po
+ - bn_IN: po/bn_IN.p
+ ...
+ ```
+
+ To get the status of specific resources just add the resources you want in your command:
+
+ ```
+ tx status -r <project_slug>.<resource_slug> ....
+ ```
