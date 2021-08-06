@@ -38,7 +38,7 @@ func TestFind(t *testing.T) {
 	resource := cfg.FindResource("aaa.bbb")
 	if resource != &cfg.Local.Resources[0] {
 		t.Errorf(
-			"Got wrong resource %s, expected %s",
+			"Got wrong resource %+v, expected %+v",
 			*resource,
 			cfg.Local.Resources[0],
 		)
@@ -47,7 +47,7 @@ func TestFind(t *testing.T) {
 	resource = cfg.FindResource("ccc.ddd")
 	if resource != &cfg.Local.Resources[1] {
 		t.Errorf(
-			"Got wrong resource %s, expected %s",
+			"Got wrong resource %+v, expected %+v",
 			*resource,
 			cfg.Local.Resources[0],
 		)
@@ -55,7 +55,7 @@ func TestFind(t *testing.T) {
 
 	resource = cfg.FindResource("something else")
 	if resource != nil {
-		t.Errorf("Got wrong resource %s, expected nil", *resource)
+		t.Errorf("Got wrong resource %+v, expected nil", *resource)
 	}
 }
 
@@ -73,14 +73,14 @@ func TestFindResourcesByProject(t *testing.T) {
 	resources := cfg.FindResourcesByProject("aaa")
 	if resources[0] != &cfg.Local.Resources[0] {
 		t.Errorf(
-			"Got wrong resource %s, expected %s",
+			"Got wrong resource %+v, expected %+v",
 			*resources[0],
 			cfg.Local.Resources[0],
 		)
 	}
 	if resources[1] != &cfg.Local.Resources[1] {
 		t.Errorf(
-			"Got wrong resource %s, expected %s",
+			"Got wrong resource %+v, expected %+v",
 			*resources[1],
 			cfg.Local.Resources[1],
 		)

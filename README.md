@@ -569,6 +569,8 @@ default to taking the filesystem timestamp into account.
   you set the `--skip` flag and an upload fails, then the client will simply
   print a warning and move on to the next language file.
 
+- `--minimum_perc=MINIMUM_PERC` Specify the minimum translation completion threshold required in order for a file to be downloaded.
+
 ### Removing resources from Transifex
 The tx delete command lets you delete a resource that's in your `config` file and on Transifex.
 

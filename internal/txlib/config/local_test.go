@@ -35,12 +35,13 @@ func TestLoadLocalConfig(t *testing.T) {
 				"pt-pt": "locale/other/pt_PT/ui.po",
 				"fr_CA": "locale/other/fr_CA/ui.po",
 			},
+			MinimumPercentage: -1,
 		}},
 	}
 
 	if !localConfigsEqual(localCfg, &expected) {
 		t.Errorf(
-			"Local config is wrong; got %s, expected %s",
+			"Local config is wrong; got %+v, expected %+v",
 			localCfg,
 			expected,
 		)
@@ -88,7 +89,7 @@ func TestSaveAndLoadLocalConfig(t *testing.T) {
 
 	if !localConfigsEqual(&expected, newLocalCfg) {
 		t.Errorf(
-			"Root config is wrong; got %s, expected %s",
+			"Root config is wrong; got %+v, expected %+v",
 			newLocalCfg,
 			expected,
 		)
@@ -150,6 +151,28 @@ func TestChangeSaveAndLoadLocalConfig(t *testing.T) {
 		t.Errorf(
 			"Read wrong file_filter '%s', expected 'My New File Filter'",
 			reloaded.Resources[0].FileFilter,
+		)
+	}
+
+	loaded.Resources[0].MinimumPercentage = 10
+
+	// Save again
+	buffer.Reset()
+	err = loaded.saveToWriter(&buffer)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Load again and check for file filter
+	reloaded, err = loadLocalConfigFromBytes(buffer.Bytes())
+	if err != nil {
+		t.Error(err)
+	}
+
+	if reloaded.Resources[0].MinimumPercentage != 10 {
+		t.Errorf(
+			"Read wrong min_perc '%d', expected 10",
+			reloaded.Resources[0].MinimumPercentage,
 		)
 	}
 }

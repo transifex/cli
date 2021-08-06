@@ -271,7 +271,7 @@ func Main() {
 						Name:    "mode",
 						Aliases: []string{"m"},
 						Value:   "default",
-						Usage: "The transliteration mode of the downloaded " +
+						Usage: "The translation mode of the downloaded " +
 							"file. This can be one of the following:\n    " +
 							"'default', 'reviewed', 'proofread', " +
 							"'translator', 'untranslated',\n    " +
@@ -334,6 +334,12 @@ func Main() {
 						Usage: "Backwards compatibility with old client " +
 							"to fetch resource ids",
 					},
+					&cli.IntFlag{
+						Name: "minimum-perc",
+						Usage: "Specify the minimum acceptable percentage of " +
+							"a translation mode in order to download it.",
+						Value: -1,
+					},
 				},
 				Action: func(c *cli.Context) error {
 					cfg, err := config.LoadFromPaths(c.String("root-config"),
@@ -372,17 +378,18 @@ func Main() {
 					}
 
 					arguments := txlib.PullCommandArguments{
-						ContentEncoding:  c.String("content_encoding"),
-						Mode:             c.String("mode"),
-						Force:            c.Bool("force"),
-						Skip:             c.Bool("skip"),
-						Source:           c.Bool("source"),
-						Translations:     c.Bool("translations"),
-						DisableOverwrite: c.Bool("disable-overwrite"),
-						All:              c.Bool("all"),
-						ResourceIds:      resourceIds,
-						UseGitTimestamps: c.Bool("use-git-timestamps"),
-						Branch:           c.String("branch"),
+						ContentEncoding:   c.String("content_encoding"),
+						Mode:              c.String("mode"),
+						Force:             c.Bool("force"),
+						Skip:              c.Bool("skip"),
+						Source:            c.Bool("source"),
+						Translations:      c.Bool("translations"),
+						DisableOverwrite:  c.Bool("disable-overwrite"),
+						All:               c.Bool("all"),
+						ResourceIds:       resourceIds,
+						UseGitTimestamps:  c.Bool("use-git-timestamps"),
+						Branch:            c.String("branch"),
+						MinimumPercentage: c.Int("minimum-perc"),
 					}
 
 					if c.Bool("xliff") && c.Bool("json") {
