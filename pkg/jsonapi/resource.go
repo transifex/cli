@@ -252,15 +252,9 @@ func (r *Resource) Delete() error {
 	_, err := r.API.request("DELETE", url, nil, "")
 
 	if err != nil {
-		var e *RedirectError
-		if errors.As(err, &e) {
-			r.Redirect = e.Location
-			return nil
-		} else {
-			return err
-		}
+		return err
 	}
-
+	r.Id = ""
 	return nil
 }
 

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/transifex/cli/internal/txlib/config"
+	"github.com/transifex/cli/pkg/assert"
 	"github.com/transifex/cli/pkg/jsonapi"
 )
 
@@ -657,6 +658,43 @@ func TestPullCommandSkipOnReviewedMinPerc(t *testing.T) {
 			endpoint.Count,
 			"/resource_translations_async_downloads/download_1")
 	}
+}
+
+func TestGetActedOnStringsPercentage(t *testing.T) {
+	result := getActedOnStringsPercentage(float32(2), float32(10))
+	assert.Equal(t, result, float32(20))
+
+	result = getActedOnStringsPercentage(float32(1), float32(1000))
+	assert.Equal(t, result, float32(0.1))
+
+	result = getActedOnStringsPercentage(float32(12), float32(9876))
+	assert.Equal(t, result, float32(0.12150668))
+
+	result = getActedOnStringsPercentage(float32(991), float32(1000))
+	assert.Equal(t, result, float32(99.1))
+}
+
+func TestShouldSkipDueToStringPercentage(t *testing.T) {
+	result := shouldSkipDueToStringPercentage(10, 2, 10)
+	assert.Equal(t, result, false)
+
+	result = shouldSkipDueToStringPercentage(100, 10, 10)
+	assert.Equal(t, result, false)
+
+	result = shouldSkipDueToStringPercentage(20, 1, 10)
+	assert.Equal(t, result, true)
+
+	result = shouldSkipDueToStringPercentage(10, 1, 1000)
+	assert.Equal(t, result, true)
+
+	result = shouldSkipDueToStringPercentage(10, 1, 1000)
+	assert.Equal(t, result, true)
+
+	result = shouldSkipDueToStringPercentage(99, 991, 1000)
+	assert.Equal(t, result, false)
+
+	result = shouldSkipDueToStringPercentage(99, 989, 1000)
+	assert.Equal(t, result, true)
 }
 
 func TestPullCommandSkipOnProofreadMinPerc(t *testing.T) {

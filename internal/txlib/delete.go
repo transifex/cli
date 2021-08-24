@@ -76,6 +76,8 @@ func DeleteCommand(
 		return nil
 	}
 
+	defer cfg.Save()
+
 	// Delete each resource
 	for _, cfgResource := range cfgResources {
 		// Delete Resource from Server
@@ -89,10 +91,6 @@ func DeleteCommand(
 		} else {
 			// Remove successful deletes from config
 			cfg.RemoveResource(*cfgResource)
-			err := cfg.Save()
-			if err != nil {
-				return err
-			}
 		}
 	}
 
@@ -149,19 +147,24 @@ func deleteResource(
 
 	spinner, err := pterm.DefaultSpinner.Start(msg)
 
-	remoteStats, err := txapi.GetResourceStats(api, resource, nil)
-	if args.Force != true {
-		for i := range remoteStats {
+	if !args.Force {
+		remoteStats, _ := txapi.GetResourceStats(api, resource, nil)
+		for languageId := range remoteStats {
+			if languageId == project.
+				Relationships["source_language"].DataSingular.Id {
+				continue
+			}
 			var remoteStatAttributes txapi.ResourceLanguageStatsAttributes
-			err := remoteStats[i].MapAttributes(&remoteStatAttributes)
+			err := remoteStats[languageId].MapAttributes(&remoteStatAttributes)
 			if err != nil {
 				spinner.Fail(err)
 				return err
 			}
 			if remoteStatAttributes.TranslatedStrings > 0 {
-				spinner.Fail(err)
-				return fmt.Errorf("Aborting due to translations in %s",
+				msg := fmt.Sprintf("Aborting due to translations in %s",
 					cfgResource.ResourceSlug)
+				spinner.Fail(msg)
+				return fmt.Errorf(msg)
 			}
 		}
 	}

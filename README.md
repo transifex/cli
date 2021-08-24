@@ -576,15 +576,23 @@ The tx delete command lets you delete a resource that's in your `config` file an
 
 To delete a resource, use the following command:
 ```
-tx delete -r <project_slug>.<resource_slug>
+tx delete <project_slug>.<resource_slug>
 ```
 
 To delete all resources in a specific project at once, instead of referring to a specific resource_slug, you can use the asterisk character as follows:
 ```
-tx delete -r project_slug.*
+tx delete project_slug.*
 or
-tx delete -r project_slug.\*
+tx delete project_slug.\*
 ```
+
+> Note: for backwards compatibility with previous versions of the client, you
+> can also use the `-r/--resources` flag. You can also use both at the same
+> time:
+>
+> ```sh
+> tx delete -r <project_slug>.<resource_slug> ....
+> ```
 
 **Other flags:**
 - `--skip`: Normally, if a delete fails, the client will abort. This may not
@@ -594,6 +602,7 @@ tx delete -r project_slug.\*
   print a warning and move on to the next resource.
 - `--force`: In case you want to proceed to a deletion even if resources have
   translations use the `-f/--force` flag.
+
 
 ### Getting the local status of the project
 The status command displays the existing configuration in a human readable format. It lists all resources that have been initialized under the local repo/directory and all their associated translation files:
@@ -613,5 +622,13 @@ Translation Files:
  To get the status of specific resources just add the resources you want in your command:
 
  ```
- tx status -r <project_slug>.<resource_slug> ....
+ tx status <project_slug>.<resource_slug> ....
  ```
+
+> Note: for backwards compatibility with previous versions of the client, you
+> can also use the `-r/--resources` flag. You can also use both at the same
+> time:
+>
+> ```sh
+> tx status -r <project_slug>.<resource_slug> ....
+> ```

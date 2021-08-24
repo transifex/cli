@@ -553,6 +553,31 @@ func fetchResource(
 	return resource, nil
 }
 
+func getActedOnStringsPercentage(
+	actedOnStrings float32,
+	totalStrings float32) float32 {
+
+	actedOnStringsPerc := (actedOnStrings * 100) / totalStrings
+	return actedOnStringsPerc
+}
+
+func shouldSkipDueToStringPercentage(
+	minimum_perc int,
+	actedOnStrings int,
+	totalStrings int) bool {
+
+	minimum_percFloat := float32(minimum_perc)
+	actedOnStringsFloat := float32(actedOnStrings)
+	totalStringsFloat := float32(totalStrings)
+
+	actedOnStringsPerc := getActedOnStringsPercentage(
+		actedOnStringsFloat, totalStringsFloat)
+
+	if actedOnStringsPerc < minimum_percFloat {
+		return true
+	}
+	return false
+}
 func shouldSkipDownload(
 	path string, remoteStat *jsonapi.Resource, useGitTimestamps bool,
 	mode string, minimum_perc int,
@@ -581,8 +606,10 @@ func shouldSkipDownload(
 
 		totalStrings := remoteStatAttributes.TotalStrings
 
-		actedOnStringsPerc := (actedOnStrings * 100) / totalStrings
-		if actedOnStringsPerc < minimum_perc {
+		skipDueToStringPercentage := shouldSkipDueToStringPercentage(
+			minimum_perc, actedOnStrings, totalStrings,
+		)
+		if skipDueToStringPercentage {
 			return true, nil
 		}
 	}
