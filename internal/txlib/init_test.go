@@ -107,7 +107,7 @@ func TestDoesNotChangeConfigWhenAbort(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(cfg.Local.Resources, expected.Resources) {
-		t.Errorf("Expected config not to be changed: %s and got %s!",
+		t.Errorf("Expected config not to be changed: %+v and got %+v!",
 			expected.Resources, cfg.Local.Resources)
 	}
 }

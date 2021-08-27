@@ -240,6 +240,24 @@ func (r *Resource) SaveAsMultipart(fields []string) error {
 	return nil
 }
 
+/*
+Delete a resource from the server. Response is empty on success
+*/
+func (r *Resource) Delete() error {
+	url := r.Links.Self
+	if url == "" {
+		// Make an extra effort
+		url = fmt.Sprintf("/%s/%s", r.Type, r.Id)
+	}
+	_, err := r.API.request("DELETE", url, nil, "")
+
+	if err != nil {
+		return err
+	}
+	r.Id = ""
+	return nil
+}
+
 func (r *Resource) Reload() error {
 	url := r.Links.Self
 	if url == "" {
@@ -353,29 +371,29 @@ func (r *Resource) overwrite(body []byte) error {
 
 		shouldOverwrite := !exists ||
 
-					// Relationships have different plurality, or...
-					oldRelationship.Type != newRelationship.Type ||
+			// Relationships have different plurality, or...
+			oldRelationship.Type != newRelationship.Type ||
 
-					// Comparison of singular relationships
-					(oldRelationship.Type == SINGULAR &&
-						newRelationship.Type == SINGULAR &&
-						(
-						// Related object was changed, or
-						oldRelationship.DataSingular.Type !=
-							newRelationship.DataSingular.Type ||
-							oldRelationship.DataSingular.Id !=
-								newRelationship.DataSingular.Id ||
+			// Comparison of singular relationships
+			(oldRelationship.Type == SINGULAR &&
+				newRelationship.Type == SINGULAR &&
+				(
+				// Related object was changed, or
+				oldRelationship.DataSingular.Type !=
+					newRelationship.DataSingular.Type ||
+					oldRelationship.DataSingular.Id !=
+						newRelationship.DataSingular.Id ||
 
-							// Related object was not changed, but response has
-							// included information, or...
-							newRelationship.Fetched)) ||
+					// Related object was not changed, but response has
+					// included information, or...
+					newRelationship.Fetched)) ||
 
-					// Comparison of plural relationships
-					(oldRelationship.Type == PLURAL &&
-						newRelationship.Type == PLURAL &&
+			// Comparison of plural relationships
+			(oldRelationship.Type == PLURAL &&
+				newRelationship.Type == PLURAL &&
 
-						// Response has included information
-						newRelationship.Fetched)
+				// Response has included information
+				newRelationship.Fetched)
 
 		if shouldOverwrite {
 			r.Relationships[key] = newRelationship

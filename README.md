@@ -14,12 +14,12 @@ If you want to test this new version and provide [feedback](https://github.com/t
 
 ## Installation
 
-The easiest and preferred way to install the Transifex CLI is to download 
-the latest version of the binary from GitHub 
+The easiest and preferred way to install the Transifex CLI is to download
+the latest version of the binary from GitHub
 [here](https://github.com/transifex/cli/releases).
 
 Choose the binary according to your system, download it and unzip it.
-Copy the binary into the location you want and update the `PATH` variable 
+Copy the binary into the location you want and update the `PATH` variable
 of your system if necessary.
 
 The other way to install Transifex CLI in the system is to use the code.
@@ -30,15 +30,15 @@ Clone the [repository](https://github.com/transifex/cli) and go into the directo
 cd /path/to/transifex/cli
 ```
 
-The default way to build the binary is 
+The default way to build the binary is
 
   ```shell
   make build
   ```
-This method requires to have golang in your system. It compiles Transifex CLI and 
+This method requires to have golang in your system. It compiles Transifex CLI and
 moves it into the `./bin/` directory of the repository.
 
-If you don't have golang installed, but you have Docker enabled, you can use 
+If you don't have golang installed, but you have Docker enabled, you can use
 the following command:
 
   ```shell
@@ -49,44 +49,44 @@ This will build the binary and it will copy it at `./bin/` in the repository.
 
 ## Migrating from older versions of the client
 
-The current version of the client maintains backwards compatibility for the `tx push` 
-and `tx pull` commands. So, if you have a CI setup that uses them, you should not have 
+The current version of the client maintains backwards compatibility for the `tx push`
+and `tx pull` commands. So, if you have a CI setup that uses them, you should not have
 to change anything. However, some things need to be different in the configuration files:
 
 The section headers in `.tx/config` need to be different to also store the organization slug.
-So after the migration `<project>.<resource>` should become `o:<org>:p:<proj>:r:<res>`. 
-In case something fails during this process, we will provide a message with the failed 
+So after the migration `<project>.<resource>` should become `o:<org>:p:<proj>:r:<res>`.
+In case something fails during this process, we will provide a message with the failed
 migrated resource so that you can identify and change the section header manually.
 
-If you are using a `~/.transifexrc` file for authentication, instead of global flags or 
-environment variables, some new fields must be added there too. You will be prompt for 
+If you are using a `~/.transifexrc` file for authentication, instead of global flags or
+environment variables, some new fields must be added there too. You will be prompt for
 an API token in case you are using a username/password pair in your configuration file.
-If you are migrating an existing software project from an older version of the Transifex 
+If you are migrating an existing software project from an older version of the Transifex
 client, you need to run:
 
 ```
 tx migrate
 ```
 
-This will take care of all the changes and create a back up file of the original config 
+This will take care of all the changes and create a back up file of the original config
 in the same folder as `config_yyyymmddhhss.bak` before we start the migration process.
 
 ### Differences With the Previous Version
 
 The two clients have some distinct differences when looking under the hood.
-The new client is using Go instead of Python 
-  * for speed and 
-  * for the ability to produce binary files 
+The new client is using Go instead of Python
+  * for speed and
+  * for the ability to produce binary files
   for multiple platforms.
 
-Additionally, client is using APIv3 instead of APIv2 because 
-  * it is faster (calls occur asynchronously and you don't have to wait 
+Additionally, client is using APIv3 instead of APIv2 because
+  * it is faster (calls occur asynchronously and you don't have to wait
     for parsing to finish) and
   * APIv2 is getting deprecated.
 
 `Init`
 
-The new client's init command creates the `.tx` folder in the current path, 
+The new client's init command creates the `.tx` folder in the current path,
 and the config file with the following content which is required for the configuration:
 
 ```shell
@@ -94,7 +94,7 @@ and the config file with the following content which is required for the configu
 host=https://www.transifex.com
 ```
 
-In case there is already a `.tx/config` file in the current directory, the users 
+In case there is already a `.tx/config` file in the current directory, the users
 will get a prompt that informs them that, if they proceed, the contents of their
 `.tx/config` file will be overridden. A `y/n` answer, is needed to proceed or abort.
 
@@ -104,7 +104,7 @@ For the previous client, parts of functionality in `tx config` command adds reso
 locally.
 
 In the new client, this command is responsible to add a resource in the local config file.
-Note that it needs all `organization`, `project` and `resource` slugs in order to build 
+Note that it needs all `organization`, `project` and `resource` slugs in order to build
 the resource id for the APIv3.
 
 It will create a new section in the `.tx/config` file for a resource like:
@@ -120,10 +120,10 @@ The differences of the new client, are summarized here:
 
 * resource IDs, can be accepted without the `-r` flag
 * when neither `-s/-t` are set, `-s` is assumed
-* `--all` flag creates new languages on Transifex if 
-  local files exist for them (on previous client this was the default behavior, 
+* `--all` flag creates new languages on Transifex if
+  local files exist for them (on previous client this was the default behavior,
   now it needs the `--all` flag)
-* without `--all` or `--languages`, the only languages that are considered are 
+* without `--all` or `--languages`, the only languages that are considered are
   the intersection of local and remote languages
 
 
@@ -132,7 +132,7 @@ The differences of the new client, are summarized here:
 * resource IDs, can be accepted without the `-r` flag
 * when neither `-s/-t` are set, `-t` is assumed
 * without `--all` or `--languages`, the only languages that are considered are
-  the intersection of local and remote languages 
+  the intersection of local and remote languages
 * `--json` download files (translations) as json files
 * `--content_encoding/-e` The encoding of the file. This can be one of the following:
   * text (default)
@@ -392,8 +392,8 @@ default to taking the filesystem timestamp into account.
 
 ### Pulling Files from Transifex
 
-`tx pull` is used to pull language files (usually translation language files) from 
-Transifex to your machine. Most likely, you will do this regularly when you want to 
+`tx pull` is used to pull language files (usually translation language files) from
+Transifex to your machine. Most likely, you will do this regularly when you want to
 incorporate newly available translations from Transifex into it.
 
 The simplest invocation of `tx pull` is simply:
@@ -459,18 +459,18 @@ If you use both the `-t/--translation` _and_ the `-s/--source` flags,
 then you will pull both the source file, and the translation files.
 
 Then the client will try to search for any existing language file located
-at the `locale/<lang>` path (where `<lang>` is the language code) and will 
+at the `locale/<lang>` path (where `<lang>` is the language code) and will
 try to update it.
 
 i.e `locale/el.php`, `locale/fr.php` etc
 
-In case that there aren't any translation files, like in the structure above, 
+In case that there aren't any translation files, like in the structure above,
 then you must either use the `-l/--language` or the `-a/--all` flag.
 
 Use the `-l/--languages` flag to handpick which languages you want to
 pull. It only makes sense to include _remote_ languages with the `-l` flag, ie
-languages for which a file does not exist according to the `file_filter` 
-configuration option. The client will then pull **only** the language 
+languages for which a file does not exist according to the `file_filter`
+configuration option. The client will then pull **only** the language
 files you have specified:
 
 ```shell
@@ -482,15 +482,15 @@ tx pull -l el,fr,nl
 > should belong to the project for the client to download them.
 
 The `-a/--all` flag will attempt to pull **all** languages from the
-remote Transifex project. Essentially, `-a` is equivalent to using 
+remote Transifex project. Essentially, `-a` is equivalent to using
 `-l` with all the project language codes.
 
-As stated before, Transifex uses the _ISO/IEC 15897_ standard for 
-language codes. If you use a different format for the _local_ language 
+As stated before, Transifex uses the _ISO/IEC 15897_ standard for
+language codes. If you use a different format for the _local_ language
 codes, you can  define a mapping in your configuration file `.tx/config`.
-You can specify these mappings for all configured resources by adding them 
-to the `[main]` section or you can specify mappings per resource. 
-The "per-resource" mappings take precendence. Configuring a language mapping 
+You can specify these mappings for all configured resources by adding them
+to the `[main]` section or you can specify mappings per resource.
+The "per-resource" mappings take precendence. Configuring a language mapping
 looks like this:
 
 ```ini
@@ -529,15 +529,15 @@ default to taking the filesystem timestamp into account.
   placed **in the same place** as indicated by the `source-file` and
   `file-filter` configuration options, but with the added `.xlf` suffix.
 
-- `--json`: Pull translation files as json instead of regular ones. As above, 
-  the files will be placed **in the same place** as indicated by the `file-filter` 
+- `--json`: Pull translation files as json instead of regular ones. As above,
+  the files will be placed **in the same place** as indicated by the `file-filter`
   configuration options, but with the added `.json` suffix. Currently, source
   files are not supporting json format.
 
 - `--disable-overwrite`: If a file exists do not update it. This is useful
   when using `-a/--all` flag and you don't want to change the existing files
   but only download other language files.
-  
+
 - `--branch`: Using this flag, you can access copies of the regular remote
   resource that are tied to the provided branch. So if `tx pull proj.res`
   pulls from the `https://www.transifex.com/org/proj/res` resource, then `tx
@@ -556,10 +556,10 @@ default to taking the filesystem timestamp into account.
   → tx pull --branch '' myproject.myresource
   ```
 
-  This way, the "regular" 
-  `https://www.transifex.com/myorganization/myproject/myresource` resource will 
-  not be affected by the changes one did, and the localization effort can be done 
-  in parallel on the 
+  This way, the "regular"
+    `https://www.transifex.com/myorganization/myproject/myresource` resource will
+  not be affected by the changes one did, and the localization effort can be done
+  in parallel on the
   `https://www.transifex.com/myorganization/myproject/myresource--new_feature`
   resource.
 
@@ -568,3 +568,67 @@ default to taking the filesystem timestamp into account.
   of the failed download may be a syntax error in _one_ of the language files. If
   you set the `--skip` flag and an upload fails, then the client will simply
   print a warning and move on to the next language file.
+
+- `--minimum_perc=MINIMUM_PERC` Specify the minimum translation completion threshold required in order for a file to be downloaded.
+
+### Removing resources from Transifex
+The tx delete command lets you delete a resource that's in your `config` file and on Transifex.
+
+To delete a resource, use the following command:
+```
+tx delete <project_slug>.<resource_slug>
+```
+
+To delete all resources in a specific project at once, instead of referring to a specific resource_slug, you can use the asterisk character as follows:
+```
+tx delete project_slug.*
+or
+tx delete project_slug.\*
+```
+
+> Note: for backwards compatibility with previous versions of the client, you
+> can also use the `-r/--resources` flag. You can also use both at the same
+> time:
+>
+> ```sh
+> tx delete -r <project_slug>.<resource_slug> ....
+> ```
+
+**Other flags:**
+- `--skip`: Normally, if a delete fails, the client will abort. This may not
+  be desirable if most deletes are expected to succeed. For example, the reason
+  of the failed delete may be a a resource that has translated content. If
+  you set the `-s/--skip` flag and an delete fails, then the client will simply
+  print a warning and move on to the next resource.
+- `--force`: In case you want to proceed to a deletion even if resources have
+  translations use the `-f/--force` flag.
+
+
+### Getting the local status of the project
+The status command displays the existing configuration in a human readable format. It lists all resources that have been initialized under the local repo/directory and all their associated translation files:
+
+```
+tx status
+myproject -> default (1 of 1)
+Translation Files:
+ - en: po/smolt.pot (source)
+ - ar: po/ar.po
+ - as: po/as.po
+ - bg: po/bg.po
+ - bn_IN: po/bn_IN.p
+ ...
+ ```
+
+ To get the status of specific resources just add the resources you want in your command:
+
+ ```
+ tx status <project_slug>.<resource_slug> ....
+ ```
+
+> Note: for backwards compatibility with previous versions of the client, you
+> can also use the `-r/--resources` flag. You can also use both at the same
+> time:
+>
+> ```sh
+> tx status -r <project_slug>.<resource_slug> ....
+> ```
