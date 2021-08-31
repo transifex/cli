@@ -124,3 +124,15 @@ func CreateResource(
 
 	return resource, nil
 }
+
+func DeleteResource(
+	api *jsonapi.Connection, resource *jsonapi.Resource,
+) error {
+	err := resource.Delete()
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"gopkg.in/ini.v1"
@@ -21,15 +22,16 @@ type LocalConfig struct {
 }
 
 type Resource struct {
-	OrganizationSlug string
-	ProjectSlug      string
-	ResourceSlug     string
-	FileFilter       string
-	SourceFile       string
-	SourceLanguage   string
-	Type             string
-	LanguageMappings map[string]string
-	Overrides        map[string]string
+	OrganizationSlug  string
+	ProjectSlug       string
+	ResourceSlug      string
+	FileFilter        string
+	SourceFile        string
+	SourceLanguage    string
+	Type              string
+	LanguageMappings  map[string]string
+	Overrides         map[string]string
+	MinimumPercentage int
 }
 
 func loadLocalConfig() (*LocalConfig, error) {
@@ -120,15 +122,25 @@ func loadLocalConfigFromBytes(data []byte) (*LocalConfig, error) {
 		}
 
 		resource := Resource{
-			OrganizationSlug: organizationSlug,
-			ProjectSlug:      projectSlug,
-			ResourceSlug:     resourceSlug,
-			FileFilter:       section.Key("file_filter").String(),
-			SourceFile:       section.Key("source_file").String(),
-			SourceLanguage:   section.Key("source_lang").String(),
-			Type:             section.Key("type").String(),
-			LanguageMappings: make(map[string]string),
-			Overrides:        make(map[string]string),
+			OrganizationSlug:  organizationSlug,
+			ProjectSlug:       projectSlug,
+			ResourceSlug:      resourceSlug,
+			FileFilter:        section.Key("file_filter").String(),
+			SourceFile:        section.Key("source_file").String(),
+			SourceLanguage:    section.Key("source_lang").String(),
+			Type:              section.Key("type").String(),
+			LanguageMappings:  make(map[string]string),
+			Overrides:         make(map[string]string),
+			MinimumPercentage: -1,
+		}
+
+		// Get first the perc in string to check if exists because .Key returns
+		// 0 if it doesn't exist
+		if section.HasKey("minimum_perc") {
+			minimum_perc, err := section.Key("minimum_perc").Int()
+			if err == nil {
+				resource.MinimumPercentage = minimum_perc
+			}
 		}
 
 		languageMappings := section.Key("lang_map").String()
@@ -235,6 +247,14 @@ func (localCfg LocalConfig) saveToWriter(file io.Writer) error {
 			}
 		}
 
+		if resource.MinimumPercentage != -1 {
+			_, err := section.NewKey("minimum_perc",
+				strconv.Itoa(resource.MinimumPercentage))
+			if err != nil {
+				return err
+			}
+		}
+
 		if len(resource.LanguageMappings) != 0 {
 			var mappings []string
 			for key, value := range resource.LanguageMappings {
@@ -305,6 +325,10 @@ func localConfigsEqual(left, right *LocalConfig) bool {
 			return false
 		}
 		if leftResource.Type != rightResource.Type {
+			return false
+		}
+
+		if leftResource.MinimumPercentage != rightResource.MinimumPercentage {
 			return false
 		}
 

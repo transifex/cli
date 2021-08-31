@@ -543,7 +543,7 @@ func TestResourceMigrationFailed(t *testing.T) {
 		host = https://www.transifex.com
 		[projslug1.ares]
 		file_filter = locale/<lang>.po
-		minimum_perc = 0
+		minimum_perc = 10
 		source_file = locale/en.po
 		source_lang = en
 		type = PO
@@ -589,11 +589,14 @@ func TestResourceMigrationFailed(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-
 	assert.True(t, strings.Contains(
 		string(content), "projslug1.ares"))
 	assert.True(t, strings.Contains(
 		string(content), "o:org:p:projslug2:r:ares2"))
+	assert.True(t, strings.Contains(
+		string(content), "minimum_perc = 10"))
+	assert.True(t, strings.Contains(
+		string(content), "minimum_perc = 0"))
 }
 
 func TestBackUpFileCreated(t *testing.T) {

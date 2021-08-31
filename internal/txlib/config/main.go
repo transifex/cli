@@ -213,6 +213,46 @@ func (cfg *Config) FindResource(id string) *Resource {
 	return nil
 }
 
+/*
+FindResourcesByProject
+Returns a list of all the resources matching the given projectSlug
+*/
+func (cfg *Config) FindResourcesByProject(projectSlug string) []*Resource {
+	var resources []*Resource
+	for i := range cfg.Local.Resources {
+		// range returns copies: https://stackoverflow.com/q/20185511
+		resource := &cfg.Local.Resources[i]
+		if resource.ProjectSlug == projectSlug {
+			resources = append(resources, resource)
+		}
+	}
+
+	return resources
+}
+
+/*
+RemoveResource
+Removes a resource from the Local Resources by creating a new list and
+replacing the existing list
+*/
+func (cfg *Config) RemoveResource(r Resource) {
+	cfgResources := []Resource{}
+	for _, resource := range cfg.Local.Resources {
+		if resource.ProjectSlug == r.ProjectSlug &&
+			resource.ResourceSlug == r.ResourceSlug {
+			continue
+		}
+		cfgResources = append(cfgResources, resource)
+
+	}
+
+	cfg.Local.Resources = cfgResources
+}
+
+/*
+AddResource
+Adds a resource to the Local.Resources list
+*/
 func (cfg *Config) AddResource(resource Resource) {
 	cfg.Local.Resources = append(cfg.Local.Resources, resource)
 }

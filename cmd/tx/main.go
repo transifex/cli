@@ -87,7 +87,7 @@ func Main() {
 			},
 			{
 				Name:  "push",
-				Usage: "tx push [options] [resource_id...]",
+				Usage: "tx push [options] [[resource_id...]...]",
 				Flags: []cli.Flag{
 					&cli.BoolFlag{
 						Name:    "source",
@@ -251,7 +251,7 @@ func Main() {
 			},
 			{
 				Name:  "pull",
-				Usage: "tx pull [options] [resource_id...]",
+				Usage: "tx pull [options] [[resource_id...]...]",
 				Flags: []cli.Flag{
 					&cli.BoolFlag{
 						Name:  "xliff",
@@ -271,7 +271,7 @@ func Main() {
 						Name:    "mode",
 						Aliases: []string{"m"},
 						Value:   "default",
-						Usage: "The transliteration mode of the downloaded " +
+						Usage: "The translation mode of the downloaded " +
 							"file. This can be one of the following:\n    " +
 							"'default', 'reviewed', 'proofread', " +
 							"'translator', 'untranslated',\n    " +
@@ -334,6 +334,12 @@ func Main() {
 						Usage: "Backwards compatibility with old client " +
 							"to fetch resource ids",
 					},
+					&cli.IntFlag{
+						Name: "minimum-perc",
+						Usage: "Specify the minimum acceptable percentage of " +
+							"a translation mode in order to download it.",
+						Value: -1,
+					},
 				},
 				Action: func(c *cli.Context) error {
 					cfg, err := config.LoadFromPaths(c.String("root-config"),
@@ -372,17 +378,18 @@ func Main() {
 					}
 
 					arguments := txlib.PullCommandArguments{
-						ContentEncoding:  c.String("content_encoding"),
-						Mode:             c.String("mode"),
-						Force:            c.Bool("force"),
-						Skip:             c.Bool("skip"),
-						Source:           c.Bool("source"),
-						Translations:     c.Bool("translations"),
-						DisableOverwrite: c.Bool("disable-overwrite"),
-						All:              c.Bool("all"),
-						ResourceIds:      resourceIds,
-						UseGitTimestamps: c.Bool("use-git-timestamps"),
-						Branch:           c.String("branch"),
+						ContentEncoding:   c.String("content_encoding"),
+						Mode:              c.String("mode"),
+						Force:             c.Bool("force"),
+						Skip:              c.Bool("skip"),
+						Source:            c.Bool("source"),
+						Translations:      c.Bool("translations"),
+						DisableOverwrite:  c.Bool("disable-overwrite"),
+						All:               c.Bool("all"),
+						ResourceIds:       resourceIds,
+						UseGitTimestamps:  c.Bool("use-git-timestamps"),
+						Branch:            c.String("branch"),
+						MinimumPercentage: c.Int("minimum-perc"),
 					}
 
 					if c.Bool("xliff") && c.Bool("json") {
@@ -550,6 +557,140 @@ func Main() {
 					err := txlib.InitCommand()
 					if err != nil {
 						return cli.Exit(pterm.Error.Sprint(err), 1)
+					}
+					return nil
+				},
+			},
+			{
+				Name:  "delete",
+				Usage: "tx delete [options] [resource_id...]",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "resources",
+						Aliases: []string{"r"},
+						Usage:   "Resource ids to delete",
+					},
+					&cli.BoolFlag{
+						Name:    "force",
+						Aliases: []string{"f"},
+						Usage: "Whether to continue if there are " +
+							"translations in the resources",
+					},
+					&cli.BoolFlag{
+						Name:    "skip",
+						Aliases: []string{"s"},
+						Usage:   "Whether to skip on errors",
+					},
+				},
+				Action: func(c *cli.Context) error {
+					cfg, err := config.LoadFromPaths(c.String("root-config"),
+						c.String("config"))
+					if err != nil {
+						return err
+					}
+
+					hostname, token, err := txlib.GetHostAndToken(
+						&cfg, c.String("hostname"), c.String("token"),
+					)
+					if err != nil {
+						return err
+					}
+
+					client, err := txlib.GetClient(c.String("cacert"))
+					if err != nil {
+						return err
+					}
+
+					api := jsonapi.Connection{
+						Host:   hostname,
+						Token:  token,
+						Client: client,
+						Headers: map[string]string{
+							"Integration": "txclient",
+						},
+					}
+
+					// Get extra resource ids
+					resourceIds := c.Args().Slice()
+					if c.String("resources") != "" {
+						extraResourceIds := strings.Split(
+							c.String("resources"),
+							",",
+						)
+						resourceIds = append(resourceIds, extraResourceIds...)
+					}
+
+					// Construct arguments
+					arguments := txlib.DeleteCommandArguments{
+						ResourceIds: resourceIds,
+						Force:       c.Bool("force"),
+						Skip:        c.Bool("skip"),
+					}
+					// Proceed with deletion
+					err = txlib.DeleteCommand(&cfg, api, &arguments)
+					if err != nil {
+						return cli.Exit(err, 1)
+					}
+					return nil
+				},
+			},
+			{
+				Name:  "status",
+				Usage: "tx status [resource_id...]",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "resources",
+						Aliases: []string{"r"},
+						Usage: "Resource ids to get status for that are " +
+							"included in your config file",
+					},
+				},
+				Action: func(c *cli.Context) error {
+					cfg, err := config.LoadFromPaths(c.String("root-config"),
+						c.String("config"))
+					if err != nil {
+						return err
+					}
+
+					hostname, token, err := txlib.GetHostAndToken(
+						&cfg, c.String("hostname"), c.String("token"),
+					)
+					if err != nil {
+						return err
+					}
+
+					client, err := txlib.GetClient(c.String("cacert"))
+					if err != nil {
+						return err
+					}
+
+					api := jsonapi.Connection{
+						Host:   hostname,
+						Token:  token,
+						Client: client,
+						Headers: map[string]string{
+							"Integration": "txclient",
+						},
+					}
+
+					// Get extra resource ids
+					resourceIds := c.Args().Slice()
+					if c.String("resources") != "" {
+						extraResourceIds := strings.Split(
+							c.String("resources"),
+							",",
+						)
+						resourceIds = append(resourceIds, extraResourceIds...)
+					}
+
+					// Construct arguments
+					arguments := txlib.StatusCommandArguments{
+						ResourceIds: resourceIds,
+					}
+					// Proceed with deletion
+					err = txlib.StatusCommand(&cfg, api, &arguments)
+					if err != nil {
+						return cli.Exit(err, 1)
 					}
 					return nil
 				},

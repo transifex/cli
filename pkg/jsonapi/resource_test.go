@@ -772,3 +772,52 @@ func TestReset(t *testing.T) {
 			expectedPayload)
 	}
 }
+
+func TestDelete(t *testing.T) {
+	mockData := MockData{
+		"/teachers/t1": &MockEndpoint{
+			Requests: []MockRequest{
+				{
+					Response: MockResponse{
+						Text: `{"data": {
+							"type": "teachers",
+							"id": "t1",
+							"links": {
+								"self": "/teachers/t1"
+							}
+						}}`,
+					},
+				},
+				{
+					Response: MockResponse{
+						Text: `{}`,
+					},
+				},
+			},
+		},
+	}
+
+	api := GetTestConnection(mockData)
+	teacher, err := api.Get("teachers", "t1")
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	endpoint := mockData["/teachers/t1"]
+	if endpoint.Count != 1 {
+		t.Errorf("Got %d requests to '/teachers/t1', expected 1",
+			endpoint.Count)
+	}
+	actual := endpoint.Requests[0].Request
+	expected := CapturedRequest{Method: "GET"}
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("Got request '%+v', expected '%+v'", actual, expected)
+	}
+
+	err = teacher.Delete()
+	if err != nil {
+		t.Errorf("Deletion should not return error: %s", err)
+	}
+
+}

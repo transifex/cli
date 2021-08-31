@@ -10,16 +10,10 @@ builds:
     ldflags:
       - -s -w -X 'github.com/transifex/cli/internal/txlib.Version={{.Version}}'
 archives:
-  - replacements:
-      darwin: DarwinMacOs
-      linux: Linux
-      windows: Windows
-      386: i386
-      amd64: x86_64
-    format_overrides:
+  - format_overrides:
       - goos: windows
         format: zip
-    name_template: "tx-client_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    name_template: "tx-{{ .Os }}-{{ .Arch }}"
 checksum:
   name_template: 'checksums.txt'
 snapshot:
