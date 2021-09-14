@@ -17,7 +17,7 @@ import (
 
 func Main() {
 	cli.VersionPrinter = func(c *cli.Context) {
-		fmt.Printf("TX Client, version=%s", c.App.Version)
+		fmt.Println("TX Client, version=" + c.App.Version)
 	}
 	flags := []cli.Flag{
 		&cli.StringFlag{
@@ -630,6 +630,46 @@ func Main() {
 					err = txlib.DeleteCommand(&cfg, api, &arguments)
 					if err != nil {
 						return cli.Exit(err, 1)
+					}
+					return nil
+				},
+			},
+			{
+				Name:  "update",
+				Usage: "Update the `tx` application if there is a newer version",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:    "check",
+						Aliases: []string{"c"},
+						Usage:   "Check if there is a new version of tx",
+					},
+					&cli.BoolFlag{
+						Name:    "no-interactive",
+						Aliases: []string{"ni"},
+						Usage:   "Update if there is a newer version without prompt",
+					},
+					&cli.BoolFlag{
+						Name:    "debug",
+						Aliases: []string{"d"},
+						Usage:   "Enable debug logs for the update process",
+					},
+				},
+				Action: func(c *cli.Context) error {
+					version := c.App.Version
+					arguments := txlib.UpdateCommandArguments{
+						Version:       version,
+						Check:         c.Bool("check"),
+						NoInteractive: c.Bool("no-interactive"),
+						Debug:         c.Bool("debug"),
+					}
+
+					err := txlib.UpdateCommand(arguments)
+					if err != nil {
+						if err == promptui.ErrInterrupt {
+							return cli.Exit("", 1)
+						} else {
+							return cli.Exit(pterm.Error.Sprint(err), 1)
+						}
 					}
 					return nil
 				},
