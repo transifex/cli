@@ -632,3 +632,15 @@ Translation Files:
 > ```sh
 > tx status -r <project_slug>.<resource_slug> ....
 > ```
+
+### Updating the CLI app
+The `tx update` command provide's a way to self update the application wihtout going to Github releases page.
+
+ ```
+ tx update
+ ```
+
+ **Flags:**
+- `--check`: Check if there is a new release. Nothing gets updated.
+- `--no-interactive`: Proceed to update if there is a newer version without seeing the confirmation prompt.
+- `--debug`: Enable logging for the binary update process.

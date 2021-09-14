@@ -89,7 +89,7 @@ func TestUpdateCommandCheckLessThanProduction(t *testing.T) {
 		result, "Update Cancelled"))
 }
 
-func TestUpdateCommandEQtoProduction(t *testing.T) {
+func TestUpdateCommandGreaterThanProduction(t *testing.T) {
 	arguments := UpdateCommandArguments{
 		Version: "100.0.0",
 	}
@@ -106,7 +106,7 @@ func TestUpdateCommandEQtoProduction(t *testing.T) {
 		result, "Congratulations, you are up to date"))
 }
 
-func TestUpdateCommandGreaterThanProduction(t *testing.T) {
+func TestUpdateCommandEQtoProduction(t *testing.T) {
 	latest, _, err := selfupdate.DetectLatest("transifex/cli")
 	if err != nil {
 		t.Error(err)
