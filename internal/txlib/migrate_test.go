@@ -260,6 +260,8 @@ func TestSuccessfulMigration(t *testing.T) {
 		source_file = locale/en.po
 		source_lang = en
 		type = PO
+		trans.pt-pt = locale/other/pt_PT/en.po
+		trans.fr_CA = locale/other/fr_CA/ui.po
 	`)
 	if err2 != nil {
 		log.Fatal(err2)
@@ -294,6 +296,7 @@ func TestSuccessfulMigration(t *testing.T) {
 	assert.Equal(t, cfgReloaded.GetActiveHost().RestHostname,
 		"https://rest.api.transifex.com")
 	assert.Equal(t, cfgReloaded.Local.Resources[0].OrganizationSlug, "org")
+	assert.Equal(t, len(cfgReloaded.Local.Resources[0].Overrides), 2)
 }
 
 func TestNeedsTokenInRootConfig(t *testing.T) {

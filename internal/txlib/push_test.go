@@ -14,7 +14,7 @@ import (
 )
 
 func TestPushCommandResourceExists(t *testing.T) {
-	afterTest := beforePushTest(t, nil)
+	afterTest := beforePushTest(t, nil, nil)
 	defer afterTest()
 
 	mockData := jsonapi.MockData{
@@ -41,7 +41,7 @@ func TestPushCommandResourceExists(t *testing.T) {
 }
 
 func TestPushSpecificResource(t *testing.T) {
-	afterTest := beforePushTest(t, nil)
+	afterTest := beforePushTest(t, nil, nil)
 	defer afterTest()
 
 	mockData := jsonapi.MockData{
@@ -70,7 +70,7 @@ func TestPushSpecificResource(t *testing.T) {
 }
 
 func TestPushCommandResourceDoesNotExist(t *testing.T) {
-	afterTest := beforePushTest(t, nil)
+	afterTest := beforePushTest(t, nil, nil)
 	defer afterTest()
 
 	mockData := jsonapi.MockData{
@@ -108,7 +108,7 @@ func TestPushCommandResourceDoesNotExist(t *testing.T) {
 }
 
 func TestPushTranslation(t *testing.T) {
-	afterTest := beforePushTest(t, []string{"fr"})
+	afterTest := beforePushTest(t, []string{"fr"}, nil)
 	defer afterTest()
 
 	mockData := jsonapi.MockData{
@@ -141,7 +141,7 @@ func TestPushTranslation(t *testing.T) {
 }
 
 func TestPushXliff(t *testing.T) {
-	afterTest := beforePushTest(t, nil)
+	afterTest := beforePushTest(t, nil, nil)
 	defer afterTest()
 
 	file, err := os.OpenFile("aaa-fr.json.xlf",
@@ -189,7 +189,7 @@ func TestPushXliff(t *testing.T) {
 }
 
 func TestPushTranslationWithLanguageMapping(t *testing.T) {
-	afterTest := beforePushTest(t, []string{"froutzes"})
+	afterTest := beforePushTest(t, []string{"froutzes"}, nil)
 	defer afterTest()
 
 	cfg := getStandardConfig()
@@ -226,8 +226,48 @@ func TestPushTranslationWithLanguageMapping(t *testing.T) {
 	testSimpleGet(t, mockData, uploadUrl)
 }
 
+func TestPushTranslationWithOverrides(t *testing.T) {
+	afterTest := beforePushTest(t, []string{"el"},
+		[]string{"source.json"},
+	)
+	defer afterTest()
+
+	cfg := getStandardConfig()
+	cfg.Local.Resources[0].Overrides = map[string]string{
+		"fr": "source.json",
+	}
+
+	mockData := jsonapi.MockData{
+		"/organizations": getOrganizationEndpoint(),
+		projectsUrl:      getProjectsEndpoint(),
+		resourcesUrl:     getResourcesEndpoint(),
+		"/projects/o:orgslug:p:projslug/languages": getLanguagesEndpoint(
+			[]string{"fr"},
+		),
+		uploadsUrl: getTranslationUploadPostEndpoint(),
+		uploadUrl:  getTranslationUploadGetEndpoint(),
+	}
+	api := jsonapi.GetTestConnection(mockData)
+
+	err := PushCommand(cfg, api, PushCommandArguments{
+		Translation: true,
+		Force:       true,
+		Branch:      "-1",
+	})
+	if err != nil {
+		t.Error(err)
+	}
+
+	testSimpleGet(t, mockData, "/organizations")
+	testSimpleGet(t, mockData, projectsUrl)
+	testSimpleGet(t, mockData, resourcesUrl)
+	testSimpleGet(t, mockData, "/projects/o:orgslug:p:projslug/languages")
+	testSimpleUpload(t, mockData, uploadsUrl)
+	testSimpleGet(t, mockData, uploadUrl)
+}
+
 func TestPushTranslationRemoteLanguageDoesNotExist(t *testing.T) {
-	afterTest := beforePushTest(t, []string{"el"})
+	afterTest := beforePushTest(t, []string{"el"}, nil)
 	defer afterTest()
 
 	mockData := jsonapi.MockData{
@@ -254,7 +294,7 @@ func TestPushTranslationRemoteLanguageDoesNotExist(t *testing.T) {
 }
 
 func TestPushTranslationLocalFileIsOlderThanRemote(t *testing.T) {
-	afterTest := beforePushTest(t, []string{"fr"})
+	afterTest := beforePushTest(t, []string{"fr"}, nil)
 	defer afterTest()
 
 	now := time.Now().UTC()
@@ -287,7 +327,7 @@ func TestPushTranslationLocalFileIsOlderThanRemote(t *testing.T) {
 }
 
 func TestPushTranslationLocalFileIsNewerThanRemote(t *testing.T) {
-	afterTest := beforePushTest(t, []string{"fr"})
+	afterTest := beforePushTest(t, []string{"fr"}, nil)
 	defer afterTest()
 
 	now := time.Now().UTC()
@@ -323,7 +363,7 @@ func TestPushTranslationLocalFileIsNewerThanRemote(t *testing.T) {
 }
 
 func TestPushTranslationLimitLanguages(t *testing.T) {
-	afterTest := beforePushTest(t, []string{"el", "fr"})
+	afterTest := beforePushTest(t, []string{"el", "fr"}, nil)
 	defer afterTest()
 
 	mockData := jsonapi.MockData{
@@ -407,7 +447,7 @@ func TestProjectNotFound(t *testing.T) {
 }
 
 func TestPushCommandBranch(t *testing.T) {
-	afterTest := beforePushTest(t, nil)
+	afterTest := beforePushTest(t, nil, nil)
 	defer afterTest()
 
 	mockData := jsonapi.MockData{
@@ -457,7 +497,7 @@ func TestPushCommandBranch(t *testing.T) {
 }
 
 func TestPushNewLanguage(t *testing.T) {
-	afterTest := beforePushTest(t, []string{"fr"})
+	afterTest := beforePushTest(t, []string{"fr"}, nil)
 	defer afterTest()
 
 	languagesUrl := "/projects/o:orgslug:p:projslug/relationships/languages"
@@ -535,7 +575,7 @@ func TestPushNewLanguage(t *testing.T) {
 }
 
 func TestPushAll(t *testing.T) {
-	afterTest := beforePushTest(t, []string{"fr"})
+	afterTest := beforePushTest(t, []string{"fr"}, nil)
 	defer afterTest()
 
 	languagesUrl := "/projects/o:orgslug:p:projslug/relationships/languages"
@@ -624,7 +664,9 @@ const (
 	uploadUrl  = "/resource_translations_async_uploads/upload1"
 )
 
-func beforePushTest(t *testing.T, languageCodes []string) func() {
+func beforePushTest(t *testing.T,
+	languageCodes []string,
+	customFiles []string) func() {
 	curDir, err := os.Getwd()
 	if err != nil {
 		t.Error(err)
@@ -648,6 +690,22 @@ func beforePushTest(t *testing.T, languageCodes []string) func() {
 	for _, languageCode := range languageCodes {
 		file, err = os.OpenFile(
 			fmt.Sprintf("aaa-%s.json", languageCode),
+			os.O_RDWR|os.O_CREATE|os.O_TRUNC,
+			0755,
+		)
+		if err != nil {
+			t.Error(err)
+		}
+		_, err = file.WriteString(`{"hello": "world"}`)
+		if err != nil {
+			t.Error(err)
+		}
+		defer file.Close()
+	}
+
+	for _, customFile := range customFiles {
+		file, err = os.OpenFile(
+			customFile,
 			os.O_RDWR|os.O_CREATE|os.O_TRUNC,
 			0755,
 		)
