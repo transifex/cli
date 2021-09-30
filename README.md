@@ -644,3 +644,6 @@ The `tx update` command provide's a way to self update the application wihtout g
 - `--check`: Check if there is a new release. Nothing gets updated.
 - `--no-interactive`: Proceed to update if there is a newer version without seeing the confirmation prompt.
 - `--debug`: Enable logging for the binary update process.
+# License
+
+Licensed under Apache License 2.0, see [LICENSE](LICENSE) file.
