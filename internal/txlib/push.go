@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -344,6 +345,7 @@ func pushTranslations(
 	fmt.Print("\nPushing translations:\n\n")
 
 	reverseLanguageMappings := makeReverseLanguageMappings(*cfg, cfgResource)
+	overrides := cfgResource.Overrides
 	projectRelationship, err := resource.Fetch("project")
 	if err != nil {
 		return nil, err
@@ -383,7 +385,7 @@ func pushTranslations(
 
 	languageCodesToPush, pathsToPush, newLanguageCodes, err := getFilesToPush(
 		curDir, fileFilter, reverseLanguageMappings, remoteLanguages,
-		remoteStats, args, resourceIsNew,
+		remoteStats, overrides, args, resourceIsNew,
 	)
 	if err != nil {
 		return nil, err
@@ -431,13 +433,30 @@ func getFilesToPush(
 	curDir, fileFilter string,
 	reverseLanguageMappings map[string]string,
 	remoteLanguages, remoteStats map[string]*jsonapi.Resource,
+	overrides map[string]string,
 	args PushCommandArguments,
 	resourceIsNew bool,
 ) ([]string, []string, []string, error) {
 	var languageCodesToPush []string
 	var pathsToPush []string
 	var newLanguageCodes []string
-	for localLanguageCode, path := range searchFileFilter(curDir, fileFilter) {
+
+	allLocalLanguages := searchFileFilter(curDir, fileFilter)
+
+	if len(overrides) > 0 {
+		for langOverride := range overrides {
+			// Add the Resource file filter overrides per lang
+			allLocalLanguages[langOverride] = filepath.
+				Join(curDir, overrides[langOverride])
+			// In case of xliff add the extension
+			if args.Xliff {
+				allLocalLanguages[langOverride] = fmt.Sprintf("%s.xlf",
+					allLocalLanguages[langOverride])
+			}
+		}
+	}
+
+	for localLanguageCode, path := range allLocalLanguages {
 		remoteLanguageCode, exists := reverseLanguageMappings[localLanguageCode]
 		if !exists {
 			remoteLanguageCode = localLanguageCode

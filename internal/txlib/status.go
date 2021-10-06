@@ -58,7 +58,12 @@ func StatusCommand(
 		localLanguages := searchFileFilter(
 			".", fmt.Sprintf("%s", cfgResource.FileFilter),
 		)
-
+		overrides := cfgResource.Overrides
+		if len(overrides) > 0 {
+			for langOverride := range overrides {
+				localLanguages[langOverride] = overrides[langOverride]
+			}
+		}
 		for language := range localLanguages {
 			source := ""
 			if sourceLang == language {

@@ -2,15 +2,18 @@ package txlib
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/pterm/pterm"
 	"github.com/transifex/cli/internal/txlib/config"
 	"github.com/transifex/cli/pkg/assert"
 	"github.com/transifex/cli/pkg/jsonapi"
@@ -617,6 +620,98 @@ func TestPullCommandProceedOnEqualTranslatedMinPerc(t *testing.T) {
 			endpoint.Count,
 			"/resource_translations_async_downloads/download_1")
 	}
+}
+
+func TestPullCommandOverrides(t *testing.T) {
+	rescueStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	pterm.SetDefaultOutput(os.Stdout)
+	pterm.RawOutput = true
+	cfg := config.Config{
+		Local: &config.LocalConfig{
+			Resources: []config.Resource{
+				{
+					OrganizationSlug: "orgslug",
+					ProjectSlug:      "projslug",
+					ResourceSlug:     "resslug",
+					Type:             "I18N_TYPE",
+					SourceFile:       "source.po",
+					FileFilter:       "<lang>/source.po",
+					Overrides: map[string]string{
+						"el": "somethingelse/source.po",
+					},
+				},
+			},
+		},
+	}
+
+	mockData := getSkipMinPercentageMockData(10, 10, 10)
+	api := jsonapi.GetTestConnection(mockData)
+
+	arguments := PullCommandArguments{
+		FileType:          "default",
+		Mode:              "default",
+		All:               true,
+		ResourceIds:       nil,
+		MinimumPercentage: -1,
+	}
+
+	err := PullCommand(&cfg, api, &arguments)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	w.Close()
+	out, _ := ioutil.ReadAll(r)
+	os.Stdout = rescueStdout
+	assert.True(t, strings.Contains(
+		string(out), "Translation file 'somethingelse/source.po' downloaded"))
+}
+
+func TestPullCommandOverridesWithoutAll(t *testing.T) {
+	rescueStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	pterm.SetDefaultOutput(os.Stdout)
+	pterm.RawOutput = true
+	cfg := config.Config{
+		Local: &config.LocalConfig{
+			Resources: []config.Resource{
+				{
+					OrganizationSlug: "orgslug",
+					ProjectSlug:      "projslug",
+					ResourceSlug:     "resslug",
+					Type:             "I18N_TYPE",
+					SourceFile:       "source.po",
+					FileFilter:       "<lang>/source.po",
+					Overrides: map[string]string{
+						"el": "somethingelse/source.po",
+					},
+				},
+			},
+		},
+	}
+
+	mockData := getSkipMinPercentageMockData(10, 10, 10)
+	api := jsonapi.GetTestConnection(mockData)
+
+	arguments := PullCommandArguments{
+		FileType:          "default",
+		Mode:              "default",
+		All:               false,
+		ResourceIds:       nil,
+		MinimumPercentage: -1,
+	}
+
+	err := PullCommand(&cfg, api, &arguments)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	w.Close()
+	out, _ := ioutil.ReadAll(r)
+	os.Stdout = rescueStdout
+	assert.True(t, strings.Contains(
+		string(out), "Translation file 'somethingelse/source.po' downloaded"))
 }
 
 func TestPullCommandSkipOnReviewedMinPerc(t *testing.T) {
