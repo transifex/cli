@@ -35,7 +35,7 @@ type Resource struct {
 }
 
 func loadLocalConfig() (*LocalConfig, error) {
-	localPath, err := getLocalPath()
+	localPath, err := findLocalPath("")
 	if err != nil {
 		return nil, err
 	}
@@ -419,6 +419,29 @@ func getLocalPath() (string, error) {
 	curDir, err := os.Getwd()
 	if err != nil {
 		return "", err
+	}
+	return filepath.Join(curDir, ".tx", "config"), nil
+}
+
+func findLocalPath(path string) (string, error) {
+	curDir := path
+	if path == "" {
+		dir, err := os.Getwd()
+		if err != nil {
+			return "", err
+		}
+		curDir = dir
+	}
+
+	fp := filepath.Join(curDir, ".tx", "config")
+	if _, err := os.Stat(fp); os.IsNotExist(err) {
+		curDir = filepath.Dir(curDir)
+		if curDir != "/" && curDir != "." {
+			return findLocalPath(curDir)
+		} else {
+			return "", nil
+		}
+
 	}
 	return filepath.Join(curDir, ".tx", "config"), nil
 }
