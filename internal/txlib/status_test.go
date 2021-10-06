@@ -100,6 +100,43 @@ func TestStatusWithNoResourcesAsParameters(t *testing.T) {
 		result, "aaa-el.json  (source)"))
 }
 
+func TestStatusWithOverrides(t *testing.T) {
+	var pkgDir, tmpDir = beforeStatusTest(t, []string{"el", "fr", "en"})
+	defer afterStatusTest(pkgDir, tmpDir)
+
+	mockData := getMockedDataForResourceStatus()
+	api := jsonapi.GetTestConnection(mockData)
+	cfg := getStandardConfigStatus()
+	cfg.Local.Resources[0].Overrides = map[string]string{
+		"el": "greekOverride.json",
+	}
+	rescueStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	StatusCommand(
+		cfg,
+		api,
+		&StatusCommandArguments{},
+	)
+
+	w.Close()
+	out, _ := ioutil.ReadAll(r)
+	os.Stdout = rescueStdout
+
+	result := string(out)
+	assert.True(t, strings.Contains(
+		result, "projslug -> resslug (1 of 2)"))
+	assert.True(t, strings.Contains(
+		result, "projslug -> resslug1 (2 of 2)"))
+	assert.True(t, strings.Contains(
+		result, "aaa-en.json  (source)"))
+	assert.True(t, strings.Contains(
+		result, "aaa-el.json  (source)"))
+	assert.True(t, strings.Contains(
+		result, "el: greekOverride.json"))
+}
+
 func TestStatusWithResourceAsParameter(t *testing.T) {
 	var pkgDir, tmpDir = beforeStatusTest(t, []string{"el", "fr", "en"})
 	defer afterStatusTest(pkgDir, tmpDir)

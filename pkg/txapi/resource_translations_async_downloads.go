@@ -96,6 +96,10 @@ func PollTranslationDownload(languageMappings map[string]string,
 				cfgResource.FileFilter, "<lang>", localLanguageCode, -1,
 			)
 
+			if cfgResource.Overrides[localLanguageCode] != "" {
+				translationFile = cfgResource.Overrides[localLanguageCode]
+			}
+
 			if fileType == "xliff" {
 				translationFile = fmt.Sprintf("%s.xlf", translationFile)
 			} else if fileType == "json" {

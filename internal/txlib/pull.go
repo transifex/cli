@@ -257,7 +257,15 @@ func createTranslationsAsyncDownloads(cfg *config.Config,
 				}
 			}
 		} else {
+
 			allLocalLanguages := searchFileFilter(".", cfgResource.FileFilter)
+
+			if len(cfgResource.Overrides) > 0 {
+				for langOverride := range cfgResource.Overrides {
+					allLocalLanguages[langOverride] = cfgResource.
+						Overrides[langOverride]
+				}
+			}
 			if arguments.CommandArgs.FileType == "xliff" {
 				addAdditionalLocalLanguages(
 					cfgResource, &allLocalLanguages, "xlf",
@@ -318,8 +326,14 @@ func createTranslationsAsyncDownloads(cfg *config.Config,
 		localLanguageCode, _ := txapi.CreateLanguageDirectory(
 			cfg.Local.LanguageMappings, lang, cfgResource,
 		)
+
+		fileFilter := cfgResource.FileFilter
+		if cfgResource.Overrides[localLanguageCode] != "" {
+			fileFilter = cfgResource.Overrides[localLanguageCode]
+		}
+
 		translationFile := strings.ReplaceAll(
-			cfgResource.FileFilter, "<lang>", localLanguageCode,
+			fileFilter, "<lang>", localLanguageCode,
 		)
 		translationFile = setFileTypeExtensions(commandArgs, translationFile)
 
@@ -368,9 +382,16 @@ func createTranslationsAsyncDownloads(cfg *config.Config,
 			localLanguageCode, _ := txapi.CreateLanguageDirectory(
 				cfg.Local.LanguageMappings, lang, cfgResource,
 			)
+
+			fileFilter := cfgResource.FileFilter
+			if cfgResource.Overrides[localLanguageCode] != "" {
+				fileFilter = cfgResource.Overrides[localLanguageCode]
+			}
+
 			languageFilePath := strings.ReplaceAll(
-				cfgResource.FileFilter, "<lang>", localLanguageCode,
+				fileFilter, "<lang>", localLanguageCode,
 			)
+
 			key := download.Relationships["language"].DataSingular.Id
 			remoteStat := remoteStats[key]
 
