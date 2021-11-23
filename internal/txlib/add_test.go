@@ -68,7 +68,7 @@ func TestSuccessfulAddForAddCommand(t *testing.T) {
 		OrganizationSlug: "org",
 		ProjectSlug:      "myproj",
 		ResourceSlug:     "res",
-		FileFilter:       "f<lang>filter",
+		FileFilter:       "f<lang>filter.po",
 		RType:            "type",
 		SourceFile:       "mysourcefile.po",
 	}
@@ -87,7 +87,7 @@ func TestSuccessfulAddForAddCommand(t *testing.T) {
 				OrganizationSlug: "org",
 				ProjectSlug:      "myproj",
 				ResourceSlug:     "res",
-				FileFilter:       "f<lang>filter",
+				FileFilter:       "f<lang>filter.po",
 				Type:             "type",
 				SourceFile:       "mysourcefile.po",
 			},

@@ -3,6 +3,7 @@ package txlib
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -27,8 +28,9 @@ https://docs.transifex.com/client/config/.`,
 		"text": `
 Next, we’ll need a path expression pointing to the location of the
 translation files (whether they exist yet or not) associated with
-the source file ‘{source_file}’. You should include <lang> as a
-wildcard for the language code.`,
+the source file ‘%s’.
+You should include <lang> as a wildcard for the language code.
+Example: 'path/<lang>/%s'`,
 		"label": "What is your path expression?",
 	},
 }
@@ -47,12 +49,26 @@ func validateFileFilter(input string) error {
 	if res != 1 {
 		return errors.New("you need one <lang> in your File Filter")
 	}
+	if len(filepath.Ext(input)) < 2 {
+		return errors.New("you need to add an extension to your file")
+	}
 	return nil
 }
 
 func validateSourceFile(input string) error {
 	if len(input) < 1 {
 		return errors.New("you need to add a Source File")
+	}
+
+	if len(filepath.Ext(input)) < 2 {
+		return errors.New("you need to add an extension to your Source File")
+	}
+
+	curDir, err := os.Getwd()
+	_, err = os.Stat(filepath.Join(curDir, input))
+
+	if err != nil {
+		return errors.New("you need to add a Source File that exists")
 	}
 	return nil
 }
@@ -133,8 +149,8 @@ func AddCommandInteractive(cfg *config.Config, api jsonapi.Connection) error {
 	}
 
 	answers.SourceFile = res
-
-	fmt.Println(PromptMap["fileFilter"]["text"])
+	_, fileName := filepath.Split(res)
+	fmt.Printf(PromptMap["fileFilter"]["text"], res, fileName)
 	fmt.Println()
 
 	// Prompt for File Filter
