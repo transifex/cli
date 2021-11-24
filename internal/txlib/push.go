@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/transifex/cli/pkg/txapi"
-
+	"github.com/gosimple/slug"
 	"github.com/pterm/pterm"
 	"github.com/transifex/cli/internal/txlib/config"
 	"github.com/transifex/cli/pkg/jsonapi"
+	"github.com/transifex/cli/pkg/txapi"
 )
 
 type PushCommandArguments struct {
@@ -67,7 +67,7 @@ func PushCommand(
 		if args.Branch != "" {
 			cfgResource.ResourceSlug = fmt.Sprintf("%s--%s",
 				cfgResource.ResourceSlug,
-				args.Branch)
+				slug.Make(args.Branch))
 		}
 	}
 
@@ -143,11 +143,11 @@ func pushResource(
 	resourceIsNew := false
 	if resource != nil {
 		spinner.Success(
-			fmt.Sprintf("Resource '%s' found", cfgResource.ResourceSlug),
+			fmt.Sprintf("Resource with slug '%s' found", cfgResource.ResourceSlug),
 		)
 	} else {
 		spinner.Warning(
-			fmt.Sprintf("Resource '%s' not found", cfgResource.ResourceSlug),
+			fmt.Sprintf("Resource with slug '%s' not found. We will try to create it for you.", cfgResource.ResourceSlug),
 		)
 		if cfgResource.Type == "" {
 			return fmt.Errorf(
@@ -165,7 +165,11 @@ func pushResource(
 				cfgResource.ResourceName(),
 				args.Branch)
 		}
-		msg = fmt.Sprintf("Creating resource '%s'", resourceName)
+		msg = fmt.Sprintf(
+			"Creating resource with name '%s' and slug '%s'",
+			resourceName,
+			cfgResource.ResourceSlug,
+		)
 		spinner, err = pterm.DefaultSpinner.Start(msg)
 		if err != nil {
 			return err
@@ -179,7 +183,11 @@ func pushResource(
 			spinner.Fail(msg + ": " + err.Error())
 			return err
 		}
-		spinner.Success(fmt.Sprintf("Created resource '%s'", resourceName))
+		spinner.Success(
+			fmt.Sprintf("Created resource with name '%s' and slug '%s'",
+				resourceName,
+				cfgResource.ResourceSlug,
+			))
 		resourceIsNew = true
 	}
 

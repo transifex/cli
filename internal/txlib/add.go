@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/gosimple/slug"
 	"github.com/transifex/cli/pkg/txapi"
 
 	"github.com/manifoldco/promptui"
@@ -310,7 +311,7 @@ func AddCommandInteractive(cfg *config.Config, api jsonapi.Connection) error {
 		}
 
 		// Add the slug to the answers
-		answers.ResourceSlug = res
+		answers.ResourceSlug = slug.Make(res)
 	} else {
 		// In case it's a preexisting resource add it to answers and
 		// selected resource
