@@ -48,9 +48,24 @@ func PushCommand(
 		for _, resourceId := range args.ResourceIds {
 			cfgResource := cfg.FindResource(resourceId)
 			if cfgResource == nil {
-				return fmt.Errorf(
-					"could not find resource '%s' in local configuration",
+				fmt.Println(pterm.Error.Sprintf(
+					"could not find resource '%s' in local configuration or your resource slug is invalid",
 					resourceId,
+				))
+				return fmt.Errorf(
+					"could not find resource '%s' in local configuration or your resource slug is invalid",
+					resourceId,
+				)
+			}
+			_, err := os.Stat(cfgResource.SourceFile)
+			if err != nil {
+				fmt.Println(pterm.Error.Sprintf(
+					"could not find file '%s'. Aborting.",
+					cfgResource.SourceFile,
+				))
+				return fmt.Errorf(
+					"could not find file '%s'. Aborting.",
+					cfgResource.SourceFile,
 				)
 			}
 			cfgResources = append(cfgResources, cfgResource)
@@ -58,6 +73,17 @@ func PushCommand(
 	} else {
 		for i := range cfg.Local.Resources {
 			cfgResource := &cfg.Local.Resources[i]
+			_, err := os.Stat(cfgResource.SourceFile)
+			if err != nil {
+				fmt.Println(pterm.Error.Sprintf(
+					"could not find file '%s'. Aborting.",
+					cfgResource.SourceFile,
+				))
+				return fmt.Errorf(
+					"could not find file '%s'. Aborting.",
+					cfgResource.SourceFile,
+				)
+			}
 			cfgResources = append(cfgResources, cfgResource)
 		}
 	}
