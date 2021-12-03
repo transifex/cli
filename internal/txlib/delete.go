@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gosimple/slug"
 	"github.com/pterm/pterm"
 	"github.com/transifex/cli/internal/txlib/config"
 	"github.com/transifex/cli/pkg/jsonapi"
@@ -14,6 +15,7 @@ type DeleteCommandArguments struct {
 	ResourceIds []string
 	Force       bool
 	Skip        bool
+	Branch      string
 }
 
 func DeleteCommand(
@@ -23,6 +25,14 @@ func DeleteCommand(
 ) error {
 	var cfgResources []*config.Resource
 
+	if arguments.Branch == "-1" {
+		arguments.Branch = ""
+	} else if arguments.Branch == "" {
+		arguments.Branch = getGitBranch()
+		if arguments.Branch == "" {
+			pterm.Warning.Println("Couldn't find branch information")
+		}
+	}
 	pterm.Info.Println("Initiating Delete")
 
 	for _, resourceId := range arguments.ResourceIds {
@@ -79,9 +89,15 @@ func DeleteCommand(
 	defer cfg.Save()
 
 	// Delete each resource
-	for _, cfgResource := range cfgResources {
+	for _, item := range cfgResources {
 		// Delete Resource from Server
-		err := deleteResource(&api, cfg, *cfgResource, *arguments)
+		cfgResource := *item
+		if arguments.Branch != "" {
+			cfgResource.ResourceSlug = fmt.Sprintf("%s--%s",
+				cfgResource.ResourceSlug,
+				slug.Make(arguments.Branch))
+		}
+		err := deleteResource(&api, cfg, cfgResource, *arguments)
 		if err != nil {
 			if !arguments.Skip {
 				return err
@@ -90,7 +106,7 @@ func DeleteCommand(
 			}
 		} else {
 			// Remove successful deletes from config
-			cfg.RemoveResource(*cfgResource)
+			cfg.RemoveResource(cfgResource)
 		}
 	}
 
@@ -144,7 +160,7 @@ func deleteResource(
 
 	msg := fmt.Sprintf("Deleting resource '%s'",
 		cfgResource.ResourceSlug)
-
+	fmt.Println(msg)
 	spinner, err := pterm.DefaultSpinner.Start(msg)
 
 	if !args.Force {

@@ -581,6 +581,13 @@ func Main() {
 						Aliases: []string{"s"},
 						Usage:   "Whether to skip on errors",
 					},
+					&cli.StringFlag{
+						Name: "branch",
+						Usage: "Push to specific branch (use empty argument " +
+							"'' to use the current branch, if it can be " +
+							"determined)",
+						Value: "-1",
+					},
 				},
 				Action: func(c *cli.Context) error {
 					cfg, err := config.LoadFromPaths(c.String("root-config"),
@@ -625,6 +632,7 @@ func Main() {
 						ResourceIds: resourceIds,
 						Force:       c.Bool("force"),
 						Skip:        c.Bool("skip"),
+						Branch:      c.String("branch"),
 					}
 					// Proceed with deletion
 					err = txlib.DeleteCommand(&cfg, api, &arguments)
