@@ -383,11 +383,13 @@ func AddCommand(
 	args *AddCommandArguments,
 ) error {
 
-	if args.SourceFile == "" {
-		return fmt.Errorf("a source file is required to proceed")
+	err := validateSourceFile(args.SourceFile)
+
+	if err != nil {
+		return err
 	}
 
-	err := validateFileFilter(args.FileFilter)
+	err = validateFileFilter(args.FileFilter)
 
 	if err != nil {
 		return err

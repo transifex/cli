@@ -12,13 +12,27 @@ import (
 	"github.com/transifex/cli/pkg/assert"
 )
 
-func beforeTest() (string, string) {
+func beforeTest(t *testing.T) (string, string) {
 	pkgDir, _ := os.Getwd()
 	tmpDir, err := os.MkdirTemp("", "")
 	if err != nil {
 		log.Fatal(err)
 	}
 	_ = os.Chdir(tmpDir)
+
+	file, err := os.OpenFile("aaa.json",
+		os.O_RDWR|os.O_CREATE|os.O_TRUNC,
+		0755)
+	if err != nil {
+		t.Error(err)
+	}
+
+	_, err = file.WriteString(`{"hello": "world"}`)
+	if err != nil {
+		t.Error(err)
+	}
+	defer file.Close()
+
 	return pkgDir, tmpDir
 }
 
@@ -31,7 +45,7 @@ func afterTest(pkgDir string, tmpDir string) {
 }
 
 func TestInitCreateFile(t *testing.T) {
-	var pkgDir, tmpDir = beforeTest()
+	var pkgDir, tmpDir = beforeTest(t)
 	defer afterTest(pkgDir, tmpDir)
 
 	err := InitCommand()
@@ -47,7 +61,7 @@ func TestInitCreateFile(t *testing.T) {
 }
 
 func TestInitCreateFileContents(t *testing.T) {
-	var pkgDir, tmpDir = beforeTest()
+	var pkgDir, tmpDir = beforeTest(t)
 	defer afterTest(pkgDir, tmpDir)
 
 	err := InitCommand()
@@ -64,7 +78,7 @@ func TestInitCreateFileContents(t *testing.T) {
 }
 
 func TestDoesNotChangeConfigWhenAbort(t *testing.T) {
-	var pkgDir, tmpDir = beforeTest()
+	var pkgDir, tmpDir = beforeTest(t)
 	defer afterTest(pkgDir, tmpDir)
 
 	err := InitCommand()
@@ -80,9 +94,9 @@ func TestDoesNotChangeConfigWhenAbort(t *testing.T) {
 		OrganizationSlug: "org",
 		ProjectSlug:      "myproj",
 		ResourceSlug:     "res",
-		FileFilter:       "f<lang>filter.po",
+		FileFilter:       "aaa<lang>.json",
 		RType:            "type",
-		SourceFile:       "mysourcefile.po",
+		SourceFile:       "aaa.json",
 	}
 	err = AddCommand(&cfg, &args)
 	if err != nil {
@@ -95,9 +109,9 @@ func TestDoesNotChangeConfigWhenAbort(t *testing.T) {
 				OrganizationSlug: "org",
 				ProjectSlug:      "myproj",
 				ResourceSlug:     "res",
-				FileFilter:       "f<lang>filter.po",
+				FileFilter:       "aaa<lang>.json",
 				Type:             "type",
-				SourceFile:       "mysourcefile.po",
+				SourceFile:       "aaa.json",
 			},
 		}}
 
