@@ -87,18 +87,21 @@ func Main() {
 			},
 			{
 				Name:  "push",
-				Usage: "tx push [options] [[resource_id...]...]",
+				Usage: "tx push [options] [resource_id...]",
 				Flags: []cli.Flag{
 					&cli.BoolFlag{
 						Name:    "source",
+						Usage:   "Push the source file",
 						Aliases: []string{"s"},
 					},
 					&cli.BoolFlag{
 						Name:    "translation",
+						Usage:   "Push the translation files",
 						Aliases: []string{"t"},
 					},
 					&cli.BoolFlag{
 						Name:    "force",
+						Usage:   "Push source files without checking modification times",
 						Aliases: []string{"f"},
 					},
 					&cli.BoolFlag{
@@ -125,10 +128,14 @@ func Main() {
 					&cli.StringFlag{
 						Name:    "languages",
 						Aliases: []string{"l"},
+						Usage: "Specify which languages you want to push " +
+							"translations for",
 					},
 					&cli.StringFlag{
 						Name:    "resources",
 						Aliases: []string{"r"},
+						Usage: "Specify which resources you want to push " +
+							"the translations",
 					},
 					&cli.StringFlag{
 						Name: "branch",
@@ -251,7 +258,7 @@ func Main() {
 			},
 			{
 				Name:  "pull",
-				Usage: "tx pull [options] [[resource_id...]...]",
+				Usage: "tx pull [options] [resource_id...]",
 				Flags: []cli.Flag{
 					&cli.BoolFlag{
 						Name:  "xliff",
@@ -281,14 +288,16 @@ func Main() {
 					&cli.BoolFlag{
 						Name:    "force",
 						Aliases: []string{"f"},
-						Usage:   "Whether to skip timestamp checks",
+						Usage: "Force the download of the translations" +
+							"files regardless of whether timestamps on the " +
+							"local computer are newer than those on the server",
 					},
 					&cli.StringFlag{
 						Name:    "languages",
 						Value:   "",
 						Aliases: []string{"l"},
 						Usage: "Download specific languages, comma " +
-							"separated TX codes",
+							"separated Transifex language codes",
 					},
 					&cli.BoolFlag{
 						Name:    "source",
