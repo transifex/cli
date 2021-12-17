@@ -50,7 +50,7 @@ func validateFileFilter(input string) error {
 	if res != 1 {
 		return errors.New("you need one <lang> in your File Filter")
 	}
-	if len(filepath.Ext(input)) < 2 {
+	if len(filepath.Ext(input)) <= 1 {
 		return errors.New("you need to add an extension to your file")
 	}
 	return nil
@@ -61,17 +61,19 @@ func validateSourceFile(input string) error {
 		return errors.New("you need to add a Source File")
 	}
 
-	if len(filepath.Ext(input)) < 2 {
+	if len(filepath.Ext(input)) <= 1 {
 		return errors.New("you need to add an extension to your Source File")
 	}
 
 	curDir, err := os.Getwd()
-	if err != nil {
-		return errors.New("could not get current path")
-	}
+	_, err = os.Stat(filepath.Join(curDir, input))
 
-	if _, err := os.Stat(filepath.Join(curDir, input)); os.IsNotExist(err) {
-		return errors.New("you need to add a Source File that exists")
+	if err != nil {
+		if os.IsNotExist(err) {
+			return errors.New("you need to add a Source File that exists")
+		} else {
+			return errors.New("something went wrong while examining the source file path")
+		}
 	}
 	return nil
 }

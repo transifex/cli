@@ -58,15 +58,27 @@ func PushCommand(
 				)
 			}
 
-			if _, err := os.Stat(cfgResource.SourceFile); os.IsNotExist(err) {
-				fmt.Println(pterm.Error.Sprintf(
-					"could not find file '%s'. Aborting.",
-					cfgResource.SourceFile,
-				))
-				return fmt.Errorf(
-					"could not find file '%s'. Aborting.",
-					cfgResource.SourceFile,
-				)
+			_, err := os.Stat(cfgResource.SourceFile)
+			if err != nil {
+				if os.IsNotExist(err) {
+					fmt.Println(pterm.Error.Sprintf(
+						"could not find file '%s'. Aborting.",
+						cfgResource.SourceFile,
+					))
+					return fmt.Errorf(
+						"could not find file '%s'. Aborting.",
+						cfgResource.SourceFile,
+					)
+				} else {
+					fmt.Println(pterm.Error.Sprintf(
+						"something went wrong while examining the source " +
+							"file path",
+					))
+					return fmt.Errorf(
+						"something went wrong while examining the source " +
+							"file path",
+					)
+				}
 			}
 			cfgResources = append(cfgResources, cfgResource)
 		}
@@ -75,14 +87,25 @@ func PushCommand(
 			cfgResource := &cfg.Local.Resources[i]
 			_, err := os.Stat(cfgResource.SourceFile)
 			if err != nil {
-				fmt.Println(pterm.Error.Sprintf(
-					"could not find file '%s'. Aborting.",
-					cfgResource.SourceFile,
-				))
-				return fmt.Errorf(
-					"could not find file '%s'. Aborting.",
-					cfgResource.SourceFile,
-				)
+				if os.IsNotExist(err) {
+					fmt.Println(pterm.Error.Sprintf(
+						"could not find file '%s'. Aborting.",
+						cfgResource.SourceFile,
+					))
+					return fmt.Errorf(
+						"could not find file '%s'. Aborting.",
+						cfgResource.SourceFile,
+					)
+				} else {
+					fmt.Println(pterm.Error.Sprintf(
+						"something went wrong while examining the source " +
+							"file path",
+					))
+					return fmt.Errorf(
+						"something went wrong while examining the source " +
+							"file path",
+					)
+				}
 			}
 			cfgResources = append(cfgResources, cfgResource)
 		}
