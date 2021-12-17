@@ -57,8 +57,8 @@ func PushCommand(
 					resourceId,
 				)
 			}
-			_, err := os.Stat(cfgResource.SourceFile)
-			if err != nil {
+
+			if _, err := os.Stat(cfgResource.SourceFile); os.IsNotExist(err) {
 				fmt.Println(pterm.Error.Sprintf(
 					"could not find file '%s'. Aborting.",
 					cfgResource.SourceFile,

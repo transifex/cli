@@ -32,26 +32,6 @@ func TestSuccessfulAddForAddCommand(t *testing.T) {
 	afterTest := beforeAddTest(t, nil, nil)
 	defer afterTest()
 
-	// testDir, err := os.Getwd()
-	// if err != nil {
-	// 	t.Error(err)
-	// }
-	// tempDir, err := os.MkdirTemp("", "")
-	// if err != nil {
-	// 	t.Error(err)
-	// }
-	// defer func() { os.RemoveAll(tempDir) }()
-	// err = os.Chdir(tempDir)
-	// if err != nil {
-	// 	t.Error(err)
-	// }
-	// defer func() {
-	// 	err = os.Chdir(testDir)
-	// 	if err != nil {
-	// 		t.Error(err)
-	// 	}
-	// }()
-
 	cfg := config.Config{
 		Local: &config.LocalConfig{
 			Host: "host",

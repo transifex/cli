@@ -66,9 +66,11 @@ func validateSourceFile(input string) error {
 	}
 
 	curDir, err := os.Getwd()
-	_, err = os.Stat(filepath.Join(curDir, input))
-
 	if err != nil {
+		return errors.New("could not get current path")
+	}
+
+	if _, err := os.Stat(filepath.Join(curDir, input)); os.IsNotExist(err) {
 		return errors.New("you need to add a Source File that exists")
 	}
 	return nil
