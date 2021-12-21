@@ -1,17 +1,5 @@
 # Transifex Client
 
-## Disclaimer
-
-**This is an alpha version of the new Transifex CLI**
-
-As such, it is still undergoing development and testing before its Beta release. New features will be added in subsequent alpha releases and current features may change without prior notice (breaking changes).
-
-:warning: **If you are in a production environment, we suggest using the
-[previous implementation of the client](https://github.com/transifex/transifex-client/),
-since we cannot guarantee there won't be bugs or data loss.**
-
-If you want to test this new version and provide [feedback](https://github.com/transifex/cli/issues), please use a sandbox environment, so that you don't mind if something goes wrong; you simply start anew.
-
 ## Installation
 
 The easiest and preferred way to install the Transifex CLI is to download
@@ -602,6 +590,10 @@ tx delete project_slug.\*
   print a warning and move on to the next resource.
 - `--force`: In case you want to proceed to a deletion even if resources have
   translations use the `-f/--force` flag.
+- `--branch`: In case you want to delete a resource's branch that is on Transifex.
+  If you supply an empty string as the branch (`--branch ''`), then the client
+  will attempt to figure out the currently active branch in the local git repository.
+
 
 
 ### Getting the local status of the project

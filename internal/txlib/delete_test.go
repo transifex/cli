@@ -19,7 +19,9 @@ const (
 	resourcesUrlDeleteCommand = "/resources?filter%5B" +
 		"project%5D=o%3Aorgslug%3Ap%3Aprojslug"
 	resourceUrlDeleteCommand              = "/resources/o:orgslug:p:projslug:r:resslug"
+	resourceUrlBranchDeleteCommand        = "/resources/o:orgslug:p:projslug:r:resslug--abranch"
 	resource1UrlDeleteCommand             = "/resources/o:orgslug:p:projslug:r:resslug1"
+	resource1UrlBranchDeleteCommand       = "/resources/o:orgslug:p:projslug:r:resslug1--abranch"
 	resourceLanguageStatsUrlDeleteCommand = "/resource_language_stats?" +
 		"filter%5Bproject%5D=o%3Aorgslug%3Ap%3Aprojslug&" +
 		"filter%5Bresource%5D=o%3Aorgslug%3Ap%3Aprojslug%3Ar%3Aresslug"
@@ -314,6 +316,46 @@ func TestSkipWorks(t *testing.T) {
 	}
 }
 
+func TestDeleteBranchWorks(t *testing.T) {
+	var pkgDir, tmpDir = beforeDeleteTest(t)
+	defer afterDeleteTest(pkgDir, tmpDir)
+	var filePath = filepath.Join(tmpDir, ".tx", "config")
+	cfg, _ := config.LoadFromPaths("", filePath)
+	cfg.Local.Resources = []config.Resource{
+		{
+			OrganizationSlug: "orgslug",
+			ProjectSlug:      "projslug",
+			ResourceSlug:     "resslug",
+			Type:             "I18N_TYPE",
+			SourceFile:       "aaa.json",
+			FileFilter:       "aaa-<lang>.json",
+		},
+		{
+			OrganizationSlug: "orgslug",
+			ProjectSlug:      "projslug",
+			ResourceSlug:     "resslug1",
+			Type:             "I18N_TYPE",
+			SourceFile:       "aaa.json",
+			FileFilter:       "aaa-<lang>.json",
+		},
+	}
+
+	mockData := getMockedDataForBranchResourceDelete()
+
+	api := jsonapi.GetTestConnection(mockData)
+	err := DeleteCommand(
+		&cfg,
+		api,
+		&DeleteCommandArguments{
+			ResourceIds: []string{"projslug.resslug", "projslug.resslug1"},
+			Branch:      "abranch",
+		},
+	)
+	if err != nil {
+		t.Errorf("Should be deleted with no error: %s", err)
+	}
+}
+
 func getStandardConfigDelete() *config.Config {
 	return &config.Config{
 		Local: &config.LocalConfig{
@@ -446,6 +488,18 @@ func deleteGetResourceEndpoint() *jsonapi.MockEndpoint {
 	}
 }
 
+func deleteGetResourceBranchEndpoint() *jsonapi.MockEndpoint {
+	return &jsonapi.MockEndpoint{
+		Requests: []jsonapi.MockRequest{{
+			Response: jsonapi.MockResponse{
+				Text: `{"data": {"type": "resources",
+								 "id": "o:orgslug:p:projslug:r:resslug--abranch",
+								 "attributes": {"slug": "resslug--abranch"}}}`,
+			},
+		}},
+	}
+}
+
 func deleteGetResource1Endpoint() *jsonapi.MockEndpoint {
 	return &jsonapi.MockEndpoint{
 		Requests: []jsonapi.MockRequest{{
@@ -457,6 +511,19 @@ func deleteGetResource1Endpoint() *jsonapi.MockEndpoint {
 		}},
 	}
 }
+
+func deleteGetResourceBranch1Endpoint() *jsonapi.MockEndpoint {
+	return &jsonapi.MockEndpoint{
+		Requests: []jsonapi.MockRequest{{
+			Response: jsonapi.MockResponse{
+				Text: `{"data": {"type": "resources",
+								 "id": "o:orgslug:p:projslug:r:resslug1--branch",
+								 "attributes": {"slug": "resslug1--branch"}}}`,
+			},
+		}},
+	}
+}
+
 func deleteGetResourcesEndpoint() *jsonapi.MockEndpoint {
 	return &jsonapi.MockEndpoint{
 		Requests: []jsonapi.MockRequest{
@@ -472,6 +539,27 @@ func deleteGetResourcesEndpoint() *jsonapi.MockEndpoint {
 					Text: `{"data": [{"type": "resources",
 									"id": "o:orgslug:p:projslug:r:resslug1",
 									"attributes": {"slug": "resslug1"}}]}`,
+				},
+			},
+		},
+	}
+}
+
+func deleteGetResourcesBranchEndpoint() *jsonapi.MockEndpoint {
+	return &jsonapi.MockEndpoint{
+		Requests: []jsonapi.MockRequest{
+			{
+				Response: jsonapi.MockResponse{
+					Text: `{"data": [{"type": "resources",
+									"id": "o:orgslug:p:projslug:r:resslug--abranch",
+									"attributes": {"slug": "resslug--abranch"}}]}`,
+				},
+			},
+			{
+				Response: jsonapi.MockResponse{
+					Text: `{"data": [{"type": "resources",
+									"id": "o:orgslug:p:projslug:r:resslug1--abranch",
+									"attributes": {"slug": "resslug1--abranch"}}]}`,
 				},
 			},
 		},
@@ -508,5 +596,15 @@ func getMockedDataForResourceDelete() jsonapi.MockData {
 		resourceUrlDeleteCommand:  deleteGetResourceEndpoint(),
 		resource1UrlDeleteCommand: deleteGetResourceEndpoint(),
 		resourcesUrlDeleteCommand: deleteGetResourcesEndpoint(),
+	}
+}
+
+func getMockedDataForBranchResourceDelete() jsonapi.MockData {
+	return jsonapi.MockData{
+		"/organizations":                deleteGetOrganizationEndpoint(),
+		projectsUrlDeleteCommand:        deleteGetProjectsEndpoint(),
+		resourceUrlBranchDeleteCommand:  deleteGetResourceBranchEndpoint(),
+		resource1UrlBranchDeleteCommand: deleteGetResourceBranch1Endpoint(),
+		resourcesUrlDeleteCommand:       deleteGetResourcesBranchEndpoint(),
 	}
 }

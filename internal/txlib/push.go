@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/transifex/cli/pkg/txapi"
-
+	"github.com/gosimple/slug"
 	"github.com/pterm/pterm"
 	"github.com/transifex/cli/internal/txlib/config"
 	"github.com/transifex/cli/pkg/jsonapi"
+	"github.com/transifex/cli/pkg/txapi"
 )
 
 type PushCommandArguments struct {
@@ -48,16 +48,65 @@ func PushCommand(
 		for _, resourceId := range args.ResourceIds {
 			cfgResource := cfg.FindResource(resourceId)
 			if cfgResource == nil {
+				fmt.Println(pterm.Error.Sprintf(
+					"could not find resource '%s' in local configuration or your resource slug is invalid",
+					resourceId,
+				))
 				return fmt.Errorf(
-					"could not find resource '%s' in local configuration",
+					"could not find resource '%s' in local configuration or your resource slug is invalid",
 					resourceId,
 				)
+			}
+
+			_, err := os.Stat(cfgResource.SourceFile)
+			if err != nil {
+				if os.IsNotExist(err) {
+					fmt.Println(pterm.Error.Sprintf(
+						"could not find file '%s'. Aborting.",
+						cfgResource.SourceFile,
+					))
+					return fmt.Errorf(
+						"could not find file '%s'. Aborting.",
+						cfgResource.SourceFile,
+					)
+				} else {
+					fmt.Println(pterm.Error.Sprintf(
+						"something went wrong while examining the source " +
+							"file path",
+					))
+					return fmt.Errorf(
+						"something went wrong while examining the source " +
+							"file path",
+					)
+				}
 			}
 			cfgResources = append(cfgResources, cfgResource)
 		}
 	} else {
 		for i := range cfg.Local.Resources {
 			cfgResource := &cfg.Local.Resources[i]
+			_, err := os.Stat(cfgResource.SourceFile)
+			if err != nil {
+				if os.IsNotExist(err) {
+					fmt.Println(pterm.Error.Sprintf(
+						"could not find file '%s'. Aborting.",
+						cfgResource.SourceFile,
+					))
+					return fmt.Errorf(
+						"could not find file '%s'. Aborting.",
+						cfgResource.SourceFile,
+					)
+				} else {
+					fmt.Println(pterm.Error.Sprintf(
+						"something went wrong while examining the source " +
+							"file path",
+					))
+					return fmt.Errorf(
+						"something went wrong while examining the source " +
+							"file path",
+					)
+				}
+			}
 			cfgResources = append(cfgResources, cfgResource)
 		}
 	}
@@ -67,7 +116,7 @@ func PushCommand(
 		if args.Branch != "" {
 			cfgResource.ResourceSlug = fmt.Sprintf("%s--%s",
 				cfgResource.ResourceSlug,
-				args.Branch)
+				slug.Make(args.Branch))
 		}
 	}
 
@@ -143,11 +192,11 @@ func pushResource(
 	resourceIsNew := false
 	if resource != nil {
 		spinner.Success(
-			fmt.Sprintf("Resource '%s' found", cfgResource.ResourceSlug),
+			fmt.Sprintf("Resource with slug '%s' found", cfgResource.ResourceSlug),
 		)
 	} else {
 		spinner.Warning(
-			fmt.Sprintf("Resource '%s' not found", cfgResource.ResourceSlug),
+			fmt.Sprintf("Resource with slug '%s' not found. We will try to create it for you.", cfgResource.ResourceSlug),
 		)
 		if cfgResource.Type == "" {
 			return fmt.Errorf(
@@ -165,7 +214,11 @@ func pushResource(
 				cfgResource.ResourceName(),
 				args.Branch)
 		}
-		msg = fmt.Sprintf("Creating resource '%s'", resourceName)
+		msg = fmt.Sprintf(
+			"Creating resource with name '%s' and slug '%s'",
+			resourceName,
+			cfgResource.ResourceSlug,
+		)
 		spinner, err = pterm.DefaultSpinner.Start(msg)
 		if err != nil {
 			return err
@@ -179,7 +232,11 @@ func pushResource(
 			spinner.Fail(msg + ": " + err.Error())
 			return err
 		}
-		spinner.Success(fmt.Sprintf("Created resource '%s'", resourceName))
+		spinner.Success(
+			fmt.Sprintf("Created resource with name '%s' and slug '%s'",
+				resourceName,
+				cfgResource.ResourceSlug,
+			))
 		resourceIsNew = true
 	}
 

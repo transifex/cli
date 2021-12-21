@@ -3,9 +3,11 @@ package txlib
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/gosimple/slug"
 	"github.com/transifex/cli/pkg/txapi"
 
 	"github.com/manifoldco/promptui"
@@ -27,8 +29,9 @@ https://docs.transifex.com/client/config/.`,
 		"text": `
 Next, we’ll need a path expression pointing to the location of the
 translation files (whether they exist yet or not) associated with
-the source file ‘{source_file}’. You should include <lang> as a
-wildcard for the language code.`,
+the source file ‘%s’.
+You should include <lang> as a wildcard for the language code.
+Example: 'path/<lang>/%s'`,
 		"label": "What is your path expression?",
 	},
 }
@@ -47,12 +50,30 @@ func validateFileFilter(input string) error {
 	if res != 1 {
 		return errors.New("you need one <lang> in your File Filter")
 	}
+	if len(filepath.Ext(input)) <= 1 {
+		return errors.New("you need to add an extension to your file")
+	}
 	return nil
 }
 
 func validateSourceFile(input string) error {
 	if len(input) < 1 {
 		return errors.New("you need to add a Source File")
+	}
+
+	if len(filepath.Ext(input)) <= 1 {
+		return errors.New("you need to add an extension to your Source File")
+	}
+
+	curDir, err := os.Getwd()
+	_, err = os.Stat(filepath.Join(curDir, input))
+
+	if err != nil {
+		if os.IsNotExist(err) {
+			return errors.New("you need to add a Source File that exists")
+		} else {
+			return errors.New("something went wrong while examining the source file path")
+		}
 	}
 	return nil
 }
@@ -133,8 +154,8 @@ func AddCommandInteractive(cfg *config.Config, api jsonapi.Connection) error {
 	}
 
 	answers.SourceFile = res
-
-	fmt.Println(PromptMap["fileFilter"]["text"])
+	_, fileName := filepath.Split(res)
+	fmt.Printf(PromptMap["fileFilter"]["text"], res, fileName)
 	fmt.Println()
 
 	// Prompt for File Filter
@@ -294,7 +315,7 @@ func AddCommandInteractive(cfg *config.Config, api jsonapi.Connection) error {
 		}
 
 		// Add the slug to the answers
-		answers.ResourceSlug = res
+		answers.ResourceSlug = slug.Make(res)
 	} else {
 		// In case it's a preexisting resource add it to answers and
 		// selected resource
@@ -366,11 +387,13 @@ func AddCommand(
 	args *AddCommandArguments,
 ) error {
 
-	if args.SourceFile == "" {
-		return fmt.Errorf("a source file is required to proceed")
+	err := validateSourceFile(args.SourceFile)
+
+	if err != nil {
+		return err
 	}
 
-	err := validateFileFilter(args.FileFilter)
+	err = validateFileFilter(args.FileFilter)
 
 	if err != nil {
 		return err
