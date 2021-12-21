@@ -257,7 +257,6 @@ func createTranslationsAsyncDownloads(cfg *config.Config,
 				}
 			}
 		} else {
-
 			allLocalLanguages := searchFileFilter(".", cfgResource.FileFilter)
 
 			if len(cfgResource.Overrides) > 0 {
@@ -391,7 +390,8 @@ func createTranslationsAsyncDownloads(cfg *config.Config,
 			languageFilePath := strings.ReplaceAll(
 				fileFilter, "<lang>", localLanguageCode,
 			)
-
+			languageFilePath = setFileTypeExtensions(commandArgs,
+				languageFilePath)
 			key := download.Relationships["language"].DataSingular.Id
 			remoteStat := remoteStats[key]
 

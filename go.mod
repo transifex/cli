@@ -5,6 +5,7 @@ go 1.16
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/go-git/go-git/v5 v5.3.0
+	github.com/gosimple/slug v1.11.2
 	github.com/manifoldco/promptui v0.8.0
 	github.com/pterm/pterm v0.12.24
 	github.com/rhysd/go-github-selfupdate v1.2.3

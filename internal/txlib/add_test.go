@@ -1,6 +1,7 @@
 package txlib
 
 import (
+	"fmt"
 	"os"
 	"reflect"
 	"testing"
@@ -28,25 +29,8 @@ func TestNoSourceFileErrorAddCommand(t *testing.T) {
 }
 
 func TestSuccessfulAddForAddCommand(t *testing.T) {
-	testDir, err := os.Getwd()
-	if err != nil {
-		t.Error(err)
-	}
-	tempDir, err := os.MkdirTemp("", "")
-	if err != nil {
-		t.Error(err)
-	}
-	defer func() { os.RemoveAll(tempDir) }()
-	err = os.Chdir(tempDir)
-	if err != nil {
-		t.Error(err)
-	}
-	defer func() {
-		err = os.Chdir(testDir)
-		if err != nil {
-			t.Error(err)
-		}
-	}()
+	afterTest := beforeAddTest(t, nil, nil)
+	defer afterTest()
 
 	cfg := config.Config{
 		Local: &config.LocalConfig{
@@ -59,7 +43,7 @@ func TestSuccessfulAddForAddCommand(t *testing.T) {
 		},
 		Root: &config.RootConfig{Path: "rootconf"},
 	}
-	err = cfg.Local.Save()
+	err := cfg.Local.Save()
 	if err != nil {
 		t.Error(err)
 	}
@@ -68,9 +52,9 @@ func TestSuccessfulAddForAddCommand(t *testing.T) {
 		OrganizationSlug: "org",
 		ProjectSlug:      "myproj",
 		ResourceSlug:     "res",
-		FileFilter:       "f<lang>filter",
+		FileFilter:       "aaa<lang>.json",
 		RType:            "type",
-		SourceFile:       "mysourcefile.po",
+		SourceFile:       "aaa.json",
 	}
 
 	err = AddCommand(&cfg, &args)
@@ -87,9 +71,9 @@ func TestSuccessfulAddForAddCommand(t *testing.T) {
 				OrganizationSlug: "org",
 				ProjectSlug:      "myproj",
 				ResourceSlug:     "res",
-				FileFilter:       "f<lang>filter",
+				FileFilter:       "aaa<lang>.json",
 				Type:             "type",
-				SourceFile:       "mysourcefile.po",
+				SourceFile:       "aaa.json",
 			},
 		},
 		Path: "localconf",
@@ -97,5 +81,69 @@ func TestSuccessfulAddForAddCommand(t *testing.T) {
 	if !reflect.DeepEqual(cfg.Local, expected) {
 		t.Errorf("Expected addCommand to create %+v and got %+v!",
 			expected, cfg.Local)
+	}
+}
+
+func beforeAddTest(t *testing.T,
+	languageCodes []string,
+	customFiles []string) func() {
+	curDir, err := os.Getwd()
+	if err != nil {
+		t.Error(err)
+	}
+	tempDir, err := os.MkdirTemp("", "")
+	if err != nil {
+		t.Error(err)
+	}
+	err = os.Chdir(tempDir)
+	if err != nil {
+		t.Error(err)
+	}
+
+	file, err := os.OpenFile("aaa.json",
+		os.O_RDWR|os.O_CREATE|os.O_TRUNC,
+		0755)
+	if err != nil {
+		t.Error(err)
+	}
+	defer file.Close()
+	for _, languageCode := range languageCodes {
+		file, err = os.OpenFile(
+			fmt.Sprintf("aaa-%s.json", languageCode),
+			os.O_RDWR|os.O_CREATE|os.O_TRUNC,
+			0755,
+		)
+		if err != nil {
+			t.Error(err)
+		}
+		_, err = file.WriteString(`{"hello": "world"}`)
+		if err != nil {
+			t.Error(err)
+		}
+		defer file.Close()
+	}
+
+	for _, customFile := range customFiles {
+		file, err = os.OpenFile(
+			customFile,
+			os.O_RDWR|os.O_CREATE|os.O_TRUNC,
+			0755,
+		)
+		if err != nil {
+			t.Error(err)
+		}
+		_, err = file.WriteString(`{"hello": "world"}`)
+		if err != nil {
+			t.Error(err)
+		}
+		defer file.Close()
+	}
+
+	return func() {
+		err := os.Chdir(curDir)
+		if err != nil {
+			t.Error(err)
+		}
+		os.RemoveAll(tempDir)
 	}
 }

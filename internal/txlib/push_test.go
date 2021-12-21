@@ -397,6 +397,8 @@ func TestPushTranslationLimitLanguages(t *testing.T) {
 }
 
 func TestOrganizationNotFound(t *testing.T) {
+	afterTest := beforePushTest(t, nil, nil)
+	defer afterTest()
 	mockData := jsonapi.MockData{
 		"/organizations": &jsonapi.MockEndpoint{
 			Requests: []jsonapi.MockRequest{{
@@ -421,6 +423,8 @@ func TestOrganizationNotFound(t *testing.T) {
 }
 
 func TestProjectNotFound(t *testing.T) {
+	afterTest := beforePushTest(t, nil, nil)
+	defer afterTest()
 	mockData := jsonapi.MockData{
 		"/organizations": getOrganizationEndpoint(),
 		projectsUrl: &jsonapi.MockEndpoint{
@@ -444,6 +448,29 @@ func TestProjectNotFound(t *testing.T) {
 
 	testSimpleGet(t, mockData, "/organizations")
 	testSimpleGet(t, mockData, projectsUrl)
+}
+
+func TestLocalFileNotFound(t *testing.T) {
+	mockData := jsonapi.MockData{
+		"/organizations": getOrganizationEndpoint(),
+		projectsUrl: &jsonapi.MockEndpoint{
+			Requests: []jsonapi.MockRequest{{
+				Response: jsonapi.MockResponse{Text: `{"data": []}`},
+			}},
+		},
+	}
+	api := jsonapi.GetTestConnection(mockData)
+	err := PushCommand(
+		getStandardConfig(), api, PushCommandArguments{Branch: "-1"},
+	)
+	if err == nil {
+		t.Error("Expected error")
+	}
+	expected := "could not find file 'aaa.json'. Aborting."
+	if err != nil && err.Error() != expected {
+		t.Errorf("Got error message '%s', expected '%s'",
+			err, expected)
+	}
 }
 
 func TestPushCommandBranch(t *testing.T) {
