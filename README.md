@@ -2,7 +2,22 @@
 
 ## Installation
 
-The easiest and preferred way to install the Transifex CLI is to download
+### Installing with a script (Linux/Mac)
+You can install the Transifex CLI by executing:
+
+```
+curl -o- https://raw.githubusercontent.com/transifex/cli/master/install.sh | bash
+```
+
+This script will:
+* Try to find the correct version for your system.
+* Download & extract the CLI to the current folder.
+* Check for a profile in one of `.profile, .bashrc, .bash_profile, .zshrc` and append `export PATH="<PWD result>:$PATH"`, so you can call 'tx' from any path.
+
+**Note:** You need to restart your terminal for the `PATH` changes to be applied.
+
+### Download from Github Releases (Linux/Mac/Windows)
+Another way to install the Transifex CLI is to download
 the latest version of the binary from GitHub
 [here](https://github.com/transifex/cli/releases).
 
@@ -17,7 +32,7 @@ Clone the [repository](https://github.com/transifex/cli) and go into the directo
 ```shell
 cd /path/to/transifex/cli
 ```
-
+### Building from source
 The default way to build the binary is
 
   ```shell
