@@ -61,9 +61,9 @@ So after the migration `<project>.<resource>` should become `o:<org>:p:<proj>:r:
 In case something fails during this process, we will provide a message with the failed
 migrated resource so that you can identify and change the section header manually.
 
-If you are using a `~/.transifexrc` file for authentication, instead of global flags or
-environment variables, some new fields must be added there too. You will be prompt for
-an API token in case you are using a username/password pair in your configuration file.
+You will be prompted for an API token in case you are using a username/password pair in
+your `~/.transifexrc` file or if you are not using one.
+
 If you are migrating an existing software project from an older version of the Transifex
 client, you need to run:
 
