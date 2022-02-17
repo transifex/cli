@@ -53,6 +53,10 @@ func MigrateLegacyConfigFile(
 	// Get the current host
 	activeHost := cfg.GetActiveHost()
 
+	if activeHost == nil {
+		activeHost = &config.Host{}
+	}
+
 	if activeHost.Token == "" {
 		if activeHost.Username == "api" {
 			// Use the current password as token
@@ -60,8 +64,13 @@ func MigrateLegacyConfigFile(
 			activeHost.Token = activeHost.Password
 		} else {
 			// No token for some reason get a new one
-			fmt.Println("API token not found. Please provide it and it will " +
-				"be saved in '~/.transifexrc'.")
+			if cfg.GetActiveHost() != nil {
+				fmt.Println("API token not found. Please provide it and it will " +
+					"be saved in '~/.transifexrc'.")
+			} else {
+				fmt.Println("Please provide an API token to continue.")
+			}
+
 			fmt.Println("If you don't have an API token, you can generate " +
 				"one in https://www.transifex.com/user/settings/api/")
 			fmt.Print("> ")

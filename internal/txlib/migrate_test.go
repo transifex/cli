@@ -400,6 +400,86 @@ func TestNeedsTokenInRootConfig(t *testing.T) {
 	assert.True(t, strings.Contains(string(out), "API token not found."))
 }
 
+func TestNoTransifexRcFile(t *testing.T) {
+	var afterTest = func(pkgDir string, tmpDir string) {
+		err := os.Chdir(pkgDir)
+		if err != nil {
+			t.Error(err)
+		}
+		err = os.RemoveAll(tmpDir)
+		if err != nil {
+			fmt.Println("Delete error:", err)
+		}
+	}
+	// Requests Data
+	mockData := jsonapi.MockData{
+		"/organizations": &jsonapi.MockEndpoint{
+			Requests: []jsonapi.MockRequest{
+				{
+					Response: jsonapi.MockResponse{
+						Text: `{"data": []}`,
+					},
+				},
+			},
+		},
+	}
+
+	// Create deprecated config & .transifexrc
+	pkgDir, _ := os.Getwd()
+	tmpDir, err := os.MkdirTemp("", "")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = os.Chdir(tmpDir)
+	if err != nil {
+		t.Error(err)
+	}
+	defer afterTest(pkgDir, tmpDir)
+
+	f, err := os.Create("config")
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer f.Close()
+
+	_, err2 := f.WriteString(`
+		[main]
+		host = https://www.transifex.com
+		[projslug.ares]
+		file_filter = locale/<lang>.po
+		minimum_perc = 0
+		source_file = locale/en.po
+		source_lang = en
+		type = PO
+	`)
+	if err2 != nil {
+		log.Fatal(err2)
+	}
+
+	// Load for the first time configs
+	cfg, err := config.LoadFromPaths("", filepath.Join(tmpDir, "config"))
+	if err != nil {
+		t.Error(err)
+	}
+
+	api := jsonapi.GetTestConnection(mockData)
+
+	rescueStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	_, _ = MigrateLegacyConfigFile(&cfg, api)
+
+	w.Close()
+	out, _ := ioutil.ReadAll(r)
+	os.Stdout = rescueStdout
+
+	assert.True(t, strings.Contains(string(out), "Please provide an API token to continue."))
+}
+
 func TestResourceMigrationFailed(t *testing.T) {
 	var afterTest = func(pkgDir string, tmpDir string) {
 		err := os.Chdir(pkgDir)
