@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/transifex/cli/pkg/assert"
 )
 
 func beforeFileFilterTest(t *testing.T) func() {
@@ -121,4 +123,19 @@ func TestSearchFileFilterDirs(t *testing.T) {
 	if !reflect.DeepEqual(actual, expected) {
 		t.Errorf("Got '%+v', expected '%+v'", actual, expected)
 	}
+}
+
+func TestNormaliseFileFilterLinuxBased(t *testing.T) {
+	result := normaliseFileFilter("en/text.txt")
+	expected := filepath.Join("en", "text.txt")
+
+	assert.Equal(t, result, expected)
+}
+
+func TestNormaliseFileFilterWinBased(t *testing.T) {
+
+	result := normaliseFileFilter("en\\text.txt")
+	expected := filepath.Join("en", "text.txt")
+
+	assert.Equal(t, result, expected)
 }
