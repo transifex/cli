@@ -456,7 +456,11 @@ func pushTranslations(
 			return nil, err
 		}
 	}
-
+	if len(languageCodesToPush) < 1 {
+		spinner.Warning(
+			fmt.Sprintf("No language files found to push. Aborting"),
+		)
+	}
 	var uploads []*jsonapi.Resource
 	for i := range languageCodesToPush {
 		languageCode := languageCodesToPush[i]
