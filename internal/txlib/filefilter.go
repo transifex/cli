@@ -129,8 +129,9 @@ The following calls and results will happen:
 func searchFileFilter(root string, fileFilter string) map[string]string {
 	result := make(map[string]string)
 
-	fileFilterSlice := strings.Split(fileFilter, PathSeparator)
+	fileFilter = normaliseFileFilter(fileFilter)
 
+	fileFilterSlice := strings.Split(fileFilter, PathSeparator)
 	if len(fileFilter) == 0 {
 		fileInfo, err := os.Stat(root)
 		if err != nil || fileInfo.IsDir() {
@@ -181,4 +182,20 @@ func searchFileFilter(root string, fileFilter string) map[string]string {
 		}
 		return result
 	}
+}
+
+/**
+Best effort try to figure out if we need to change the path separator
+Case: Someone creates the config paths for a linux machine but
+tries to use the CLI from a windows machine or the opposite
+*/
+func normaliseFileFilter(fileFilter string) string {
+	if !strings.Contains(fileFilter, PathSeparator) {
+		sep := "/"
+		if PathSeparator == "/" {
+			sep = "\\"
+		}
+		fileFilter = strings.Replace(fileFilter, sep, PathSeparator, -1)
+	}
+	return fileFilter
 }

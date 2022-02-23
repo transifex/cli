@@ -32,3 +32,5 @@ jobs:
            else
                 make local-test
            fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TKN }}
