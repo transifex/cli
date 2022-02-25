@@ -70,9 +70,11 @@ func PollResourceStringsDownload(
 
 			dir, _ := filepath.Split(cfgResource.SourceFile)
 
-			if _, statErr := os.Stat(dir); os.IsNotExist(statErr) {
-				err := fmt.Errorf("directory '%s' does not exist", dir)
-				return err
+			if dir != "" {
+				if _, statErr := os.Stat(dir); os.IsNotExist(statErr) {
+					err := fmt.Errorf("directory '%s' does not exist", dir)
+					return err
+				}
 			}
 
 			sourceFile := cfgResource.SourceFile
