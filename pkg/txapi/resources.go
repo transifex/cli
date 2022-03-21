@@ -1,6 +1,8 @@
 package txapi
 
 import (
+	"errors"
+
 	"github.com/transifex/cli/pkg/jsonapi"
 )
 
@@ -99,7 +101,7 @@ func GetResource(
 }
 
 func CreateResource(
-	api *jsonapi.Connection, project *jsonapi.Resource,
+	api *jsonapi.Connection, project_id string,
 	resourceName, resourceSlug, Type string,
 ) (*jsonapi.Resource, error) {
 	resource := &jsonapi.Resource{
@@ -113,11 +115,12 @@ func CreateResource(
 	if err != nil {
 		return nil, err
 	}
-	resource.SetRelated("project", project)
+	resource.SetRelated("project", &jsonapi.Resource{Type: "projects", Id: project_id})
 	resource.SetRelated("i18n_format",
 		&jsonapi.Resource{Type: "i18n_formats", Id: Type})
 
 	err = resource.Save([]string{"name", "slug", "project", "i18n_format"})
+	resource.Relationships["project"].Fetched = false
 	if err != nil {
 		return nil, err
 	}
@@ -135,4 +138,18 @@ func DeleteResource(
 	}
 
 	return nil
+}
+
+func GetResourceFromId(api *jsonapi.Connection, id string) (*jsonapi.Resource, error) {
+	resource, err := api.Get("resources", id)
+	if err != nil {
+		var e *jsonapi.Error
+		if errors.As(err, &e) {
+			if e.StatusCode == 404 {
+				return nil, nil
+			}
+		}
+		return nil, err
+	}
+	return &resource, nil
 }
