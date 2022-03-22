@@ -1,6 +1,7 @@
 package txapi
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/transifex/cli/pkg/jsonapi"
@@ -119,4 +120,18 @@ func GetProjectLanguages(
 		}
 	}
 	return result, nil
+}
+
+func GetProjectById(api *jsonapi.Connection, id string) (*jsonapi.Resource, error) {
+	project, err := api.Get("projects", id)
+	if err != nil {
+		var e *jsonapi.Error
+		if errors.As(err, &e) {
+			if e.StatusCode == 404 {
+				return nil, nil
+			}
+		}
+		return nil, err
+	}
+	return &project, nil
 }

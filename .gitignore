@@ -6,5 +6,5 @@ bin/
 tags
 cli
 .vscode
-
+.DS_Store
 local_example/
