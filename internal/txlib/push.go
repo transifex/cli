@@ -136,12 +136,12 @@ func pushResource(
 	args PushCommandArguments,
 ) error {
 	pterm.DefaultSection.Printf("Resource %s\n", cfgResource.Name())
-	duration, _ := time.ParseDuration("2s")
+	duration, _ := time.ParseDuration("1s")
 
 	msg := fmt.Sprintf("Searching for resource '%s'", cfgResource.ResourceSlug)
 	spinner, err := pterm.DefaultSpinner.Start(msg)
 
-	resource, err := txapi.GetResourceFromId(api, cfgResource.GetAPv3Id())
+	resource, err := txapi.GetResourceById(api, cfgResource.GetAPv3Id())
 	if err != nil {
 		spinner.Fail(msg + ": " + err.Error())
 		return err

@@ -140,7 +140,7 @@ func DeleteResource(
 	return nil
 }
 
-func GetResourceFromId(api *jsonapi.Connection, id string) (*jsonapi.Resource, error) {
+func GetResourceById(api *jsonapi.Connection, id string) (*jsonapi.Resource, error) {
 	resource, err := api.Get("resources", id)
 	if err != nil {
 		var e *jsonapi.Error

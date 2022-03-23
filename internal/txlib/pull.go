@@ -529,7 +529,7 @@ func fetchResource(
 	if err != nil {
 		return nil, err
 	}
-	resource, err := txapi.GetResourceFromId(&api, cfgResource.GetAPv3Id())
+	resource, err := txapi.GetResourceById(&api, cfgResource.GetAPv3Id())
 	if err != nil {
 		spinner.Fail(msg + ": " + err.Error())
 		return nil, err
