@@ -486,8 +486,8 @@ func TestPushCommandBranch(t *testing.T) {
 				Response: jsonapi.MockResponse{
 					Text: `{"data": {
 						"type": "resources",
-						"id": "o:orgslug:p:projslug:r:resslug--branch",
-						"attributes": {"slug": "resslug--branch"}
+						"id": "o:orgslug:p:projslug:r:branch--resslug",
+						"attributes": {"slug": "branch--resslug"}
 					}}`,
 				},
 			}},
@@ -510,8 +510,8 @@ func TestPushCommandBranch(t *testing.T) {
 	testSimpleGet(t, mockData, resourcesUrl)
 	testSimplePost(t, mockData, "/resources", `{"data": {
 		"type": "resources",
-		"attributes": {"name": "aaa.json (branch branch)",
-					   "slug": "resslug--branch"},
+		"attributes": {"name": "(branch branch) aaa.json",
+					   "slug": "branch--resslug"},
 		"relationships": {
 			"project": {"data": {"type": "projects",
 								 "id": "o:orgslug:p:projslug"}},

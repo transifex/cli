@@ -67,7 +67,7 @@ func PullCommand(
 			}
 			if arguments.Branch != "" {
 				key := fmt.Sprintf("%s--%s",
-					cfgResource.Name(), arguments.Branch)
+					arguments.Branch, cfgResource.Name())
 				cfgResources[key] = cfgResource
 			} else {
 				cfgResources[cfgResource.Name()] = cfgResource
@@ -80,7 +80,7 @@ func PullCommand(
 			cfgResource := &cfg.Local.Resources[i]
 			if arguments.Branch != "" {
 				key := fmt.Sprintf("%s--%s",
-					cfgResource.Name(), arguments.Branch)
+					arguments.Branch, cfgResource.Name())
 				cfgResources[key] = cfgResource
 			} else {
 				cfgResources[cfgResource.Name()] = cfgResource
@@ -92,8 +92,8 @@ func PullCommand(
 		cfgResource := cfgResources[i]
 		if arguments.Branch != "" {
 			cfgResource.ResourceSlug = fmt.Sprintf("%s--%s",
-				cfgResource.ResourceSlug,
-				arguments.Branch)
+				arguments.Branch,
+				cfgResource.ResourceSlug)
 		}
 	}
 
