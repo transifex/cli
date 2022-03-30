@@ -592,7 +592,7 @@ func Main() {
 					},
 					&cli.StringFlag{
 						Name: "branch",
-						Usage: "Push to specific branch (use empty argument " +
+						Usage: "Delete specific branch (use empty argument " +
 							"'' to use the current branch, if it can be " +
 							"determined)",
 						Value: "-1",
