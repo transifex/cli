@@ -94,8 +94,8 @@ func DeleteCommand(
 		cfgResource := *item
 		if arguments.Branch != "" {
 			cfgResource.ResourceSlug = fmt.Sprintf("%s--%s",
-				cfgResource.ResourceSlug,
-				slug.Make(arguments.Branch))
+				slug.Make(arguments.Branch),
+				cfgResource.ResourceSlug)
 		}
 		err := deleteResource(&api, cfg, cfgResource, *arguments)
 		if err != nil {

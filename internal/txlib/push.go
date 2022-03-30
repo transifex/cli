@@ -115,8 +115,8 @@ func PushCommand(
 		cfgResource := cfgResources[i]
 		if args.Branch != "" {
 			cfgResource.ResourceSlug = fmt.Sprintf("%s--%s",
-				cfgResource.ResourceSlug,
-				slug.Make(args.Branch))
+				slug.Make(args.Branch),
+				cfgResource.ResourceSlug)
 		}
 	}
 
@@ -210,9 +210,9 @@ func pushResource(
 		if args.Branch == "" {
 			resourceName = cfgResource.ResourceName()
 		} else {
-			resourceName = fmt.Sprintf("%s (branch %s)",
-				cfgResource.ResourceName(),
-				args.Branch)
+			resourceName = fmt.Sprintf("(branch %s) %s",
+				args.Branch,
+				cfgResource.ResourceName())
 		}
 		msg = fmt.Sprintf(
 			"Creating resource with name '%s' and slug '%s'",

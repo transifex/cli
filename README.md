@@ -254,7 +254,7 @@ configured with `tx add`.
 
 **Limiting resources:**
 
-You can limit the resources you want to pull with:
+You can limit the resources you want to push with:
 
 ```sh
 → tx push [RESOURCE_ID]...
@@ -365,7 +365,7 @@ default to taking the filesystem timestamp into account.
   resource that are tied to the provided branch. So if `tx push proj.res`
   pushes to the `https://www.transifex.com/org/proj/res` resource, then `tx
   push --branch foo proj.res` will push to the
-  `https://www.transifex.com/org/proj/res--foo` resource. This way you can
+  `https://www.transifex.com/org/proj/foo--res` resource. This way you can
   separate the localization effort across different branches. If you supply an
   empty string as the branch (`--branch ''`), then the client will attempt to
   figure out the currently active branch in the local git repository. For
@@ -384,7 +384,7 @@ default to taking the filesystem timestamp into account.
   `https://www.transifex.com/myorganization/myproject/myresource` resource will
   not be affected by the changes you did to the source strings and the
   localization effort can be done in parallel on the
-  `https://www.transifex.com/myorganization/myproject/myresource--new_feature`
+  `https://www.transifex.com/myorganization/myproject/new_feature--myresource`
   resource.
 
 - `--skip`: Normally, if an upload fails, the client will abort. This may not
@@ -545,7 +545,7 @@ default to taking the filesystem timestamp into account.
   resource that are tied to the provided branch. So if `tx pull proj.res`
   pulls from the `https://www.transifex.com/org/proj/res` resource, then `tx
   pull --branch foo proj.res` will pull from the
-  `https://www.transifex.com/org/proj/res--foo` resource. This way you can
+  `https://www.transifex.com/org/proj/foo--res` resource. This way you can
   separate the localization effort across different branches. If you supply an
   empty string as the branch (`--branch ''`), then the client will attempt to
   figure out the currently active branch in the local git repository. For

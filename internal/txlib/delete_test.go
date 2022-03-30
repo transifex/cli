@@ -19,9 +19,9 @@ const (
 	resourcesUrlDeleteCommand = "/resources?filter%5B" +
 		"project%5D=o%3Aorgslug%3Ap%3Aprojslug"
 	resourceUrlDeleteCommand              = "/resources/o:orgslug:p:projslug:r:resslug"
-	resourceUrlBranchDeleteCommand        = "/resources/o:orgslug:p:projslug:r:resslug--abranch"
+	resourceUrlBranchDeleteCommand        = "/resources/o:orgslug:p:projslug:r:abranch--resslug"
 	resource1UrlDeleteCommand             = "/resources/o:orgslug:p:projslug:r:resslug1"
-	resource1UrlBranchDeleteCommand       = "/resources/o:orgslug:p:projslug:r:resslug1--abranch"
+	resource1UrlBranchDeleteCommand       = "/resources/o:orgslug:p:projslug:r:abranch--resslug1"
 	resourceLanguageStatsUrlDeleteCommand = "/resource_language_stats?" +
 		"filter%5Bproject%5D=o%3Aorgslug%3Ap%3Aprojslug&" +
 		"filter%5Bresource%5D=o%3Aorgslug%3Ap%3Aprojslug%3Ar%3Aresslug"
@@ -493,8 +493,8 @@ func deleteGetResourceBranchEndpoint() *jsonapi.MockEndpoint {
 		Requests: []jsonapi.MockRequest{{
 			Response: jsonapi.MockResponse{
 				Text: `{"data": {"type": "resources",
-								 "id": "o:orgslug:p:projslug:r:resslug--abranch",
-								 "attributes": {"slug": "resslug--abranch"}}}`,
+								 "id": "o:orgslug:p:projslug:r:abranch--resslug",
+								 "attributes": {"slug": "abranch--resslug"}}}`,
 			},
 		}},
 	}
@@ -517,8 +517,8 @@ func deleteGetResourceBranch1Endpoint() *jsonapi.MockEndpoint {
 		Requests: []jsonapi.MockRequest{{
 			Response: jsonapi.MockResponse{
 				Text: `{"data": {"type": "resources",
-								 "id": "o:orgslug:p:projslug:r:resslug1--branch",
-								 "attributes": {"slug": "resslug1--branch"}}}`,
+								 "id": "o:orgslug:p:projslug:r:branch--resslug1",
+								 "attributes": {"slug": "branch--resslug1"}}}`,
 			},
 		}},
 	}
@@ -551,15 +551,15 @@ func deleteGetResourcesBranchEndpoint() *jsonapi.MockEndpoint {
 			{
 				Response: jsonapi.MockResponse{
 					Text: `{"data": [{"type": "resources",
-									"id": "o:orgslug:p:projslug:r:resslug--abranch",
-									"attributes": {"slug": "resslug--abranch"}}]}`,
+									"id": "o:orgslug:p:projslug:r:abranch--resslug",
+									"attributes": {"slug": "abranch--resslug"}}]}`,
 				},
 			},
 			{
 				Response: jsonapi.MockResponse{
 					Text: `{"data": [{"type": "resources",
-									"id": "o:orgslug:p:projslug:r:resslug1--abranch",
-									"attributes": {"slug": "resslug1--abranch"}}]}`,
+									"id": "o:orgslug:p:projslug:r:abranch--resslug1",
+									"attributes": {"slug": "abranch--resslug1"}}]}`,
 				},
 			},
 		},
