@@ -136,55 +136,12 @@ func pushResource(
 	args PushCommandArguments,
 ) error {
 	pterm.DefaultSection.Printf("Resource %s\n", cfgResource.Name())
-	duration, _ := time.ParseDuration("2s")
+	duration, _ := time.ParseDuration("1s")
 
-	msg := fmt.Sprintf("Fetching organization '%s'",
-		cfgResource.OrganizationSlug)
+	msg := fmt.Sprintf("Searching for resource '%s'", cfgResource.ResourceSlug)
 	spinner, err := pterm.DefaultSpinner.Start(msg)
-	if err != nil {
-		return err
-	}
-	organization, err := txapi.GetOrganization(api,
-		cfgResource.OrganizationSlug)
-	if err != nil {
-		spinner.Fail(msg + ": " + err.Error())
-		return err
-	}
-	if organization == nil {
-		err = fmt.Errorf("%s: Not found", msg)
-		spinner.Fail(err)
-		return err
-	}
-	spinner.Success(
-		fmt.Sprintf("Organization '%s' fetched", cfgResource.OrganizationSlug),
-	)
 
-	msg = fmt.Sprintf("Fetching project '%s'", cfgResource.ProjectSlug)
-	spinner, err = pterm.DefaultSpinner.Start(msg)
-	if err != nil {
-		return err
-	}
-	project, err := txapi.GetProject(api, organization,
-		cfgResource.ProjectSlug)
-	if err != nil {
-		spinner.Fail(msg + ": " + err.Error())
-		return err
-	}
-	if project == nil {
-		err = fmt.Errorf("%s: Not found", msg)
-		spinner.Fail(err)
-		return err
-	}
-	spinner.Success(
-		fmt.Sprintf("Project '%s' fetched", cfgResource.ProjectSlug),
-	)
-
-	msg = fmt.Sprintf("Searching for resource '%s'", cfgResource.ResourceSlug)
-	spinner, err = pterm.DefaultSpinner.Start(msg)
-	if err != nil {
-		return err
-	}
-	resource, err := txapi.GetResource(api, project, cfgResource.ResourceSlug)
+	resource, err := txapi.GetResourceById(api, cfgResource.GetAPv3Id())
 	if err != nil {
 		spinner.Fail(msg + ": " + err.Error())
 		return err
@@ -196,7 +153,10 @@ func pushResource(
 		)
 	} else {
 		spinner.Warning(
-			fmt.Sprintf("Resource with slug '%s' not found. We will try to create it for you.", cfgResource.ResourceSlug),
+			fmt.Sprintf(
+				"Resource with slug '%s' not found. We will try to create it for you.",
+				cfgResource.ResourceSlug,
+			),
 		)
 		if cfgResource.Type == "" {
 			return fmt.Errorf(
@@ -214,17 +174,13 @@ func pushResource(
 				args.Branch,
 				cfgResource.ResourceName())
 		}
-		msg = fmt.Sprintf(
-			"Creating resource with name '%s' and slug '%s'",
-			resourceName,
-			cfgResource.ResourceSlug,
-		)
-		spinner, err = pterm.DefaultSpinner.Start(msg)
-		if err != nil {
-			return err
-		}
-		resource, err = txapi.CreateResource(api,
-			project,
+		resource, err = txapi.CreateResource(
+			api,
+			fmt.Sprintf(
+				"o:%s:p:%s",
+				cfgResource.OrganizationSlug,
+				cfgResource.ProjectSlug,
+			),
 			resourceName,
 			cfgResource.ResourceSlug,
 			cfgResource.Type)

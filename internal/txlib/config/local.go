@@ -445,3 +445,12 @@ func findLocalPath(path string) (string, error) {
 	}
 	return filepath.Join(curDir, ".tx", "config"), nil
 }
+
+func (localCfg *Resource) GetAPv3Id() string {
+	return fmt.Sprintf(
+		"o:%s:p:%s:r:%s",
+		localCfg.OrganizationSlug,
+		localCfg.ProjectSlug,
+		localCfg.ResourceSlug,
+	)
+}
