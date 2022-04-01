@@ -831,6 +831,89 @@ func TestPullCommandPercentageArgumentShouldWinOverResource(t *testing.T) {
 	}
 }
 
+func TestPercentageWinsOverForce(t *testing.T) {
+	cfg := config.Config{
+		Local: &config.LocalConfig{
+			Resources: []config.Resource{
+				{
+					OrganizationSlug:  "orgslug",
+					ProjectSlug:       "projslug",
+					ResourceSlug:      "resslug",
+					Type:              "I18N_TYPE",
+					SourceFile:        "source",
+					MinimumPercentage: 90,
+				},
+			},
+		},
+	}
+
+	mockData := getSkipMinPercentageMockData(2, 0, 0)
+	api := jsonapi.GetTestConnection(mockData)
+
+	arguments := PullCommandArguments{
+		FileType:          "default",
+		Mode:              "default",
+		All:               true,
+		ResourceIds:       nil,
+		Force:             true,
+		MinimumPercentage: -1,
+	}
+
+	err := PullCommand(&cfg, api, &arguments)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+
+	endpoint := mockData["/resource_translations_async_downloads/download_1"]
+	if endpoint.Count != 0 {
+		t.Errorf("Made %d requests to '%s', expected 0"+
+			"because of translated strings minimum perc",
+			endpoint.Count,
+			"/resource_translations_async_downloads/download_1")
+	}
+}
+
+func TestForceShouldWinIfThereIsNoMinPercentage(t *testing.T) {
+	cfg := config.Config{
+		Local: &config.LocalConfig{
+			Resources: []config.Resource{
+				{
+					OrganizationSlug: "orgslug",
+					ProjectSlug:      "projslug",
+					ResourceSlug:     "resslug",
+					Type:             "I18N_TYPE",
+					SourceFile:       "source",
+				},
+			},
+		},
+	}
+
+	mockData := getSkipMinPercentageMockData(2, 0, 0)
+	api := jsonapi.GetTestConnection(mockData)
+
+	arguments := PullCommandArguments{
+		FileType:          "default",
+		Mode:              "default",
+		All:               true,
+		ResourceIds:       nil,
+		Force:             true,
+		MinimumPercentage: -1,
+	}
+
+	err := PullCommand(&cfg, api, &arguments)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+
+	endpoint := mockData["/resource_translations_async_downloads/download_1"]
+	if endpoint.Count != 1 {
+		t.Errorf("Made %d requests to '%s', expected 1"+
+			"because force flag was used",
+			endpoint.Count,
+			"/resource_translations_async_downloads/download_1")
+	}
+}
+
 func getSkipMinPercentageMockData(translatedStrings int,
 	reviewedStrings int,
 	proofreadStrings int) jsonapi.MockData {
