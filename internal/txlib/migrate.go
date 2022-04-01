@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/transifex/cli/pkg/txapi"
@@ -110,7 +111,15 @@ func MigrateLegacyConfigFile(
 				)
 			} else {
 				resource.OrganizationSlug = organizationSlug
+				if resource.SourceFile == "" &&
+					resource.SourceLanguage != "" &&
+					resource.FileFilter != "" {
+					resource.SourceFile = strings.ReplaceAll(
+						resource.FileFilter, "<lang>", resource.SourceLanguage,
+					)
+				}
 				resources[i] = resource
+
 			}
 
 		}
