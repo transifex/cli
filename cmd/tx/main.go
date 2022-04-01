@@ -48,7 +48,8 @@ func Main() {
 		},
 	}
 	app := &cli.App{
-		Version: txlib.Version,
+		Version:                txlib.Version,
+		UseShortOptionHandling: true,
 		Commands: []*cli.Command{
 			{
 				Name:    "migrate",
