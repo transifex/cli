@@ -295,7 +295,7 @@ func createTranslationsAsyncDownloads(cfg *config.Config,
 			ContentEncoding:  commandArgs.ContentEncoding,
 		}
 
-		localLanguageCode, _ := txapi.CreateLanguageDirectory(
+		localLanguageCode, _ := txapi.GetLanguageDirectory(
 			cfg.Local.LanguageMappings, lang, cfgResource,
 		)
 
@@ -336,7 +336,13 @@ func createTranslationsAsyncDownloads(cfg *config.Config,
 			}
 		}
 
-		if !commandArgs.Force {
+		minimum_perc := arguments.CommandArgs.MinimumPercentage
+		if minimum_perc == -1 {
+			if cfgResource.MinimumPercentage > -1 {
+				minimum_perc = cfgResource.MinimumPercentage
+			}
+		}
+		if !commandArgs.Force || minimum_perc > 0 {
 			// Check timestamps only if force is not true
 
 			remoteStats, err := txapi.GetResourceStats(&api, resource, nil)
@@ -351,7 +357,7 @@ func createTranslationsAsyncDownloads(cfg *config.Config,
 				}
 			}
 
-			localLanguageCode, _ := txapi.CreateLanguageDirectory(
+			localLanguageCode, _ := txapi.GetLanguageDirectory(
 				cfg.Local.LanguageMappings, lang, cfgResource,
 			)
 
@@ -368,18 +374,13 @@ func createTranslationsAsyncDownloads(cfg *config.Config,
 			key := download.Relationships["language"].DataSingular.Id
 			remoteStat := remoteStats[key]
 
-			minimum_perc := arguments.CommandArgs.MinimumPercentage
-			if minimum_perc == -1 {
-				if cfgResource.MinimumPercentage > -1 {
-					minimum_perc = cfgResource.MinimumPercentage
-				}
-			}
 			skip, err := shouldSkipDownload(
 				languageFilePath,
 				remoteStat,
 				arguments.CommandArgs.UseGitTimestamps,
 				arguments.CommandArgs.Mode,
 				minimum_perc,
+				arguments.CommandArgs.Force,
 			)
 			if err != nil {
 				spinner.Fail(fmt.Sprintf("%s: %s", msg, err.Error()))
@@ -572,7 +573,7 @@ func shouldSkipDueToStringPercentage(
 }
 func shouldSkipDownload(
 	path string, remoteStat *jsonapi.Resource, useGitTimestamps bool,
-	mode string, minimum_perc int,
+	mode string, minimum_perc int, force bool,
 ) (bool, error) {
 	var localTime time.Time
 
@@ -605,27 +606,31 @@ func shouldSkipDownload(
 			return true, nil
 		}
 	}
-	if useGitTimestamps {
-		// TODO: check if parent folder is repo
-		localTime = getLastCommitDate(path)
-		if localTime == (time.Time{}) {
-			return shouldSkipDownload(path, remoteStat,
-				false, mode, minimum_perc)
-		}
-	} else {
-		localStat, err := os.Stat(path)
-		if err != nil {
-			if os.IsNotExist(err) {
-				return false, nil
-			}
-			return false, err
-		}
-		localTime = localStat.ModTime().UTC()
-	}
 
-	// Don't pull if local file is newer than remote
-	// resource-language
-	return remoteTime.Before(localTime), nil
+	if !force {
+		if useGitTimestamps {
+			// TODO: check if parent folder is repo
+			localTime = getLastCommitDate(path)
+			if localTime == (time.Time{}) {
+				return shouldSkipDownload(path, remoteStat,
+					false, mode, minimum_perc, force)
+			}
+		} else {
+			localStat, err := os.Stat(path)
+			if err != nil {
+				if os.IsNotExist(err) {
+					return false, nil
+				}
+				return false, err
+			}
+			localTime = localStat.ModTime().UTC()
+		}
+
+		// Don't pull if local file is newer than remote
+		// resource-language
+		return remoteTime.Before(localTime), nil
+	}
+	return false, nil
 }
 
 func shouldSkipResourceDownload(
