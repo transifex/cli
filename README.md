@@ -563,7 +563,7 @@ default to taking the filesystem timestamp into account.
     `https://www.transifex.com/myorganization/myproject/myresource` resource will
   not be affected by the changes one did, and the localization effort can be done
   in parallel on the
-  `https://www.transifex.com/myorganization/myproject/myresource--new_feature`
+  `https://www.transifex.com/myorganization/myproject/new_feature--myresource`
   resource.
 
 - `--skip`: Normally, if a download fails, the client will abort. This may not

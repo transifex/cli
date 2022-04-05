@@ -82,7 +82,7 @@ func PollTranslationDownload(languageMappings map[string]string,
 			}
 			txLanguageCode := languageRelationship.DataSingular.Attributes["code"].(string)
 
-			localLanguageCode, languageDirectory := CreateLanguageDirectory(
+			localLanguageCode, languageDirectory := GetLanguageDirectory(
 				languageMappings,
 				txLanguageCode,
 				cfgResource)
@@ -127,7 +127,7 @@ func PollTranslationDownload(languageMappings map[string]string,
 	return nil
 }
 
-func CreateLanguageDirectory(
+func GetLanguageDirectory(
 	languageMappings map[string]string,
 	txLanguageCode string,
 	cfgResource *config.Resource,

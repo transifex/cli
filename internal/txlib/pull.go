@@ -33,7 +33,6 @@ type PullCommandArguments struct {
 type CreateAsyncDownloadArguments struct {
 	CommandArgs *PullCommandArguments
 	Project     *jsonapi.Resource
-	//ResourceName string
 	CfgResource *config.Resource
 }
 
@@ -116,12 +115,8 @@ func createPullResource(
 	cfgResource *config.Resource,
 ) error {
 	pterm.DefaultSection.Printf("Resource %s", cfgResource.Name())
-	org, err := fetchOrganization(cfgResource, api)
-	if err != nil {
-		return err
-	}
 
-	project, err := fetchProject(cfgResource, api, org)
+	project, err := fetchProject(cfgResource, api)
 	if err != nil {
 		return err
 	}
@@ -157,14 +152,17 @@ func createPullResource(
 func fetchProject(
 	cfgResource *config.Resource,
 	api jsonapi.Connection,
-	org *jsonapi.Resource,
 ) (*jsonapi.Resource, error) {
 	msg := fmt.Sprintf("Fetching project '%s'", cfgResource.ProjectSlug)
 	spinner, err := pterm.DefaultSpinner.Start(msg)
 	if err != nil {
 		return nil, err
 	}
-	project, err := txapi.GetProject(&api, org, cfgResource.ProjectSlug)
+	project, err := txapi.GetProjectById(&api, fmt.Sprintf(
+		"o:%s:p:%s",
+		cfgResource.OrganizationSlug,
+		cfgResource.ProjectSlug,
+	))
 	if err != nil {
 		spinner.Fail(msg + ": " + err.Error())
 		return nil, err
@@ -180,32 +178,6 @@ func fetchProject(
 	return project, nil
 }
 
-func fetchOrganization(
-	cfgResource *config.Resource, api jsonapi.Connection,
-) (*jsonapi.Resource, error) {
-	msg := fmt.Sprintf("Fetching organization '%s'",
-		cfgResource.OrganizationSlug)
-	spinner, err := pterm.DefaultSpinner.Start(msg)
-	if err != nil {
-		return nil, err
-	}
-
-	org, err := txapi.GetOrganization(&api, cfgResource.OrganizationSlug)
-	if err != nil {
-		spinner.Fail(msg + ": " + err.Error())
-		return nil, err
-	}
-	if org == nil {
-		err = fmt.Errorf("%s: Not found", msg)
-		spinner.Fail(err)
-		return nil, err
-	}
-	spinner.Success(
-		fmt.Sprintf("Organization '%s' fetched", cfgResource.OrganizationSlug),
-	)
-	return org, err
-}
-
 func createTranslationsAsyncDownloads(cfg *config.Config,
 	api jsonapi.Connection,
 	arguments *CreateAsyncDownloadArguments) error {
@@ -215,7 +187,8 @@ func createTranslationsAsyncDownloads(cfg *config.Config,
 	commandArgs := arguments.CommandArgs
 	var targetLanguages map[string]*jsonapi.Resource
 
-	resource, err := fetchResource(api, cfgResource, project)
+	resource, err := fetchResource(api, cfgResource)
+	resource.SetRelated("project", project)
 	if err != nil {
 		return err
 	}
@@ -322,7 +295,7 @@ func createTranslationsAsyncDownloads(cfg *config.Config,
 			ContentEncoding:  commandArgs.ContentEncoding,
 		}
 
-		localLanguageCode, _ := txapi.CreateLanguageDirectory(
+		localLanguageCode, _ := txapi.GetLanguageDirectory(
 			cfg.Local.LanguageMappings, lang, cfgResource,
 		)
 
@@ -363,7 +336,13 @@ func createTranslationsAsyncDownloads(cfg *config.Config,
 			}
 		}
 
-		if !commandArgs.Force {
+		minimum_perc := arguments.CommandArgs.MinimumPercentage
+		if minimum_perc == -1 {
+			if cfgResource.MinimumPercentage > -1 {
+				minimum_perc = cfgResource.MinimumPercentage
+			}
+		}
+		if !commandArgs.Force || minimum_perc > 0 {
 			// Check timestamps only if force is not true
 
 			remoteStats, err := txapi.GetResourceStats(&api, resource, nil)
@@ -378,7 +357,7 @@ func createTranslationsAsyncDownloads(cfg *config.Config,
 				}
 			}
 
-			localLanguageCode, _ := txapi.CreateLanguageDirectory(
+			localLanguageCode, _ := txapi.GetLanguageDirectory(
 				cfg.Local.LanguageMappings, lang, cfgResource,
 			)
 
@@ -395,18 +374,13 @@ func createTranslationsAsyncDownloads(cfg *config.Config,
 			key := download.Relationships["language"].DataSingular.Id
 			remoteStat := remoteStats[key]
 
-			minimum_perc := arguments.CommandArgs.MinimumPercentage
-			if minimum_perc == -1 {
-				if cfgResource.MinimumPercentage > -1 {
-					minimum_perc = cfgResource.MinimumPercentage
-				}
-			}
 			skip, err := shouldSkipDownload(
 				languageFilePath,
 				remoteStat,
 				arguments.CommandArgs.UseGitTimestamps,
 				arguments.CommandArgs.Mode,
 				minimum_perc,
+				arguments.CommandArgs.Force,
 			)
 			if err != nil {
 				spinner.Fail(fmt.Sprintf("%s: %s", msg, err.Error()))
@@ -425,7 +399,7 @@ func createTranslationsAsyncDownloads(cfg *config.Config,
 			}
 		}
 
-		duration, _ := time.ParseDuration("2s")
+		duration, _ := time.ParseDuration("1s")
 		err = txapi.PollTranslationDownload(
 			cfg.Local.LanguageMappings,
 			download,
@@ -473,12 +447,11 @@ func addAdditionalLocalLanguages(
 func createResourceStringsAsyncDownloads(
 	api jsonapi.Connection,
 	arguments *CreateAsyncDownloadArguments) error {
-	project := arguments.Project
 	cfgResource := arguments.CfgResource
 	commandArgs := arguments.CommandArgs
 	msg := "Downloading source file " + cfgResource.SourceFile
 
-	resource, err := fetchResource(api, cfgResource, project)
+	resource, err := fetchResource(api, cfgResource)
 	if err != nil {
 		return err
 	}
@@ -551,14 +524,13 @@ func createResourceStringsAsyncDownloads(
 
 func fetchResource(
 	api jsonapi.Connection,
-	cfgResource *config.Resource,
-	project *jsonapi.Resource) (*jsonapi.Resource, error) {
+	cfgResource *config.Resource) (*jsonapi.Resource, error) {
 	msg := fmt.Sprintf("Searching for resource '%s'", cfgResource.ResourceSlug)
 	spinner, err := pterm.DefaultSpinner.Start(msg)
 	if err != nil {
 		return nil, err
 	}
-	resource, err := txapi.GetResource(&api, project, cfgResource.ResourceSlug)
+	resource, err := txapi.GetResourceById(&api, cfgResource.GetAPv3Id())
 	if err != nil {
 		spinner.Fail(msg + ": " + err.Error())
 		return nil, err
@@ -601,7 +573,7 @@ func shouldSkipDueToStringPercentage(
 }
 func shouldSkipDownload(
 	path string, remoteStat *jsonapi.Resource, useGitTimestamps bool,
-	mode string, minimum_perc int,
+	mode string, minimum_perc int, force bool,
 ) (bool, error) {
 	var localTime time.Time
 
@@ -634,27 +606,31 @@ func shouldSkipDownload(
 			return true, nil
 		}
 	}
-	if useGitTimestamps {
-		// TODO: check if parent folder is repo
-		localTime = getLastCommitDate(path)
-		if localTime == (time.Time{}) {
-			return shouldSkipDownload(path, remoteStat,
-				false, mode, minimum_perc)
-		}
-	} else {
-		localStat, err := os.Stat(path)
-		if err != nil {
-			if os.IsNotExist(err) {
-				return false, nil
-			}
-			return false, err
-		}
-		localTime = localStat.ModTime().UTC()
-	}
 
-	// Don't pull if local file is newer than remote
-	// resource-language
-	return remoteTime.Before(localTime), nil
+	if !force {
+		if useGitTimestamps {
+			// TODO: check if parent folder is repo
+			localTime = getLastCommitDate(path)
+			if localTime == (time.Time{}) {
+				return shouldSkipDownload(path, remoteStat,
+					false, mode, minimum_perc, force)
+			}
+		} else {
+			localStat, err := os.Stat(path)
+			if err != nil {
+				if os.IsNotExist(err) {
+					return false, nil
+				}
+				return false, err
+			}
+			localTime = localStat.ModTime().UTC()
+		}
+
+		// Don't pull if local file is newer than remote
+		// resource-language
+		return remoteTime.Before(localTime), nil
+	}
+	return false, nil
 }
 
 func shouldSkipResourceDownload(

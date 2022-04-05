@@ -34,24 +34,14 @@ func TestPullCommandResourceExists(t *testing.T) {
 		},
 	}
 
-	projectsUrl := "/projects?" +
-		"filter%5Borganization%5D=o%3Aorgslug&filter%5Bslug%5D=projslug"
-	resourcesUrl := "/resources?filter%5Bproject%5D=o%3Aorgslug%3Ap%3Aprojslug"
+	projectsUrl := "/projects/o:orgslug:p:projslug"
+	resourcesUrl := "/resources/o:orgslug:p:projslug:r:resslug"
 	projectLanguagesUrl := "/projects/o:orgslug:p:projslug/languages"
 	mockData := jsonapi.MockData{
-		"/organizations": &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{{
-				Response: jsonapi.MockResponse{
-					Text: `{"data": [{"type": "organizations",
-					                  "id": "o:orgslug",
-									  "attributes": {"slug": "orgslug"}}]}`,
-				},
-			}},
-		},
 		projectsUrl: &jsonapi.MockEndpoint{
 			Requests: []jsonapi.MockRequest{{
 				Response: jsonapi.MockResponse{
-					Text: `{"data": [{
+					Text: `{"data": {
 						"type": "project",
 						"id": "o:orgslug:p:projslug",
 						"relationships": {
@@ -60,7 +50,7 @@ func TestPullCommandResourceExists(t *testing.T) {
 								"related": "/projects/o:orgslug:p:projslug/languages"
 							}}
 						}
-					}]}`,
+					}}`,
 				},
 			}},
 		},
@@ -76,10 +66,10 @@ func TestPullCommandResourceExists(t *testing.T) {
 		resourcesUrl: &jsonapi.MockEndpoint{
 			Requests: []jsonapi.MockRequest{{
 				Response: jsonapi.MockResponse{
-					Text: `{"data": [{"type": "resources",
+					Text: `{"data": {"type": "resources",
 						              "id": "o:orgslug:p:projslug:r:resslug",
 						              "attributes": {"slug": "resslug"},
-						              "relationships": {"project": {}}}],
+						              "relationships": {"project": {}}},
 							"links": {"next": "",
 									  "previous": "",
 									  "self": ""}}`,
@@ -129,24 +119,13 @@ func TestPullCommandResourceExists(t *testing.T) {
 		t.Errorf("%s", err)
 	}
 
-	endpoint := mockData["/organizations"]
-	if endpoint.Count != 1 {
-		t.Errorf("Made %d requests to '/organizations', expected 1",
-			endpoint.Count)
-	}
-	actual := endpoint.Requests[0].Request
-	expected := jsonapi.CapturedRequest{Method: "GET"}
-	if !reflect.DeepEqual(actual, expected) {
-		t.Errorf("Got request '%+v', expected %+v", actual, expected)
-	}
-
-	endpoint = mockData[projectsUrl]
+	endpoint := mockData[projectsUrl]
 	if endpoint.Count != 1 {
 		t.Errorf("Made %d requests to '%s', expected 1",
 			endpoint.Count, projectsUrl)
 	}
-	actual = endpoint.Requests[0].Request
-	expected = jsonapi.CapturedRequest{Method: "GET"}
+	actual := endpoint.Requests[0].Request
+	expected := jsonapi.CapturedRequest{Method: "GET"}
 	if !reflect.DeepEqual(actual, expected) {
 		t.Errorf("Got request '%+v', expected %+v", actual, expected)
 	}
@@ -221,9 +200,8 @@ func TestPullCommandFileExists(t *testing.T) {
 	ts.Start()
 	defer ts.Close()
 
-	projectsUrl := "/projects?" +
-		"filter%5Borganization%5D=o%3Aorgslug&filter%5Bslug%5D=projslug"
-	resourcesUrl := "/resources?filter%5Bproject%5D=o%3Aorgslug%3Ap%3Aprojslug"
+	projectsUrl := "/projects/o:orgslug:p:projslug"
+	resourcesUrl := "/resources/o:orgslug:p:projslug:r:resslug"
 	projectLanguagesUrl := "/projects/o:orgslug:p:projslug/languages"
 	asyncDownloadsUrl := "/resource_translations_async_downloads/download_1"
 	mockData := jsonapi.MockData{
@@ -239,7 +217,7 @@ func TestPullCommandFileExists(t *testing.T) {
 		projectsUrl: &jsonapi.MockEndpoint{
 			Requests: []jsonapi.MockRequest{{
 				Response: jsonapi.MockResponse{
-					Text: `{"data": [{
+					Text: `{"data": {
 						"type": "project",
 						"id": "o:orgslug:p:projslug",
 						"relationships": {
@@ -248,7 +226,7 @@ func TestPullCommandFileExists(t *testing.T) {
 								"related": "/projects/o:orgslug:p:projslug/languages"
 							}}
 						}
-					}]}`,
+					}}`,
 				},
 			}},
 		},
@@ -264,10 +242,10 @@ func TestPullCommandFileExists(t *testing.T) {
 		resourcesUrl: &jsonapi.MockEndpoint{
 			Requests: []jsonapi.MockRequest{{
 				Response: jsonapi.MockResponse{
-					Text: `{"data": [{"type": "resources",
+					Text: `{"data": {"type": "resources",
 						              "id": "o:orgslug:p:projslug:r:resslug",
 						              "attributes": {"slug": "resslug"},
-						              "relationships": {"project": {}}}],
+						              "relationships": {"project": {}}},
 							"links": {"next": "", "previous": "", "self": ""}}`,
 				},
 			}},
@@ -313,24 +291,13 @@ func TestPullCommandFileExists(t *testing.T) {
 		t.Errorf("%s", err)
 	}
 
-	endpoint := mockData["/organizations"]
-	if endpoint.Count != 1 {
-		t.Errorf("Made %d requests to '/organizations', expected 1",
-			endpoint.Count)
-	}
-	actual := endpoint.Requests[0].Request
-	expected := jsonapi.CapturedRequest{Method: "GET"}
-	if !reflect.DeepEqual(actual, expected) {
-		t.Errorf("Got request '%+v', expected %+v", actual, expected)
-	}
-
-	endpoint = mockData[projectsUrl]
+	endpoint := mockData[projectsUrl]
 	if endpoint.Count != 1 {
 		t.Errorf("Made %d requests to '%s', expected 1",
 			endpoint.Count, projectsUrl)
 	}
-	actual = endpoint.Requests[0].Request
-	expected = jsonapi.CapturedRequest{Method: "GET"}
+	actual := endpoint.Requests[0].Request
+	expected := jsonapi.CapturedRequest{Method: "GET"}
 	if !reflect.DeepEqual(actual, expected) {
 		t.Errorf("Got request '%+v', expected %+v", actual, expected)
 	}
@@ -408,37 +375,27 @@ func TestPullCommandDownloadSource(t *testing.T) {
 		},
 	}
 
-	projectsUrl := "/projects?" +
-		"filter%5Borganization%5D=o%3Aorgslug&filter%5Bslug%5D=projslug"
-	resourcesUrl := "/resources?filter%5Bproject%5D=o%3Aorgslug%3Ap%3Aprojslug"
+	projectsUrl := "/projects/o:orgslug:p:projslug"
+	resourcesUrl := "/resources/o:orgslug:p:projslug:r:resslug"
 	mockData := jsonapi.MockData{
-		"/organizations": &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{{
-				Response: jsonapi.MockResponse{
-					Text: `{"data": [{"type": "organizations",
-					                  "id": "o:orgslug",
-									  "attributes": {"slug": "orgslug"}}]}`,
-				},
-			}},
-		},
 		projectsUrl: &jsonapi.MockEndpoint{
 			Requests: []jsonapi.MockRequest{{
 				Response: jsonapi.MockResponse{
-					Text: `{"data": [{
+					Text: `{"data": {
 						"type": "project",
 						"id": "o:orgslug:p:projslug",
 						"relationships": {"organization": {}}
-					}]}`,
+					}}`,
 				},
 			}},
 		},
 		resourcesUrl: &jsonapi.MockEndpoint{
 			Requests: []jsonapi.MockRequest{{
 				Response: jsonapi.MockResponse{
-					Text: `{"data": [{"type": "resources",
+					Text: `{"data": {"type": "resources",
 						              "id": "o:orgslug:p:projslug:r:resslug",
 						              "attributes": {"slug": "resslug"},
-						              "relationships": {"project": {}}}]}`,
+						              "relationships": {"project": {}}}}`,
 				},
 			}},
 		},
@@ -481,24 +438,13 @@ func TestPullCommandDownloadSource(t *testing.T) {
 		t.Errorf("%s", err)
 	}
 
-	endpoint := mockData["/organizations"]
-	if endpoint.Count != 1 {
-		t.Errorf("Made %d requests to '/organizations', expected 1",
-			endpoint.Count)
-	}
-	actual := endpoint.Requests[0].Request
-	expected := jsonapi.CapturedRequest{Method: "GET"}
-	if !reflect.DeepEqual(actual, expected) {
-		t.Errorf("Got request '%+v', expected %+v", actual, expected)
-	}
-
-	endpoint = mockData[projectsUrl]
+	endpoint := mockData[projectsUrl]
 	if endpoint.Count != 1 {
 		t.Errorf("Made %d requests to '%s', expected 1",
 			endpoint.Count, projectsUrl)
 	}
-	actual = endpoint.Requests[0].Request
-	expected = jsonapi.CapturedRequest{Method: "GET"}
+	actual := endpoint.Requests[0].Request
+	expected := jsonapi.CapturedRequest{Method: "GET"}
 	if !reflect.DeepEqual(actual, expected) {
 		t.Errorf("Got request '%+v', expected %+v", actual, expected)
 	}
@@ -885,12 +831,94 @@ func TestPullCommandPercentageArgumentShouldWinOverResource(t *testing.T) {
 	}
 }
 
+func TestPercentageWinsOverForce(t *testing.T) {
+	cfg := config.Config{
+		Local: &config.LocalConfig{
+			Resources: []config.Resource{
+				{
+					OrganizationSlug:  "orgslug",
+					ProjectSlug:       "projslug",
+					ResourceSlug:      "resslug",
+					Type:              "I18N_TYPE",
+					SourceFile:        "source",
+					MinimumPercentage: 90,
+				},
+			},
+		},
+	}
+
+	mockData := getSkipMinPercentageMockData(2, 0, 0)
+	api := jsonapi.GetTestConnection(mockData)
+
+	arguments := PullCommandArguments{
+		FileType:          "default",
+		Mode:              "default",
+		All:               true,
+		ResourceIds:       nil,
+		Force:             true,
+		MinimumPercentage: -1,
+	}
+
+	err := PullCommand(&cfg, api, &arguments)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+
+	endpoint := mockData["/resource_translations_async_downloads/download_1"]
+	if endpoint.Count != 0 {
+		t.Errorf("Made %d requests to '%s', expected 0"+
+			"because of translated strings minimum perc",
+			endpoint.Count,
+			"/resource_translations_async_downloads/download_1")
+	}
+}
+
+func TestForceShouldWinIfThereIsNoMinPercentage(t *testing.T) {
+	cfg := config.Config{
+		Local: &config.LocalConfig{
+			Resources: []config.Resource{
+				{
+					OrganizationSlug: "orgslug",
+					ProjectSlug:      "projslug",
+					ResourceSlug:     "resslug",
+					Type:             "I18N_TYPE",
+					SourceFile:       "source",
+				},
+			},
+		},
+	}
+
+	mockData := getSkipMinPercentageMockData(2, 0, 0)
+	api := jsonapi.GetTestConnection(mockData)
+
+	arguments := PullCommandArguments{
+		FileType:          "default",
+		Mode:              "default",
+		All:               true,
+		ResourceIds:       nil,
+		Force:             true,
+		MinimumPercentage: -1,
+	}
+
+	err := PullCommand(&cfg, api, &arguments)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+
+	endpoint := mockData["/resource_translations_async_downloads/download_1"]
+	if endpoint.Count != 1 {
+		t.Errorf("Made %d requests to '%s', expected 1"+
+			"because force flag was used",
+			endpoint.Count,
+			"/resource_translations_async_downloads/download_1")
+	}
+}
+
 func getSkipMinPercentageMockData(translatedStrings int,
 	reviewedStrings int,
 	proofreadStrings int) jsonapi.MockData {
-	projectsUrl := "/projects?" +
-		"filter%5Borganization%5D=o%3Aorgslug&filter%5Bslug%5D=projslug"
-	resourcesUrl := "/resources?filter%5Bproject%5D=o%3Aorgslug%3Ap%3Aprojslug"
+	projectsUrl := "/projects/o:orgslug:p:projslug"
+	resourcesUrl := "/resources/o:orgslug:p:projslug:r:resslug"
 	projectLanguagesUrl := "/projects/o:orgslug:p:projslug/languages"
 	resourceLangStatsUrl := "/resource_language_stats?filter%5Bproject%5D=" +
 		"o%3Aorgslug%3Ap%3Aprojslug&filter%5Bresource%5D=o%3Aorgslug%3Ap%3A" +
@@ -898,15 +926,6 @@ func getSkipMinPercentageMockData(translatedStrings int,
 	now := time.Now().UTC()
 	duration, _ := time.ParseDuration("-5m")
 	return jsonapi.MockData{
-		"/organizations": &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{{
-				Response: jsonapi.MockResponse{
-					Text: `{"data": [{"type": "organizations",
-								  "id": "o:orgslug",
-								  "attributes": {"slug": "orgslug"}}]}`,
-				},
-			}},
-		},
 		resourceLangStatsUrl: &jsonapi.MockEndpoint{
 			Requests: []jsonapi.MockRequest{{
 				Response: jsonapi.MockResponse{
@@ -939,7 +958,7 @@ func getSkipMinPercentageMockData(translatedStrings int,
 		projectsUrl: &jsonapi.MockEndpoint{
 			Requests: []jsonapi.MockRequest{{
 				Response: jsonapi.MockResponse{
-					Text: `{"data": [{
+					Text: `{"data": {
 					"type": "project",
 					"id": "o:orgslug:p:projslug",
 					"relationships": {
@@ -948,7 +967,7 @@ func getSkipMinPercentageMockData(translatedStrings int,
 							"related": "/projects/o:orgslug:p:projslug/languages"
 						}}
 					}
-				}]}`,
+				}}`,
 				},
 			}},
 		},
@@ -964,10 +983,13 @@ func getSkipMinPercentageMockData(translatedStrings int,
 		resourcesUrl: &jsonapi.MockEndpoint{
 			Requests: []jsonapi.MockRequest{{
 				Response: jsonapi.MockResponse{
-					Text: `{"data": [{"type": "resources",
+					Text: `{"data": {"type": "resources",
 								  "id": "o:orgslug:p:projslug:r:resslug",
 								  "attributes": {"slug": "resslug"},
-								  "relationships": {"project": {}}}],
+								  "relationships": {"projects": {
+									  "type": "projects",
+									  "id": "o:orgslug:p:projslug"
+								  }}},
 						"links": {"next": "",
 								  "previous": "",
 								  "self": ""}}`,

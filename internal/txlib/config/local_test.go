@@ -12,6 +12,14 @@ func TestLoadLocalConfig(t *testing.T) {
 		t.Error(err)
 	}
 
+	if localCfg.Resources[0].GetAPv3Id() != "o:__organization_slug__:p:__project_slug__:r:__resource_slug__" {
+		t.Errorf(
+			"APIv3 ID is wrong; got %+v, expected %+v",
+			localCfg.Resources[0].GetAPv3Id(),
+			"o:__organization_slug__:p:__project_slug__:r:__resource_slug__",
+		)
+	}
+
 	expected := LocalConfig{
 		Host: "https://www.transifex.com",
 		Path: path,
