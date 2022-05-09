@@ -641,7 +641,7 @@ Translation Files:
 > ```
 
 ### Updating the CLI app
-The `tx update` command provide's a way to self update the application wihtout going to Github releases page.
+The `tx update` command provides a way to self update the application without going to Github releases page.
 
  ```
  tx update
