@@ -566,7 +566,7 @@ func shouldSkipDueToStringPercentage(
 	actedOnStringsPerc := getActedOnStringsPercentage(
 		actedOnStringsFloat, totalStringsFloat)
 
-    return actedOnStringsPerc < minimum_percFloat 
+	return actedOnStringsPerc < minimum_percFloat
 }
 func shouldSkipDownload(
 	path string, remoteStat *jsonapi.Resource, useGitTimestamps bool,

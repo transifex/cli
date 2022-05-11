@@ -108,8 +108,10 @@ func DeleteCommand(
 		}
 	}
 
-    err := cfg.Save()
-    if err != nil { return err }
+	err := cfg.Save()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -147,7 +149,9 @@ func deleteResource(
 
 	// Get Resource from Server
 	resource, err := txapi.GetResource(api, project, cfgResource.ResourceSlug)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 
 	if resource == nil {
 		return fmt.Errorf("Resource '%s - %s - %s' not found",
@@ -160,7 +164,9 @@ func deleteResource(
 		cfgResource.ResourceSlug)
 	fmt.Println(msg)
 	spinner, err := pterm.DefaultSpinner.Start(msg)
-    if err != nil { return err }
+	if err != nil {
+		return err
+	}
 
 	if !args.Force {
 		remoteStats, _ := txapi.GetResourceStats(api, resource, nil)

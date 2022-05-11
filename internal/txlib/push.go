@@ -26,6 +26,7 @@ type PushCommandArguments struct {
 	UseGitTimestamps bool
 	Branch           string
 	All              bool
+	Workers          int
 }
 
 func PushCommand(
@@ -66,7 +67,7 @@ func PushCommand(
 						cfgResource.SourceFile,
 					))
 					return fmt.Errorf(
-						"could not find file '%s'. Aborting.",
+						"could not find file '%s'. Aborting",
 						cfgResource.SourceFile,
 					)
 				} else {
@@ -140,7 +141,9 @@ func pushResource(
 
 	msg := fmt.Sprintf("Searching for resource '%s'", cfgResource.ResourceSlug)
 	spinner, err := pterm.DefaultSpinner.Start(msg)
-    if err != nil { return err }
+	if err != nil {
+		return err
+	}
 
 	resource, err := txapi.GetResourceById(api, cfgResource.GetAPv3Id())
 	if err != nil {
@@ -680,74 +683,74 @@ func createNewLanguages(
 	remoteLanguages map[string]*jsonapi.Resource,
 	newLanguageCodes []string,
 ) (map[string]*jsonapi.Resource, error) {
-	msg := fmt.Sprintf("Adding '%s' to the project's remote languages",
-		strings.Join(newLanguageCodes, ", "))
-	spinner, err := pterm.DefaultSpinner.Start(msg)
-	if err != nil {
-		return nil, err
-	}
+	// msg := fmt.Sprintf("Adding '%s' to the project's remote languages",
+	// 	strings.Join(newLanguageCodes, ", "))
+	// spinner, err := pterm.DefaultSpinner.Start(msg)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	allLanguages, err := txapi.GetLanguages(api)
 	if err != nil {
-		spinner.Fail(msg + ": " + err.Error())
+		// spinner.Fail(msg + ": " + err.Error())
 		return nil, err
 	}
-	var skippedLanguageCodes []string
+	// var skippedLanguageCodes []string
 	var languagesToCreate []*jsonapi.Resource
 	for _, languageCode := range newLanguageCodes {
 		language, exists := allLanguages[languageCode]
 		if !exists {
-			skippedLanguageCodes = append(skippedLanguageCodes, languageCode)
+			// skippedLanguageCodes = append(skippedLanguageCodes, languageCode)
 			continue
 		}
 		sourceLanguageRelationship, err := project.Fetch("source_language")
 		if err != nil {
-			spinner.Fail(msg + ": " + err.Error())
+			// spinner.Fail(msg + ": " + err.Error())
 			return nil, err
 		}
 		sourceLanguage := sourceLanguageRelationship.DataSingular
 		var sourceLanguageAttributes txapi.LanguageAttributes
 		err = sourceLanguage.MapAttributes(&sourceLanguageAttributes)
 		if err != nil {
-			spinner.Fail(msg + ": " + err.Error())
+			// spinner.Fail(msg + ": " + err.Error())
 			return nil, err
 		}
 		if languageCode == sourceLanguageAttributes.Code {
-			skippedLanguageCodes = append(skippedLanguageCodes, languageCode)
+			// skippedLanguageCodes = append(skippedLanguageCodes, languageCode)
 			continue
 		}
 
 		languagesToCreate = append(languagesToCreate, language)
 	}
-	newLanguageCodes = make([]string, 0, len(languagesToCreate))
+	// newLanguageCodes = make([]string, 0, len(languagesToCreate))
 	if len(languagesToCreate) > 0 {
 		for _, language := range languagesToCreate {
 			var languageAttributes txapi.LanguageAttributes
 			err := language.MapAttributes(&languageAttributes)
 			if err != nil {
-				spinner.Fail(msg + ": " + err.Error())
+				// spinner.Fail(msg + ": " + err.Error())
 				return nil, err
 			}
-			newLanguageCodes = append(newLanguageCodes,
-				languageAttributes.Code)
+			// newLanguageCodes = append(newLanguageCodes,
+			// 	languageAttributes.Code)
 		}
 		err = project.Add("languages", languagesToCreate)
 		if err != nil {
-			spinner.Fail(msg + ": " + err.Error())
+			// spinner.Fail(msg + ": " + err.Error())
 			return nil, err
 		}
 		remoteLanguages, err = txapi.GetProjectLanguages(project)
 		if err != nil {
-			spinner.Fail(msg + ": " + err.Error())
+			// spinner.Fail(msg + ": " + err.Error())
 			return nil, err
 		}
 	}
-	msg = fmt.Sprintf("Added languages: '%s'",
-		strings.Join(newLanguageCodes, ", "))
-	if len(skippedLanguageCodes) > 0 {
-		msg = msg + fmt.Sprintf(", skipped: '%s'",
-			strings.Join(skippedLanguageCodes, ", "))
-	}
-	spinner.Success(msg)
+	// msg = fmt.Sprintf("Added languages: '%s'",
+	// 	strings.Join(newLanguageCodes, ", "))
+	// if len(skippedLanguageCodes) > 0 {
+	// 	msg = msg + fmt.Sprintf(", skipped: '%s'",
+	// 		strings.Join(skippedLanguageCodes, ", "))
+	// }
+	// spinner.Success(msg)
 	return remoteLanguages, nil
 }

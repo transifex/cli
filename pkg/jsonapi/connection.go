@@ -10,9 +10,9 @@ import (
 )
 
 type Connection struct {
-	Host   string
-	Token  string
-	Client http.Client
+	Host    string
+	Token   string
+	Client  http.Client
 	Headers map[string]string
 
 	// Used for testing

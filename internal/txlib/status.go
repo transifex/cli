@@ -31,7 +31,7 @@ func StatusCommand(
 				resourceId,
 			)
 		}
-        cfgResources = append(cfgResources, *cfgResource)
+		cfgResources = append(cfgResources, *cfgResource)
 	}
 
 	cfgResourcesLen := len(cfgResources)
