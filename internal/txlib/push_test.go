@@ -661,46 +661,6 @@ func beforePushTest(t *testing.T,
 	}
 }
 
-func getOrganizationEndpoint() *jsonapi.MockEndpoint {
-	return &jsonapi.MockEndpoint{
-		Requests: []jsonapi.MockRequest{{
-			Response: jsonapi.MockResponse{
-				Text: `{"data": [{"type": "organizations",
-				                  "id": "o:orgslug",
-								  "attributes": {"slug": "orgslug"}}]}`,
-			},
-		}},
-	}
-}
-
-func getProjectsEndpoint() *jsonapi.MockEndpoint {
-	selfUrl := "/projects/o:orgslug:p:projslug/relationships/languages"
-	relatedUrl := "/projects/o:orgslug:p:projslug/languages"
-	return &jsonapi.MockEndpoint{
-		Requests: []jsonapi.MockRequest{{
-			Response: jsonapi.MockResponse{
-				Text: fmt.Sprintf(`{"data": [{
-					"type": "projects",
-					"id": "o:orgslug:p:projslug",
-					"attributes": {"slug": "projslug"},
-					"relationships": {
-						"languages": {
-							"links": {
-								"self": "%s",
-								"related": "%s"
-							}
-						},
-						"source_language": {
-							"data": {"type": "languages", "id": "l:en"},
-							"links": {"related": "/languages/l:en"}
-						}
-					}
-				}]}`, selfUrl, relatedUrl),
-			},
-		}},
-	}
-}
-
 func getProjectEndpoint() *jsonapi.MockEndpoint {
 	selfUrl := "/projects/o:orgslug:p:projslug/relationships/languages"
 	relatedUrl := "/projects/o:orgslug:p:projslug/languages"

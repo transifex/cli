@@ -140,6 +140,7 @@ func pushResource(
 
 	msg := fmt.Sprintf("Searching for resource '%s'", cfgResource.ResourceSlug)
 	spinner, err := pterm.DefaultSpinner.Start(msg)
+    if err != nil { return err }
 
 	resource, err := txapi.GetResourceById(api, cfgResource.GetAPv3Id())
 	if err != nil {
@@ -413,9 +414,7 @@ func pushTranslations(
 		}
 	}
 	if len(languageCodesToPush) < 1 {
-		spinner.Warning(
-			fmt.Sprintf("No language files found to push. Aborting"),
-		)
+		spinner.Warning("No language files found to push. Aborting")
 	}
 	var uploads []*jsonapi.Resource
 	for i := range languageCodesToPush {

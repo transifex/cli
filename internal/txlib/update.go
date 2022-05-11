@@ -80,6 +80,7 @@ func UpdateCommand(arguments UpdateCommandArguments) error {
 
 			msg := fmt.Sprintf("Updating to v%s", latest.Version)
 			spinner, err := pterm.DefaultSpinner.Start(msg)
+            if err != nil { return err }
 			// Update executable
 			if err := selfupdate.UpdateTo(latest.AssetURL, exe); err != nil {
 				spinner.Fail("Error occurred while updating binary:" +

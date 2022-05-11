@@ -237,7 +237,7 @@ func TestDeleteUpdatesConfig(t *testing.T) {
 		t.Errorf("%s", err)
 	}
 
-	cfgReloaded, err := config.LoadFromPaths("", filePath)
+	cfgReloaded, _ := config.LoadFromPaths("", filePath)
 
 	assert.Equal(t, len(cfgReloaded.Local.Resources), 0)
 
@@ -500,18 +500,6 @@ func deleteGetResourceBranchEndpoint() *jsonapi.MockEndpoint {
 	}
 }
 
-func deleteGetResource1Endpoint() *jsonapi.MockEndpoint {
-	return &jsonapi.MockEndpoint{
-		Requests: []jsonapi.MockRequest{{
-			Response: jsonapi.MockResponse{
-				Text: `{"data": {"type": "resources",
-								 "id": "o:orgslug:p:projslug:r:resslug1",
-								 "attributes": {"slug": "resslug1"}}}`,
-			},
-		}},
-	}
-}
-
 func deleteGetResourceBranch1Endpoint() *jsonapi.MockEndpoint {
 	return &jsonapi.MockEndpoint{
 		Requests: []jsonapi.MockRequest{{
@@ -570,21 +558,19 @@ func deleteGetResLangStatsEndpoint() *jsonapi.MockEndpoint {
 	return &jsonapi.MockEndpoint{
 		Requests: []jsonapi.MockRequest{{
 			Response: jsonapi.MockResponse{
-				Text: fmt.Sprintf(
-					`{"data": [{
-						"type": "resource_language_stats",
-						"id":"stats1",
-						"attributes": {
-							"last_update": "",
-							"translated_strings": 2
-						},
-						"relationships": {
-							"language": {"data": {"type": "languages",
-												  "id": "l:fr"}},
-							"resource": {}
-						}
-					}]}`,
-				),
+				Text: `{"data": [{
+					  	"type": "resource_language_stats",
+					  	"id":"stats1",
+					  	"attributes": {
+					  		"last_update": "",
+					  		"translated_strings": 2
+					  	},
+					  	"relationships": {
+					  		"language": {"data": {"type": "languages",
+					  							  "id": "l:fr"}},
+					  		"resource": {}
+					  	}
+					  }]}`,
 			},
 		}},
 	}

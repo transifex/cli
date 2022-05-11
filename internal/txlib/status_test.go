@@ -79,7 +79,7 @@ func TestStatusWithNoResourcesAsParameters(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	StatusCommand(
+	_ = StatusCommand(
 		cfg,
 		api,
 		&StatusCommandArguments{},
@@ -114,7 +114,7 @@ func TestStatusWithOverrides(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	StatusCommand(
+	_ = StatusCommand(
 		cfg,
 		api,
 		&StatusCommandArguments{},
@@ -149,7 +149,7 @@ func TestStatusWithResourceAsParameter(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	StatusCommand(
+	_ = StatusCommand(
 		cfg,
 		api,
 		&StatusCommandArguments{
@@ -319,17 +319,6 @@ func statusGetResourceEndpoint() *jsonapi.MockEndpoint {
 	}
 }
 
-func statusGetResource1Endpoint() *jsonapi.MockEndpoint {
-	return &jsonapi.MockEndpoint{
-		Requests: []jsonapi.MockRequest{{
-			Response: jsonapi.MockResponse{
-				Text: `{"data": {"type": "resources",
-								 "id": "o:orgslug:p:projslug:r:resslug1",
-								 "attributes": {"slug": "resslug1"}}}`,
-			},
-		}},
-	}
-}
 func statusGetResourcesEndpoint() *jsonapi.MockEndpoint {
 	return &jsonapi.MockEndpoint{
 		Requests: []jsonapi.MockRequest{
