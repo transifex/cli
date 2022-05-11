@@ -1,18 +1,22 @@
 package jsonapi
 
 import (
-    "testing"
+	"testing"
 )
 
 func TestJsonEqual(t *testing.T) {
-    left := `{
+	left := `{
         "aaa": "bbb",
         "ccc": "ddd"
     }`
-    // Change formatting and order
-    right := `{"ccc": "ddd", "aaa": "bbb"}`
+	// Change formatting and order
+	right := `{"ccc": "ddd", "aaa": "bbb"}`
 
-    equal, err := jsonEqual([]byte(left), []byte(right))
-    if err != nil { t.Error(err) }
-    if !equal { t.Error("JSON appears not equal") }
+	equal, err := jsonEqual([]byte(left), []byte(right))
+	if err != nil {
+		t.Error(err)
+	}
+	if !equal {
+		t.Error("JSON appears not equal")
+	}
 }

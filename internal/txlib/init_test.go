@@ -12,7 +12,7 @@ import (
 	"github.com/transifex/cli/pkg/assert"
 )
 
-func beforeTest(t *testing.T) (string, string) {
+func beforeInitTest(t *testing.T) (string, string) {
 	pkgDir, _ := os.Getwd()
 	tmpDir, err := os.MkdirTemp("", "")
 	if err != nil {
@@ -45,7 +45,7 @@ func afterTest(pkgDir string, tmpDir string) {
 }
 
 func TestInitCreateFile(t *testing.T) {
-	var pkgDir, tmpDir = beforeTest(t)
+	var pkgDir, tmpDir = beforeInitTest(t)
 	defer afterTest(pkgDir, tmpDir)
 
 	err := InitCommand()
@@ -61,7 +61,7 @@ func TestInitCreateFile(t *testing.T) {
 }
 
 func TestInitCreateFileContents(t *testing.T) {
-	var pkgDir, tmpDir = beforeTest(t)
+	var pkgDir, tmpDir = beforeInitTest(t)
 	defer afterTest(pkgDir, tmpDir)
 
 	err := InitCommand()
@@ -78,7 +78,7 @@ func TestInitCreateFileContents(t *testing.T) {
 }
 
 func TestDoesNotChangeConfigWhenAbort(t *testing.T) {
-	var pkgDir, tmpDir = beforeTest(t)
+	var pkgDir, tmpDir = beforeInitTest(t)
 	defer afterTest(pkgDir, tmpDir)
 
 	err := InitCommand()

@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/manifoldco/promptui"
-	"github.com/pterm/pterm"
 	"github.com/transifex/cli/internal/txlib"
 	"github.com/transifex/cli/internal/txlib/config"
 	"github.com/transifex/cli/pkg/jsonapi"
@@ -16,6 +16,7 @@ import (
 )
 
 func Main() {
+	errorColor := color.New(color.FgRed).SprintfFunc()
 	cli.VersionPrinter = func(c *cli.Context) {
 		fmt.Println("TX Client, version=" + c.App.Version)
 	}
@@ -145,6 +146,12 @@ func Main() {
 							"determined)",
 						Value: "-1",
 					},
+					&cli.IntFlag{
+						Name:    "workers",
+						Usage:   "How many parallel workers to use",
+						Aliases: []string{"w"},
+						Value:   5,
+					},
 				},
 				Action: func(c *cli.Context) error {
 					cfg, err := config.LoadFromPaths(
@@ -153,20 +160,19 @@ func Main() {
 					)
 					if err != nil {
 						return cli.Exit(
-							pterm.Error.Sprintf(
+							errorColor(
 								"Error loading configuration: %s",
 								err,
 							),
 							1,
 						)
 					}
-
 					hostname, token, err := txlib.GetHostAndToken(
 						&cfg, c.String("hostname"), c.String("token"),
 					)
 					if err != nil {
 						return cli.Exit(
-							pterm.Error.Sprintf(
+							errorColor(
 								"Error getting API token: %s",
 								err,
 							),
@@ -177,7 +183,7 @@ func Main() {
 					client, err := txlib.GetClient(c.String("cacert"))
 					if err != nil {
 						return cli.Exit(
-							pterm.Error.Sprintf(
+							errorColor(
 								"Error getting HTTP client configuration: %s",
 								err,
 							),
@@ -218,10 +224,11 @@ func Main() {
 						UseGitTimestamps: c.Bool("use-git-timestamps"),
 						Branch:           c.String("branch"),
 						All:              c.Bool("all"),
+						Workers:          c.Int("workers"),
 					}
 
 					if args.All && len(args.Languages) > 0 {
-						return cli.Exit(pterm.Error.Sprint(
+						return cli.Exit(errorColor(
 							"It doesn't make sense to use the '--all' flag "+
 								"with the '--language' flag",
 						), 1)
@@ -229,7 +236,7 @@ func Main() {
 
 					if !args.Translation &&
 						(args.All || len(args.Languages) > 0) {
-						return cli.Exit(pterm.Error.Sprint(
+						return cli.Exit(errorColor(
 							"It doesn't make sense to use the '--all' or "+
 								"'--language' flag without the "+
 								"'--translation' flag",
@@ -237,16 +244,22 @@ func Main() {
 					}
 
 					if args.Force && args.UseGitTimestamps {
-						return cli.Exit(pterm.Error.Sprint(
+						return cli.Exit(errorColor(
 							"It doesn't make sense to use the '--force' "+
 								"flag with the '--use-git-timestamps' flag",
 						), 1)
 					}
 
 					if args.Xliff && !args.Translation {
-						return cli.Exit(pterm.Error.Sprint(
+						return cli.Exit(errorColor(
 							"--xliff only makes sense when used with "+
 								"`-t/--translation`",
+						), 1)
+					}
+
+					if 1 > args.Workers || args.Workers > 30 {
+						return cli.Exit(errorColor(
+							"Please choose a number of workers between 1 and 30",
 						), 1)
 					}
 
@@ -350,6 +363,12 @@ func Main() {
 							"a translation mode in order to download it.",
 						Value: -1,
 					},
+					&cli.IntFlag{
+						Name:    "workers",
+						Usage:   "How many parallel workers to use",
+						Aliases: []string{"w"},
+						Value:   5,
+					},
 				},
 				Action: func(c *cli.Context) error {
 					cfg, err := config.LoadFromPaths(c.String("root-config"),
@@ -400,17 +419,18 @@ func Main() {
 						UseGitTimestamps:  c.Bool("use-git-timestamps"),
 						Branch:            c.String("branch"),
 						MinimumPercentage: c.Int("minimum-perc"),
+						Workers:           c.Int("workers"),
 					}
 
 					if c.Bool("xliff") && c.Bool("json") {
-						return cli.Exit(pterm.Error.Sprintf(
+						return cli.Exit(errorColor(
 							"You cannot use both flags '%s' and '%s'.",
 							"xliff", "json",
 						), 1)
 					} else if c.Bool("xliff") {
 						arguments.FileType = "xliff"
 					} else if c.Bool("json") && c.Bool("source") {
-						return cli.Exit(pterm.Error.Sprintf(
+						return cli.Exit(errorColor(
 							"You cannot use both flags '%s' and '%s'. "+
 								"Source files do not support json format.",
 							"json", "source",
@@ -422,7 +442,7 @@ func Main() {
 					}
 
 					if c.String("languages") != "" && c.Bool("all") {
-						return cli.Exit(pterm.Error.Sprintf(
+						return cli.Exit(errorColor(
 							"You cannot use both flags '%s' and '%s'.",
 							"languages", "all",
 						), 1)
@@ -434,7 +454,14 @@ func Main() {
 							strings.Split(c.String("languages"), ",")...,
 						)
 					}
-					err = txlib.PullCommand(&cfg, api, &arguments)
+
+					if 1 > arguments.Workers || arguments.Workers > 30 {
+						return cli.Exit(errorColor(
+							"Please choose a number of workers between 1 and 30",
+						), 1)
+					}
+
+					err = txlib.PullCommand(&cfg, &api, &arguments)
 					if err != nil {
 						return cli.Exit(err, 1)
 					}
@@ -513,7 +540,9 @@ func Main() {
 							if err == promptui.ErrInterrupt {
 								return cli.Exit("", 1)
 							} else {
-								return cli.Exit(pterm.Error.Sprint(err), 1)
+								return cli.Exit(
+									errorColor(fmt.Sprint(err)),
+									1)
 							}
 
 						}
@@ -566,7 +595,7 @@ func Main() {
 				Action: func(c *cli.Context) error {
 					err := txlib.InitCommand()
 					if err != nil {
-						return cli.Exit(pterm.Error.Sprint(err), 1)
+						return cli.Exit(errorColor(fmt.Sprint(err)), 1)
 					}
 					return nil
 				},
@@ -686,7 +715,7 @@ func Main() {
 						if err == promptui.ErrInterrupt {
 							return cli.Exit("", 1)
 						} else {
-							return cli.Exit(pterm.Error.Sprint(err), 1)
+							return cli.Exit(errorColor(fmt.Sprint(err)), 1)
 						}
 					}
 					return nil

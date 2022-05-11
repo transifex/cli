@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/gosimple/slug"
-	"github.com/pterm/pterm"
 	"github.com/transifex/cli/internal/txlib/config"
 	"github.com/transifex/cli/pkg/jsonapi"
 	"github.com/transifex/cli/pkg/txapi"
@@ -30,10 +30,10 @@ func DeleteCommand(
 	} else if arguments.Branch == "" {
 		arguments.Branch = getGitBranch()
 		if arguments.Branch == "" {
-			pterm.Warning.Println("Couldn't find branch information")
+			fmt.Println("Couldn't find branch information")
 		}
 	}
-	pterm.Info.Println("Initiating Delete")
+	fmt.Printf("# Initiating Delete\n\n")
 
 	for _, resourceId := range arguments.ResourceIds {
 
@@ -82,7 +82,7 @@ func DeleteCommand(
 	}
 	// If there are no resources found stop
 	if len(cfgResources) == 0 {
-		pterm.Error.Println("Given resources not found in config file.")
+		color.Red("Given resources not found in config file.")
 		return nil
 	}
 
@@ -100,7 +100,7 @@ func DeleteCommand(
 			if !arguments.Skip {
 				return err
 			} else {
-				pterm.Error.Println("Given resources not found in config file.")
+				color.Red("Given resources not found in config file.")
 			}
 		} else {
 			// Remove successful deletes from config
@@ -108,8 +108,10 @@ func DeleteCommand(
 		}
 	}
 
-    err := cfg.Save()
-    if err != nil { return err }
+	err := cfg.Save()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -147,7 +149,9 @@ func deleteResource(
 
 	// Get Resource from Server
 	resource, err := txapi.GetResource(api, project, cfgResource.ResourceSlug)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 
 	if resource == nil {
 		return fmt.Errorf("Resource '%s - %s - %s' not found",
@@ -159,8 +163,9 @@ func deleteResource(
 	msg := fmt.Sprintf("Deleting resource '%s'",
 		cfgResource.ResourceSlug)
 	fmt.Println(msg)
-	spinner, err := pterm.DefaultSpinner.Start(msg)
-    if err != nil { return err }
+	if err != nil {
+		return err
+	}
 
 	if !args.Force {
 		remoteStats, _ := txapi.GetResourceStats(api, resource, nil)
@@ -172,13 +177,11 @@ func deleteResource(
 			var remoteStatAttributes txapi.ResourceLanguageStatsAttributes
 			err := remoteStats[languageId].MapAttributes(&remoteStatAttributes)
 			if err != nil {
-				spinner.Fail(err)
 				return err
 			}
 			if remoteStatAttributes.TranslatedStrings > 0 {
 				msg := fmt.Sprintf("Aborting due to translations in %s",
 					cfgResource.ResourceSlug)
-				spinner.Fail(msg)
 				return fmt.Errorf(msg)
 			}
 		}
@@ -187,15 +190,11 @@ func deleteResource(
 	err = txapi.DeleteResource(api, resource)
 
 	if err != nil {
-		spinner.Fail(
-			fmt.Sprintf("Resource deletion for '%s' failed",
-				cfgResource.ResourceSlug),
-		)
+		color.Red("Resource deletion for '%s' failed",
+			cfgResource.ResourceSlug)
 		return err
 	} else {
-		spinner.Success(
-			fmt.Sprintf("Resource '%s' deleted", cfgResource.ResourceSlug),
-		)
+		color.Green("Resource '%s' deleted", cfgResource.ResourceSlug)
 	}
 	return nil
 }
