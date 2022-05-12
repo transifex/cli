@@ -66,6 +66,7 @@ func validateSourceFile(input string) error {
 	}
 
 	curDir, err := os.Getwd()
+    if err != nil { return err }
 	_, err = os.Stat(filepath.Join(curDir, input))
 
 	if err != nil {

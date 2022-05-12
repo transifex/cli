@@ -26,12 +26,12 @@ func StatusCommand(
 		// Find Resources for delete in config
 		cfgResource := cfg.FindResource(resourceId)
 		if cfgResource == nil {
-			fmt.Printf(
+			return fmt.Errorf(
 				"could not find resource '%s' in local configuration.",
 				resourceId,
 			)
 		}
-		cfgResources = append(cfgResources, *cfgResource)
+        cfgResources = append(cfgResources, *cfgResource)
 	}
 
 	cfgResourcesLen := len(cfgResources)
@@ -55,9 +55,7 @@ func StatusCommand(
 
 		fmt.Printf("%s -> %s (%d of %d)\n", cfgResource.ProjectSlug,
 			cfgResource.ResourceSlug, i+1, cfgResourcesLen)
-		localLanguages := searchFileFilter(
-			".", fmt.Sprintf("%s", cfgResource.FileFilter),
-		)
+		localLanguages := searchFileFilter(".", cfgResource.FileFilter)
 		overrides := cfgResource.Overrides
 		if len(overrides) > 0 {
 			for langOverride := range overrides {
