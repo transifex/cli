@@ -9,111 +9,203 @@ Usage:
 		i int
 	}
 
-	func (task Task) Run() {
-		fmt.Printf("Processing task %d\n", task.i)
+	func (task Task) Run(send func(string), abort funct()) {
+		send(fmt.Sprintf("Processing task %d\n", task.i))
 		time.Sleep(time.Duration(5) * time.Second)
-		fmt.Printf("Processed task %d\n", task.i)
+		send(fmt.Sprintf("Processed task %d\n", task.i))
 	}
 
 	func main() {
 		num_workers := 5
 		num_tasks := 40
-		pool := worker_pool.NewWorkerPool(num_workers, num_tasks)
+		pool := worker_pool.New(num_workers, num_tasks)
 		for i := 0; i < num_tasks; i++ {
-			pool.AddTask(Task{i})
+			pool.Add(Task{i})
 		}
 		pool.Start()
 		<-pool.Wait()
 		fmt.Println("Worker pool done")
 	}
 
-`WorkerPool.Wait()` returns a signal that will block until all the tasks are completed
+
+Each task gets a portion of an output that gets updated while the workers are
+running (using [uilive](https://github.com/gosuri/uilive)). Each invocation of
+'send' will replace the portion of the output dedicated to the task.
+
+`WorkerPool.Wait()` returns a channel that will block until all the tasks are completed
 when you attempt to read it. The fact that it is a channel gives you the option to
 listen to other channels that the tasks can write to at the same time:
 
 	type Task struct {
-		i               int
-		message_channel chan string
+		i             int
+		resultChannel chan int
 	}
 
 	func (task Task) Run() {
-		task.message_channel <- fmt.Sprintf("Processing task %d", task.i)
 		time.Sleep(time.Duration(5) * time.Second)
-		task.message_channel <- fmt.Sprintf("Processed task %d", task.i)
+		resultChannel <- task.i * task.i
 	}
 
 	func main() {
 		num_workers := 5
 		num_tasks := 40
+		resultChannel := make(chan int)
 		pool := worker_pool.NewWorkerPool(num_workers, num_tasks)
-		message_channel := make(chan string)
 		for i := 0; i < num_tasks; i++ {
-			pool.AddTask(Task{i, message_channel})
+			pool.AddTask(Task{i, resultChannel})
 		}
 		pool.Start()
+		waitChannel := pool.Wait()
 		exitfor := false
 		for !exitfor {
 			select {
-			case msg := <- message_channel:
-				fmt.Println(msg)
-			case <-pool.Wait():
+			case result := <- resultChannel:
+				fmt.Printf("%d\n", result)
+			case <- waitChannel:
 				exitfor = true
 			}
 		}
 		fmt.Println("Worker pool done")
 	}
+
+Calling 'abort' will make sure the workers will not pick up any new tasks.
+However, tasks that are already in progress will continue. After the pool is
+done, you can check the IsAborted field to see if any of the tasks aborted.
+
+	type Task struct {
+		i int
+	}
+
+	func (task Task) Run(send func(string), abort func()) {
+		if task.i == 20 {
+			abort()
+			return
+		}
+		// Do stuff
+	}
+
+	func main() {
+		pool := worker_pool.New(5, 40)
+		for i := 0; i < 40; i++ {
+			pool.Add(Task{i})
+		}
+		pool.Start()
+		<-pool.Wait()
+		if pool.IsAborted {
+			fmt.Pritnln("Something went wrong")
+		}
+	}
 */
 
 package worker_pool
 
-import "sync"
+import (
+	"fmt"
+	"strings"
+	"sync"
+
+	"github.com/gosuri/uilive"
+)
 
 type Task interface {
-	Run(*WorkerPool)
+	Run(send func(string), abort func())
 }
 
-type WorkerPool struct {
-	numWorkers  int
-	taskChannel chan Task
-	wg          sync.WaitGroup
-	IsAborted   bool
+type taskContainer_t struct {
+	i    int
+	task Task
 }
 
-func NewWorkerPool(numWorkers, queueSize int) *WorkerPool {
-	var pool WorkerPool
+type message_t struct {
+	i    int
+	body string
+}
+
+type Pool struct {
+	numWorkers     int
+	taskChannel    chan taskContainer_t
+	innerWaitGroup sync.WaitGroup
+	outerWaitGroup sync.WaitGroup
+	counter        int
+	messages       []string
+	messageChannel chan message_t
+	writer         *uilive.Writer
+
+	IsAborted bool
+}
+
+func New(numWorkers, numTasks int) *Pool {
+	var pool Pool
 	pool.numWorkers = numWorkers
-	pool.taskChannel = make(chan Task, queueSize)
+	pool.taskChannel = make(chan taskContainer_t, numTasks)
+	pool.messages = make([]string, numTasks)
+	pool.messageChannel = make(chan message_t)
 	return &pool
 }
 
-func (pool *WorkerPool) AddTask(task Task) {
-	pool.wg.Add(1)
-	pool.taskChannel <- task
+func (pool *Pool) Add(task Task) {
+	pool.innerWaitGroup.Add(1)
+	pool.taskChannel <- taskContainer_t{pool.counter, task}
+	pool.counter += 1
 }
 
-func (pool *WorkerPool) Start() {
+func (pool *Pool) Start() {
+	pool.writer = uilive.New()
+	pool.writer.Start()
+	pool.outerWaitGroup.Add(1)
+
 	for i := 0; i < pool.numWorkers; i++ {
 		go func() {
-			for task := range pool.taskChannel {
+			for taskContainer := range pool.taskChannel {
 				if !pool.IsAborted {
-					task.Run(pool)
+					send := func(body string) {
+						pool.messageChannel <- message_t{taskContainer.i, body}
+					}
+					taskContainer.task.Run(send, pool.abort)
 				}
-				pool.wg.Done()
+				pool.innerWaitGroup.Done()
 			}
 		}()
 	}
+
+	waitChannel := make(chan struct{})
+	go func() {
+		pool.innerWaitGroup.Wait()
+		waitChannel <- struct{}{}
+	}()
+
+	go func() {
+		exitfor := false
+		for !exitfor {
+			select {
+			case msg := <-pool.messageChannel:
+				pool.messages[msg.i] = msg.body
+				var tmpMessages []string
+				for _, line := range pool.messages {
+					if len(line) > 0 {
+						tmpMessages = append(tmpMessages, line)
+					}
+				}
+				fmt.Fprintln(pool.writer, strings.Join(tmpMessages, "\n"))
+				pool.writer.Flush()
+			case <-waitChannel:
+				exitfor = true
+				pool.writer.Stop()
+				pool.outerWaitGroup.Done()
+			}
+		}
+	}()
 }
 
-func (pool *WorkerPool) Abort() {
-	// No need to protect this with a mutex because it will only go from false to true
+func (pool *Pool) abort() {
 	pool.IsAborted = true
 }
 
-func (pool *WorkerPool) Wait() <-chan struct{} {
-	exitChannel := make(chan struct{})
+func (pool *Pool) Wait() <-chan struct{} {
+	waitChannel := make(chan struct{})
 	go func() {
-		pool.wg.Wait()
-		exitChannel <- struct{}{}
+		pool.outerWaitGroup.Wait()
+		waitChannel <- struct{}{}
 	}()
-	return exitChannel
+	return waitChannel
 }

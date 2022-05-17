@@ -4,22 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/gosimple/slug"
-	"github.com/gosuri/uilive"
 	"github.com/pterm/pterm"
 	"github.com/transifex/cli/internal/txlib/config"
 	"github.com/transifex/cli/pkg/jsonapi"
 	"github.com/transifex/cli/pkg/txapi"
 	"github.com/transifex/cli/pkg/worker_pool"
 )
-
-type Message struct {
-	i    int
-	body string
-}
 
 func PushParallelCommand(
 	cfg *config.Config,
@@ -35,27 +28,24 @@ func PushParallelCommand(
 
 	applyBranchToResources(cfgResources, args.Branch)
 
-	// Resources
+	// Step 1: Resources
 
 	fmt.Print("# Getting info about resources\n\n")
 
-	messages := make([]string, len(cfgResources))
-	messageChannel := make(chan Message)
-
-	pool := worker_pool.NewWorkerPool(args.Workers, len(cfgResources))
+	pool := worker_pool.New(args.Workers, len(cfgResources))
 	sourceTaskChannel := make(chan SourceFileTask)
 	translationTaskChannel := make(chan TranslationFileTask)
-	for i, cfgResource := range cfgResources {
-		pool.AddTask(
+	targetLanguagesChannel := make(chan TargetLanguageMessage)
+	for _, cfgResource := range cfgResources {
+		pool.Add(
 			ResourceTask{
-				i,
 				cfg,
 				cfgResource,
 				sourceTaskChannel,
 				translationTaskChannel,
 				&api,
 				args,
-				messageChannel,
+				targetLanguagesChannel,
 			},
 		)
 	}
@@ -63,29 +53,41 @@ func PushParallelCommand(
 
 	var sourceFileTasks []SourceFileTask
 	var translationFileTasks []TranslationFileTask
-
-	w := uilive.New()
-	w.Start()
+	projects := make(map[string]*jsonapi.Resource)
+	targetLanguages := make(map[string][]string)
 
 	waitChannel := pool.Wait()
 	exitfor := false
 	for !exitfor {
 		select {
 		case sourceFileTask := <-sourceTaskChannel:
-			sourceFileTask.i = len(sourceFileTasks)
 			sourceFileTasks = append(sourceFileTasks, sourceFileTask)
+
 		case translationFileTask := <-translationTaskChannel:
-			translationFileTask.i = len(translationFileTasks)
 			translationFileTasks = append(translationFileTasks, translationFileTask)
-		case msg := <-messageChannel:
-			messages[msg.i] = msg.body
-			fmt.Fprintln(w, strings.Join(filterStringSlice(messages), "\n"))
-			w.Flush()
+
+		case targetLanguageMessage := <-targetLanguagesChannel:
+			project := targetLanguageMessage.project
+			languageId := targetLanguageMessage.languageId
+
+			_, exists := projects[project.Id]
+			if !exists {
+				projects[project.Id] = project
+			}
+
+			languages, exists := targetLanguages[project.Id]
+			if !exists {
+				targetLanguages[project.Id] = []string{}
+				languages = targetLanguages[project.Id]
+			}
+			if !stringSliceContains(languages, languageId) {
+				targetLanguages[project.Id] = append(targetLanguages[project.Id], languageId)
+			}
+
 		case <-waitChannel:
 			exitfor = true
 		}
 	}
-	w.Stop()
 	fmt.Print("\n")
 
 	if pool.IsAborted {
@@ -93,34 +95,33 @@ func PushParallelCommand(
 		return errors.New("Aborted")
 	}
 
-	// SourceFiles
+	// Step 2: Create missing remote target languages
+	if len(targetLanguages) > 0 {
+		fmt.Print("# Create missing remote target languages\n\n")
+
+		pool = worker_pool.New(args.Workers, len(targetLanguages))
+		for projectId, languages := range targetLanguages {
+			pool.Add(LanguagePushTask{projects[projectId], languages})
+		}
+		pool.Start()
+		<-pool.Wait()
+		if pool.IsAborted {
+			fmt.Println("Aborted")
+			return errors.New("Aborted")
+		}
+	}
+
+	// Step 3: SourceFiles
 
 	if len(sourceFileTasks) > 0 {
 		fmt.Print("# Pushing source files\n\n")
 
-		messages = make([]string, len(sourceFileTasks))
-
-		w = uilive.New()
-		w.Start()
-		pool = worker_pool.NewWorkerPool(args.Workers, len(sourceFileTasks))
+		pool = worker_pool.New(args.Workers, len(sourceFileTasks))
 		for _, sourceFileTask := range sourceFileTasks {
-			pool.AddTask(sourceFileTask)
+			pool.Add(sourceFileTask)
 		}
 		pool.Start()
-
-		exitfor = false
-		waitChannel = pool.Wait()
-		for !exitfor {
-			select {
-			case msg := <-messageChannel:
-				messages[msg.i] = msg.body
-				fmt.Fprintln(w, strings.Join(filterStringSlice(messages), "\n"))
-				w.Flush()
-			case <-waitChannel:
-				exitfor = true
-			}
-		}
-		w.Stop()
+		<-pool.Wait()
 		fmt.Print("\n")
 
 		if pool.IsAborted {
@@ -129,34 +130,17 @@ func PushParallelCommand(
 		}
 	}
 
-	// Translations
+	// Step 4: Translations
 
 	if len(translationFileTasks) > 0 {
 		fmt.Print("# Pushing translations\n\n")
 
-		messages = make([]string, len(translationFileTasks))
-
-		w = uilive.New()
-		w.Start()
-		pool = worker_pool.NewWorkerPool(args.Workers, len(translationFileTasks))
+		pool = worker_pool.New(args.Workers, len(translationFileTasks))
 		for _, translationFileTask := range translationFileTasks {
-			pool.AddTask(translationFileTask)
+			pool.Add(translationFileTask)
 		}
 		pool.Start()
-
-		exitfor = false
-		waitChannel = pool.Wait()
-		for !exitfor {
-			select {
-			case msg := <-messageChannel:
-				messages[msg.i] = msg.body
-				fmt.Fprintln(w, strings.Join(filterStringSlice(messages), "\n"))
-				w.Flush()
-			case <-waitChannel:
-				exitfor = true
-			}
-		}
-		w.Stop()
+		<-pool.Wait()
 
 		if pool.IsAborted {
 			fmt.Println("Aborted")
@@ -167,37 +151,37 @@ func PushParallelCommand(
 	return nil
 }
 
+type TargetLanguageMessage struct {
+	project    *jsonapi.Resource
+	languageId string
+}
+
 type ResourceTask struct {
-	i                      int
 	cfg                    *config.Config
 	cfgResource            *config.Resource
 	sourceTaskChannel      chan SourceFileTask
 	translationTaskChannel chan TranslationFileTask
 	api                    *jsonapi.Connection
 	args                   PushCommandArguments
-	messageChannel         chan Message
+	targetLanguagesChannel chan TargetLanguageMessage
 }
 
-func (task ResourceTask) Run(pool *worker_pool.WorkerPool) {
-	i := task.i
+func (task ResourceTask) Run(send func(string), abort func()) {
 	cfg := task.cfg
 	cfgResource := task.cfgResource
 	sourceTaskChannel := task.sourceTaskChannel
 	translationTaskChannel := task.translationTaskChannel
 	api := task.api
 	args := task.args
-	messageChannel := task.messageChannel
+	targetLanguagesChannel := task.targetLanguagesChannel
 
 	sendMessage := func(body string) {
-		messageChannel <- Message{
-			i,
-			fmt.Sprintf(
-				"%s.%s - %s",
-				cfgResource.ProjectSlug,
-				cfgResource.ResourceSlug,
-				body,
-			),
-		}
+		send(fmt.Sprintf(
+			"%s.%s - %s",
+			cfgResource.ProjectSlug,
+			cfgResource.ResourceSlug,
+			body,
+		))
 	}
 	sendMessage("Getting info")
 	resource, err := txapi.GetResourceById(api, cfgResource.GetAPv3Id())
@@ -247,14 +231,12 @@ func (task ResourceTask) Run(pool *worker_pool.WorkerPool) {
 	}
 	if args.Source || !args.Translation {
 		sourceTaskChannel <- SourceFileTask{
-			-1,
 			api,
 			resource,
 			cfgResource.SourceFile,
 			remoteStats,
 			args,
 			resourceIsNew,
-			messageChannel,
 		}
 	}
 	if args.Translation { // -t flag is set
@@ -293,67 +275,91 @@ func (task ResourceTask) Run(pool *worker_pool.WorkerPool) {
 		if err != nil {
 			return
 		}
-		if len(newLanguageCodes) > 0 {
-			sendMessage("Creating new remote languages")
-			remoteLanguages, err = createNewLanguages(
-				api, project, remoteLanguages, newLanguageCodes,
-			)
-			if err != nil {
-				return
+
+		sourceLanguageId := project.Relationships["source_language"].DataSingular.Id
+		for _, languageCode := range newLanguageCodes {
+			if fmt.Sprintf("l:%s", languageCode) == sourceLanguageId {
+				continue
 			}
+			targetLanguagesChannel <- TargetLanguageMessage{project, languageCode}
 		}
 		for i := range languageCodesToPush {
 			languageCode := languageCodesToPush[i]
 			path := pathsToPush[i]
-			_, exists := remoteLanguages[languageCode]
-			if !exists {
+
+			if fmt.Sprintf("l:%s", languageCode) == sourceLanguageId {
 				continue
 			}
 
 			translationTaskChannel <- TranslationFileTask{
-				-1,
 				api,
 				languageCode,
 				path,
 				resource,
 				remoteLanguages,
 				args,
-				messageChannel,
 			}
 		}
 	}
 	sendMessage("Done")
 }
 
-type SourceFileTask struct {
-	i              int
-	api            *jsonapi.Connection
-	resource       *jsonapi.Resource
-	sourceFile     string
-	remoteStats    map[string]*jsonapi.Resource
-	args           PushCommandArguments
-	resourceIsNew  bool
-	messageChannel chan Message
+type LanguagePushTask struct {
+	project   *jsonapi.Resource
+	languages []string
 }
 
-func (task SourceFileTask) Run(pool *worker_pool.WorkerPool) {
-	i := task.i
+func (task LanguagePushTask) Run(send func(string), abort func()) {
+	project := task.project
+	languages := task.languages
+
+	sendMessage := func(body string) {
+		send(fmt.Sprintf("%s - %s", project.Id, body))
+	}
+	sendMessage("Pushing new remote target languages")
+
+	var payload []*jsonapi.Resource
+	for _, language := range languages {
+		payload = append(payload, &jsonapi.Resource{
+			Type: "languages",
+			Id:   fmt.Sprintf("l:%s", language),
+		})
+	}
+	err := project.Add("languages", payload)
+	if err != nil {
+		sendMessage(err.Error())
+		abort()
+		return
+	}
+
+	sendMessage("Done")
+}
+
+type SourceFileTask struct {
+	api           *jsonapi.Connection
+	resource      *jsonapi.Resource
+	sourceFile    string
+	remoteStats   map[string]*jsonapi.Resource
+	args          PushCommandArguments
+	resourceIsNew bool
+}
+
+func (task SourceFileTask) Run(send func(string), abort func()) {
 	api := task.api
 	resource := task.resource
 	sourceFile := task.sourceFile
 	remoteStats := task.remoteStats
 	args := task.args
 	resourceIsNew := task.resourceIsNew
-	messageChannel := task.messageChannel
 
 	sendMessage := func(body string) {
-		messageChannel <- Message{i, fmt.Sprintf("%s - %s", resource.Id, body)}
+		send(fmt.Sprintf("%s - %s", resource.Id, body))
 	}
 
 	doError := func(err error) {
 		sendMessage(fmt.Sprintf("Error: %s", err))
 		if !args.Skip {
-			pool.Abort()
+			abort()
 		}
 	}
 
@@ -410,30 +416,24 @@ func (task SourceFileTask) Run(pool *worker_pool.WorkerPool) {
 }
 
 type TranslationFileTask struct {
-	i               int
 	api             *jsonapi.Connection
 	languageCode    string
 	path            string
 	resource        *jsonapi.Resource
 	remoteLanguages map[string]*jsonapi.Resource
 	args            PushCommandArguments
-	messageChannel  chan Message
 }
 
-func (task TranslationFileTask) Run(pool *worker_pool.WorkerPool) {
-	i := task.i
+func (task TranslationFileTask) Run(send func(string), abort func()) {
 	api := task.api
 	languageCode := task.languageCode
 	path := task.path
 	resource := task.resource
 	remoteLanguages := task.remoteLanguages
 	args := task.args
-	messageChannel := task.messageChannel
 
 	sendMessage := func(body string) {
-		messageChannel <- Message{
-			i, fmt.Sprintf("%s (%s) - %s", resource.Id, languageCode, body),
-		}
+		send(fmt.Sprintf("%s (%s) - %s", resource.Id, languageCode, body))
 	}
 
 	sendMessage("Uploading file")
@@ -560,12 +560,11 @@ func applyBranchToResources(cfgResources []*config.Resource, branch string) {
 	}
 }
 
-func filterStringSlice(src []string) []string {
-	var dst []string
-	for _, msg := range src {
-		if len(msg) > 0 {
-			dst = append(dst, msg)
+func stringSliceContains(haystack []string, needle string) bool {
+	for _, item := range haystack {
+		if item == needle {
+			return true
 		}
 	}
-	return dst
+	return false
 }

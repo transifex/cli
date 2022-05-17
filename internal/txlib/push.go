@@ -90,11 +90,11 @@ func PushCommand(
 			if err != nil {
 				if os.IsNotExist(err) {
 					fmt.Println(pterm.Error.Sprintf(
-						"could not find file '%s'. Aborting.",
+						"could not find file '%s'. Aborting",
 						cfgResource.SourceFile,
 					))
 					return fmt.Errorf(
-						"could not find file '%s'. Aborting.",
+						"could not find file '%s'. Aborting",
 						cfgResource.SourceFile,
 					)
 				} else {
@@ -500,12 +500,6 @@ func getFilesToPush(
 					remoteLanguageCode)
 				pathsToPush = append(pathsToPush, path)
 				newLanguageCodes = append(newLanguageCodes, remoteLanguageCode)
-			} else {
-				pterm.Warning.Printf(
-					"Skipping '%s' because the language is not included in "+
-						"the project's remote languages\n",
-					path,
-				)
 			}
 			continue
 		}
@@ -524,11 +518,6 @@ func getFilesToPush(
 				return nil, nil, nil, err
 			}
 			if skip {
-				pterm.Warning.Printf(
-					"Skipping '%s' because the remote file is newer than "+
-						"the local one\n",
-					path,
-				)
 				continue
 			}
 		}
@@ -690,10 +679,10 @@ func createNewLanguages(
 	// 	return nil, err
 	// }
 
-	allLanguages, err := txapi.GetLanguages(api)
-	if err != nil {
+	allLanguages := txapi.GetLanguages(api)
+	if allLanguages == nil {
 		// spinner.Fail(msg + ": " + err.Error())
-		return nil, err
+		return nil, errors.New("failed to fetch languages")
 	}
 	// var skippedLanguageCodes []string
 	var languagesToCreate []*jsonapi.Resource
@@ -734,7 +723,7 @@ func createNewLanguages(
 			// newLanguageCodes = append(newLanguageCodes,
 			// 	languageAttributes.Code)
 		}
-		err = project.Add("languages", languagesToCreate)
+		err := project.Add("languages", languagesToCreate)
 		if err != nil {
 			// spinner.Fail(msg + ": " + err.Error())
 			return nil, err

@@ -1,6 +1,10 @@
 package txapi
 
-import "github.com/transifex/cli/pkg/jsonapi"
+import (
+	"sync"
+
+	"github.com/transifex/cli/pkg/jsonapi"
+)
 
 type LanguageAttributes struct {
 	Code           string `json:"code"`
@@ -17,25 +21,30 @@ type LanguageAttributes struct {
 	Rtl bool `json:"rtl"`
 }
 
-func GetLanguages(
-	api *jsonapi.Connection,
-) (map[string]*jsonapi.Resource, error) {
-	collection, err := api.List("languages", "")
-	if err != nil {
-		return nil, err
-	}
+var GetLanguages = func() func(api *jsonapi.Connection) map[string]*jsonapi.Resource {
 	result := make(map[string]*jsonapi.Resource)
-	for i := range collection.Data {
-		language := collection.Data[i]
-		var languageAttributes LanguageAttributes
-		err = language.MapAttributes(&languageAttributes)
-		if err != nil {
-			return nil, err
-		}
-		result[languageAttributes.Code] = &language
+	var once sync.Once
+	return func(api *jsonapi.Connection) map[string]*jsonapi.Resource {
+		once.Do(func() {
+			collection, err := api.List("languages", "")
+			if err != nil {
+				result = nil
+				return
+			}
+			for i := range collection.Data {
+				language := collection.Data[i]
+				var languageAttributes LanguageAttributes
+				err = language.MapAttributes(&languageAttributes)
+				if err != nil {
+					result = nil
+					return
+				}
+				result[languageAttributes.Code] = &language
+			}
+		})
+		return result
 	}
-	return result, nil
-}
+}()
 
 func GetLanguage(
 	api *jsonapi.Connection, code string,
