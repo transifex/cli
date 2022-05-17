@@ -88,7 +88,6 @@ func PushParallelCommand(
 			exitfor = true
 		}
 	}
-	fmt.Print("\n")
 
 	if pool.IsAborted {
 		fmt.Println("Aborted")
@@ -97,7 +96,7 @@ func PushParallelCommand(
 
 	// Step 2: Create missing remote target languages
 	if len(targetLanguages) > 0 {
-		fmt.Print("# Create missing remote target languages\n\n")
+		fmt.Print("\n# Create missing remote target languages\n\n")
 
 		pool = worker_pool.New(args.Workers, len(targetLanguages))
 		for projectId, languages := range targetLanguages {
@@ -114,7 +113,7 @@ func PushParallelCommand(
 	// Step 3: SourceFiles
 
 	if len(sourceFileTasks) > 0 {
-		fmt.Print("# Pushing source files\n\n")
+		fmt.Print("\n# Pushing source files\n\n")
 
 		pool = worker_pool.New(args.Workers, len(sourceFileTasks))
 		for _, sourceFileTask := range sourceFileTasks {
@@ -122,7 +121,6 @@ func PushParallelCommand(
 		}
 		pool.Start()
 		<-pool.Wait()
-		fmt.Print("\n")
 
 		if pool.IsAborted {
 			fmt.Println("Aborted")
@@ -133,7 +131,7 @@ func PushParallelCommand(
 	// Step 4: Translations
 
 	if len(translationFileTasks) > 0 {
-		fmt.Print("# Pushing translations\n\n")
+		fmt.Print("\n# Pushing translations\n\n")
 
 		pool = worker_pool.New(args.Workers, len(translationFileTasks))
 		for _, translationFileTask := range translationFileTasks {
@@ -276,18 +274,27 @@ func (task ResourceTask) Run(send func(string), abort func()) {
 			return
 		}
 
+		allLanguages, err := txapi.GetLanguages(api)
+		if err != nil {
+			send("Error while fetching languages")
+			abort()
+			return
+		}
 		sourceLanguageId := project.Relationships["source_language"].DataSingular.Id
 		for _, languageCode := range newLanguageCodes {
-			if fmt.Sprintf("l:%s", languageCode) == sourceLanguageId {
+			language, exists := allLanguages[languageCode]
+			if !exists || fmt.Sprintf("l:%s", languageCode) == sourceLanguageId {
 				continue
 			}
+			remoteLanguages[languageCode] = language
 			targetLanguagesChannel <- TargetLanguageMessage{project, languageCode}
 		}
 		for i := range languageCodesToPush {
 			languageCode := languageCodesToPush[i]
 			path := pathsToPush[i]
 
-			if fmt.Sprintf("l:%s", languageCode) == sourceLanguageId {
+			_, exists := allLanguages[languageCode]
+			if !exists || fmt.Sprintf("l:%s", languageCode) == sourceLanguageId {
 				continue
 			}
 
@@ -441,6 +448,8 @@ func (task TranslationFileTask) Run(send func(string), abort func()) {
 		api, languageCode, path, resource, remoteLanguages, args,
 	)
 	if err != nil {
+		sendMessage(err.Error())
+		abort()
 		return
 	}
 
@@ -449,8 +458,11 @@ func (task TranslationFileTask) Run(send func(string), abort func()) {
 	err = txapi.PollTranslationUpload(upload, duration)
 	if err != nil {
 		if !args.Skip {
+			sendMessage(err.Error())
+			abort()
 			return
 		}
+		sendMessage(fmt.Sprintf("%s skipping", err))
 		return
 	}
 	sendMessage("Done")

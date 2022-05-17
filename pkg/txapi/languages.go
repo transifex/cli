@@ -21,14 +21,19 @@ type LanguageAttributes struct {
 	Rtl bool `json:"rtl"`
 }
 
-var GetLanguages = func() func(api *jsonapi.Connection) map[string]*jsonapi.Resource {
+/* Get a list of *all* languages supported by Transifex and memoize the result */
+var GetLanguages = func() func(api *jsonapi.Connection) (map[string]*jsonapi.Resource, error) {
 	result := make(map[string]*jsonapi.Resource)
+	var resultErr error
+
 	var once sync.Once
-	return func(api *jsonapi.Connection) map[string]*jsonapi.Resource {
+
+	return func(api *jsonapi.Connection) (map[string]*jsonapi.Resource, error) {
 		once.Do(func() {
 			collection, err := api.List("languages", "")
 			if err != nil {
 				result = nil
+				resultErr = err
 				return
 			}
 			for i := range collection.Data {
@@ -37,12 +42,13 @@ var GetLanguages = func() func(api *jsonapi.Connection) map[string]*jsonapi.Reso
 				err = language.MapAttributes(&languageAttributes)
 				if err != nil {
 					result = nil
+					resultErr = err
 					return
 				}
 				result[languageAttributes.Code] = &language
 			}
 		})
-		return result
+		return result, resultErr
 	}
 }()
 
