@@ -679,8 +679,8 @@ func createNewLanguages(
 	// 	return nil, err
 	// }
 
-	allLanguages := txapi.GetLanguages(api)
-	if allLanguages == nil {
+	allLanguages, err := txapi.GetLanguages(api)
+	if err != nil {
 		// spinner.Fail(msg + ": " + err.Error())
 		return nil, errors.New("failed to fetch languages")
 	}

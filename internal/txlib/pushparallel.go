@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gosimple/slug"
@@ -81,7 +82,10 @@ func PushParallelCommand(
 				languages = targetLanguages[project.Id]
 			}
 			if !stringSliceContains(languages, languageId) {
-				targetLanguages[project.Id] = append(targetLanguages[project.Id], languageId)
+				targetLanguages[project.Id] = append(
+					targetLanguages[project.Id],
+					languageId,
+				)
 			}
 
 		case <-waitChannel:
@@ -193,6 +197,9 @@ func (task ResourceTask) Run(send func(string), abort func()) {
 		sendMessage("Resource does not exist; creating")
 		if cfgResource.Type == "" {
 			sendMessage("Error: Cannot create resource, i18n type is unknown")
+			if !args.Skip {
+				abort()
+			}
 			return
 		}
 		var resourceName string
@@ -217,6 +224,9 @@ func (task ResourceTask) Run(send func(string), abort func()) {
 			cfgResource.Type)
 		if err != nil {
 			sendMessage(fmt.Sprintf("Error while creating resource, %s", err))
+			if !args.Skip {
+				abort()
+			}
 			return
 		}
 	}
@@ -225,6 +235,9 @@ func (task ResourceTask) Run(send func(string), abort func()) {
 	remoteStats, err := getRemoteStats(api, resource, args)
 	if err != nil {
 		sendMessage(fmt.Sprintf("Error while fetching stats, %s", err))
+		if !args.Skip {
+			abort()
+		}
 		return
 	}
 	if args.Source || !args.Translation {
@@ -243,6 +256,9 @@ func (task ResourceTask) Run(send func(string), abort func()) {
 		projectRelationship, err := resource.Fetch("project")
 		if err != nil {
 			sendMessage(fmt.Sprintf("Error while fetching project, %s", err))
+			if !args.Skip {
+				abort()
+			}
 			return
 		}
 		project := projectRelationship.DataSingular
@@ -252,14 +268,25 @@ func (task ResourceTask) Run(send func(string), abort func()) {
 		remoteLanguages, err := txapi.GetProjectLanguages(project)
 		if err != nil {
 			sendMessage(fmt.Sprintf("Error while fetching remote languages, %s", err))
+			if !args.Skip {
+				abort()
+			}
 			return
 		}
 		curDir, err := os.Getwd()
 		if err != nil {
+			sendMessage(err.Error())
+			if !args.Skip {
+				abort()
+			}
 			return
 		}
 		fileFilter := cfgResource.FileFilter
 		if err := isFileFilterValid(fileFilter); err != nil {
+			sendMessage(err.Error())
+			if !args.Skip {
+				abort()
+			}
 			return
 		}
 		if args.Xliff {
@@ -271,12 +298,16 @@ func (task ResourceTask) Run(send func(string), abort func()) {
 			remoteStats, overrides, args, resourceIsNew,
 		)
 		if err != nil {
+			sendMessage(err.Error())
+			if !args.Skip {
+				abort()
+			}
 			return
 		}
 
 		allLanguages, err := txapi.GetLanguages(api)
 		if err != nil {
-			send("Error while fetching languages")
+			sendMessage(err.Error())
 			abort()
 			return
 		}
@@ -320,10 +351,17 @@ func (task LanguagePushTask) Run(send func(string), abort func()) {
 	project := task.project
 	languages := task.languages
 
+	parts := strings.Split(project.Id, ":")
+
 	sendMessage := func(body string) {
-		send(fmt.Sprintf("%s - %s", project.Id, body))
+		send(fmt.Sprintf(
+			"%s (%s) - %s",
+			parts[3],
+			strings.Join(languages, ", "),
+			body,
+		))
 	}
-	sendMessage("Pushing new remote target languages")
+	sendMessage("Pushing")
 
 	var payload []*jsonapi.Resource
 	for _, language := range languages {
@@ -359,15 +397,10 @@ func (task SourceFileTask) Run(send func(string), abort func()) {
 	args := task.args
 	resourceIsNew := task.resourceIsNew
 
-	sendMessage := func(body string) {
-		send(fmt.Sprintf("%s - %s", resource.Id, body))
-	}
+	parts := strings.Split(resource.Id, ":")
 
-	doError := func(err error) {
-		sendMessage(fmt.Sprintf("Error: %s", err))
-		if !args.Skip {
-			abort()
-		}
+	sendMessage := func(body string) {
+		send(fmt.Sprintf("%s.%s - %s", parts[3], parts[5], body))
 	}
 
 	if sourceFile == "" {
@@ -375,7 +408,10 @@ func (task SourceFileTask) Run(send func(string), abort func()) {
 	}
 	file, err := os.Open(sourceFile)
 	if err != nil {
-		doError(err)
+		sendMessage(err.Error())
+		if !args.Skip {
+			abort()
+		}
 		return
 	}
 	defer file.Close()
@@ -385,7 +421,10 @@ func (task SourceFileTask) Run(send func(string), abort func()) {
 		// Project should already be pre-fetched
 		projectRelationship, err := resource.Fetch("project")
 		if err != nil {
-			doError(err)
+			sendMessage(err.Error())
+			if !args.Skip {
+				abort()
+			}
 			return
 		}
 		project := projectRelationship.DataSingular
@@ -399,14 +438,20 @@ func (task SourceFileTask) Run(send func(string), abort func()) {
 			return
 		}
 		if err != nil {
-			doError(err)
+			sendMessage(err.Error())
+			if !args.Skip {
+				abort()
+			}
 			return
 		}
 	}
 	sendMessage("Uploading file")
 	sourceUpload, err := txapi.UploadSource(api, resource, file)
 	if err != nil {
-		doError(err)
+		sendMessage(err.Error())
+		if !args.Skip {
+			abort()
+		}
 		return
 	}
 	if sourceUpload == nil {
@@ -416,7 +461,10 @@ func (task SourceFileTask) Run(send func(string), abort func()) {
 	sendMessage("Polling")
 	err = txapi.PollSourceUpload(sourceUpload, duration)
 	if err != nil {
-		doError(err)
+		sendMessage(err.Error())
+		if !args.Skip {
+			abort()
+		}
 		return
 	}
 	sendMessage("Done")
@@ -439,8 +487,10 @@ func (task TranslationFileTask) Run(send func(string), abort func()) {
 	remoteLanguages := task.remoteLanguages
 	args := task.args
 
+	parts := strings.Split(resource.Id, ":")
+
 	sendMessage := func(body string) {
-		send(fmt.Sprintf("%s (%s) - %s", resource.Id, languageCode, body))
+		send(fmt.Sprintf("%s.%s [%s] - %s", parts[3], parts[5], languageCode, body))
 	}
 
 	sendMessage("Uploading file")
@@ -449,7 +499,9 @@ func (task TranslationFileTask) Run(send func(string), abort func()) {
 	)
 	if err != nil {
 		sendMessage(err.Error())
-		abort()
+		if !args.Skip {
+			abort()
+		}
 		return
 	}
 
@@ -457,12 +509,11 @@ func (task TranslationFileTask) Run(send func(string), abort func()) {
 	sendMessage("Polling")
 	err = txapi.PollTranslationUpload(upload, duration)
 	if err != nil {
+		sendMessage(err.Error())
 		if !args.Skip {
-			sendMessage(err.Error())
 			abort()
 			return
 		}
-		sendMessage(fmt.Sprintf("%s skipping", err))
 		return
 	}
 	sendMessage("Done")
