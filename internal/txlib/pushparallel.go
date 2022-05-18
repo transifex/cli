@@ -282,7 +282,8 @@ func (task ResourceTask) Run(send func(string), abort func()) {
 			return
 		}
 		fileFilter := cfgResource.FileFilter
-		if err := isFileFilterValid(fileFilter); err != nil {
+		err = isFileFilterValid(fileFilter)
+		if err != nil {
 			sendMessage(err.Error())
 			if !args.Skip {
 				abort()
@@ -336,6 +337,8 @@ func (task ResourceTask) Run(send func(string), abort func()) {
 				resource,
 				remoteLanguages,
 				args,
+				remoteStats,
+				resourceIsNew,
 			}
 		}
 	}
@@ -477,6 +480,8 @@ type TranslationFileTask struct {
 	resource        *jsonapi.Resource
 	remoteLanguages map[string]*jsonapi.Resource
 	args            PushCommandArguments
+	remoteStats     map[string]*jsonapi.Resource
+	resourceIsNew   bool
 }
 
 func (task TranslationFileTask) Run(send func(string), abort func()) {
@@ -486,6 +491,8 @@ func (task TranslationFileTask) Run(send func(string), abort func()) {
 	resource := task.resource
 	remoteLanguages := task.remoteLanguages
 	args := task.args
+	remoteStats := task.remoteStats
+	resourceIsNew := task.resourceIsNew
 
 	parts := strings.Split(resource.Id, ":")
 
@@ -494,6 +501,27 @@ func (task TranslationFileTask) Run(send func(string), abort func()) {
 	}
 
 	sendMessage("Uploading file")
+
+	// Only check timestamps if -f isn't set and if resource isn't new
+	if !args.Force && !resourceIsNew {
+		languageId := fmt.Sprintf("l:%s", languageCode)
+		remoteStat, exists := remoteStats[languageId]
+		if exists {
+			skip, err := shouldSkipPush(path, remoteStat, args.UseGitTimestamps)
+			if err != nil {
+				sendMessage(err.Error())
+				if !args.Skip {
+					abort()
+				}
+				return
+			}
+			if skip {
+				sendMessage("Skipping because remote file is newer than local")
+				return
+			}
+		}
+	}
+
 	upload, err := pushTranslation(
 		api, languageCode, path, resource, remoteLanguages, args,
 	)

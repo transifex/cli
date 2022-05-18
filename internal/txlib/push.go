@@ -489,8 +489,11 @@ func getFilesToPush(
 			continue
 		}
 
-		language, exists := remoteLanguages[remoteLanguageCode]
-		if !exists {
+		_, exists = remoteLanguages[remoteLanguageCode]
+		if exists {
+			languageCodesToPush = append(languageCodesToPush, remoteLanguageCode)
+			pathsToPush = append(pathsToPush, path)
+		} else {
 			// if --all is set or -l is set and the code is in one of the
 			// languages, we need to create the remote language
 			if args.All || (len(args.Languages) > 0 &&
@@ -503,26 +506,6 @@ func getFilesToPush(
 			}
 			continue
 		}
-
-		// Only check timestamps if -f isn't set and if resource isn't new
-		if !args.Force && !resourceIsNew {
-			remoteStat, exists := remoteStats[language.Id]
-			if !exists {
-				return nil, nil, nil, fmt.Errorf(
-					"couldn't find matching stats for the language %s",
-					language.Id,
-				)
-			}
-			skip, err := shouldSkipPush(path, remoteStat, args.UseGitTimestamps)
-			if err != nil {
-				return nil, nil, nil, err
-			}
-			if skip {
-				continue
-			}
-		}
-		languageCodesToPush = append(languageCodesToPush, remoteLanguageCode)
-		pathsToPush = append(pathsToPush, path)
 	}
 	return languageCodesToPush, pathsToPush, newLanguageCodes, nil
 }
