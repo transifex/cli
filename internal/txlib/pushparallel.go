@@ -520,19 +520,13 @@ func (task TranslationFileTask) Run(send func(string), abort func()) {
 }
 
 func figureOutBranch(branch string) string {
-	var result string
 	if branch == "-1" {
-		result = ""
+		return ""
 	} else if branch == "" {
-		result = getGitBranch()
-		if result == "" {
-			pterm.Warning.Println("Couldn't find branch information")
-		}
+		return getGitBranch()
+	} else {
+		return branch
 	}
-	if result != "" {
-		pterm.Info.Printf("Using branch '%s'\n", result)
-	}
-	return result
 }
 
 func figureOutResources(
