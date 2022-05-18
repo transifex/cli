@@ -448,8 +448,18 @@ func (task SourceFileTask) Run(send func(string), abort func()) {
 			return
 		}
 	}
+
 	sendMessage("Uploading file")
-	sourceUpload, err := txapi.UploadSource(api, resource, file)
+
+	var sourceUpload *jsonapi.Resource
+	err = handleThrottling(
+		func() error {
+			var err error
+			sourceUpload, err = txapi.UploadSource(api, resource, file)
+			return err
+		},
+		sendMessage,
+	)
 	if err != nil {
 		sendMessage(err.Error())
 		if !args.Skip {
@@ -457,12 +467,15 @@ func (task SourceFileTask) Run(send func(string), abort func()) {
 		}
 		return
 	}
-	if sourceUpload == nil {
-		return
-	}
-	duration := time.Duration(1) * time.Second
+
 	sendMessage("Polling")
-	err = txapi.PollSourceUpload(sourceUpload, duration)
+
+	err = handleThrottling(
+		func() error {
+			return txapi.PollSourceUpload(sourceUpload, time.Second)
+		},
+		sendMessage,
+	)
 	if err != nil {
 		sendMessage(err.Error())
 		if !args.Skip {
@@ -470,6 +483,7 @@ func (task SourceFileTask) Run(send func(string), abort func()) {
 		}
 		return
 	}
+
 	sendMessage("Done")
 }
 
@@ -522,8 +536,16 @@ func (task TranslationFileTask) Run(send func(string), abort func()) {
 		}
 	}
 
-	upload, err := pushTranslation(
-		api, languageCode, path, resource, remoteLanguages, args,
+	var upload *jsonapi.Resource
+	err := handleThrottling(
+		func() error {
+			var err error
+			upload, err = pushTranslation(
+				api, languageCode, path, resource, remoteLanguages, args,
+			)
+			return err
+		},
+		sendMessage,
 	)
 	if err != nil {
 		sendMessage(err.Error())
@@ -533,14 +555,17 @@ func (task TranslationFileTask) Run(send func(string), abort func()) {
 		return
 	}
 
-	duration := time.Duration(1) * time.Second
 	sendMessage("Polling")
-	err = txapi.PollTranslationUpload(upload, duration)
+	err = handleThrottling(
+		func() error {
+			return txapi.PollTranslationUpload(upload, time.Second)
+		},
+		sendMessage,
+	)
 	if err != nil {
 		sendMessage(err.Error())
 		if !args.Skip {
 			abort()
-			return
 		}
 		return
 	}
@@ -652,4 +677,33 @@ func stringSliceContains(haystack []string, needle string) bool {
 		}
 	}
 	return false
+}
+
+/*
+Run 'do'. If the error returned by 'do' is a jsonapi.ThrottleError, sleep the number of
+seconds indicated by the error and try again. Meanwhile, inform the user of
+what's going on using 'send'.
+*/
+func handleThrottling(do func() error, send func(string)) error {
+	for {
+		err := do()
+		if err == nil {
+			return nil
+		} else {
+			var e *jsonapi.ThrottleError
+			if errors.As(err, &e) {
+				retryAfter := e.RetryAfter
+				for retryAfter > 0 {
+					send(fmt.Sprintf(
+						"Throttled, will retry after %d seconds",
+						retryAfter,
+					))
+					time.Sleep(time.Second)
+					retryAfter -= 1
+				}
+			} else {
+				return err
+			}
+		}
+	}
 }

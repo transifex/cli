@@ -65,6 +65,11 @@ func (c *Connection) request(
 	}
 	defer response.Body.Close()
 
+	throttleErrorResponse := parseThrottleResponse(response)
+	if throttleErrorResponse != nil {
+		return nil, throttleErrorResponse
+	}
+
 	errorResponse := parseErrorResponse(response.StatusCode, body)
 	if errorResponse != nil {
 		return nil, errorResponse
