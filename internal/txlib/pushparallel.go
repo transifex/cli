@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -28,6 +29,10 @@ func PushParallelCommand(
 	}
 
 	applyBranchToResources(cfgResources, args.Branch)
+
+	sort.Slice(cfgResources, func(i, j int) bool {
+		return cfgResources[i].GetAPv3Id() < cfgResources[j].GetAPv3Id()
+	})
 
 	// Step 1: Resources
 
@@ -104,6 +109,9 @@ func PushParallelCommand(
 
 		pool = worker_pool.New(args.Workers, len(targetLanguages))
 		for projectId, languages := range targetLanguages {
+			sort.Slice(languages, func(i, j int) bool {
+				return languages[i] < languages[j]
+			})
 			pool.Add(LanguagePushTask{projects[projectId], languages})
 		}
 		pool.Start()
@@ -119,6 +127,9 @@ func PushParallelCommand(
 	if len(sourceFileTasks) > 0 {
 		fmt.Print("\n# Pushing source files\n\n")
 
+		sort.Slice(sourceFileTasks, func(i, j int) bool {
+			return sourceFileTasks[i].resource.Id < sourceFileTasks[j].resource.Id
+		})
 		pool = worker_pool.New(args.Workers, len(sourceFileTasks))
 		for _, sourceFileTask := range sourceFileTasks {
 			pool.Add(sourceFileTask)
@@ -135,6 +146,15 @@ func PushParallelCommand(
 	// Step 4: Translations
 
 	if len(translationFileTasks) > 0 {
+		sort.Slice(translationFileTasks, func(i, j int) bool {
+			left := translationFileTasks[i]
+			right := translationFileTasks[j]
+			if left.resource.Id != right.resource.Id {
+				return left.resource.Id < right.resource.Id
+			} else {
+				return left.languageCode < right.languageCode
+			}
+		})
 		fmt.Print("\n# Pushing translations\n\n")
 
 		pool = worker_pool.New(args.Workers, len(translationFileTasks))
