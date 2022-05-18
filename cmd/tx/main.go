@@ -427,14 +427,10 @@ func Main() {
 						), 1)
 					}
 
-					if args.Workers < 1 {
-						return cli.Exit(
-							fmt.Sprintf(
-								"A positive worker count is required, not %d",
-								args.Workers,
-							),
-							1,
-						)
+					if 1 > args.Workers || args.Workers > 30 {
+						return cli.Exit(pterm.Error.Sprint(
+							"Please choose a number of workers between 1 and 30",
+						), 1)
 					}
 
 					err = txlib.PushParallelCommand(&cfg, api, args)
