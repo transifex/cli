@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/transifex/cli/internal/txlib/config"
 	"github.com/transifex/cli/pkg/jsonapi"
 	"github.com/transifex/cli/pkg/txapi"
+	"github.com/transifex/cli/pkg/worker_pool"
 )
 
 type PushCommandArguments struct {
@@ -30,153 +32,220 @@ type PushCommandArguments struct {
 }
 
 func PushCommand(
-	cfg *config.Config, api jsonapi.Connection, args PushCommandArguments,
+	cfg *config.Config,
+	api jsonapi.Connection,
+	args PushCommandArguments,
 ) error {
-	if args.Branch == "-1" {
-		args.Branch = ""
-	} else if args.Branch == "" {
-		args.Branch = getGitBranch()
-		if args.Branch == "" {
-			pterm.Warning.Println("Couldn't find branch information")
-		}
+	args.Branch = figureOutBranch(args.Branch)
+
+	cfgResources, err := figureOutResources(args.ResourceIds, cfg)
+	if err != nil {
+		return err
 	}
-	if args.Branch != "" {
-		pterm.Info.Printf("Using branch '%s'\n", args.Branch)
+
+	applyBranchToResources(cfgResources, args.Branch)
+
+	sort.Slice(cfgResources, func(i, j int) bool {
+		return cfgResources[i].GetAPv3Id() < cfgResources[j].GetAPv3Id()
+	})
+
+	// Step 1: Resources
+
+	fmt.Print("# Getting info about resources\n\n")
+
+	pool := worker_pool.New(args.Workers, len(cfgResources))
+	sourceTaskChannel := make(chan SourceFileTask)
+	translationTaskChannel := make(chan TranslationFileTask)
+	targetLanguagesChannel := make(chan TargetLanguageMessage)
+	for _, cfgResource := range cfgResources {
+		pool.Add(
+			ResourceTask{
+				cfg,
+				cfgResource,
+				sourceTaskChannel,
+				translationTaskChannel,
+				&api,
+				args,
+				targetLanguagesChannel,
+			},
+		)
 	}
-	var cfgResources []*config.Resource
-	if args.ResourceIds != nil && len(args.ResourceIds) != 0 {
-		cfgResources = make([]*config.Resource, 0, len(args.ResourceIds))
-		for _, resourceId := range args.ResourceIds {
-			cfgResource := cfg.FindResource(resourceId)
-			if cfgResource == nil {
-				fmt.Println(pterm.Error.Sprintf(
-					"could not find resource '%s' in local configuration or your resource slug is invalid",
-					resourceId,
-				))
-				return fmt.Errorf(
-					"could not find resource '%s' in local configuration or your resource slug is invalid",
-					resourceId,
+	pool.Start()
+
+	var sourceFileTasks []SourceFileTask
+	var translationFileTasks []TranslationFileTask
+	projects := make(map[string]*jsonapi.Resource)
+	targetLanguages := make(map[string][]string)
+
+	waitChannel := pool.Wait()
+	exitfor := false
+	for !exitfor {
+		select {
+		case sourceFileTask := <-sourceTaskChannel:
+			sourceFileTasks = append(sourceFileTasks, sourceFileTask)
+
+		case translationFileTask := <-translationTaskChannel:
+			translationFileTasks = append(translationFileTasks, translationFileTask)
+
+		case targetLanguageMessage := <-targetLanguagesChannel:
+			project := targetLanguageMessage.project
+			languageId := targetLanguageMessage.languageId
+
+			_, exists := projects[project.Id]
+			if !exists {
+				projects[project.Id] = project
+			}
+
+			languages, exists := targetLanguages[project.Id]
+			if !exists {
+				targetLanguages[project.Id] = []string{}
+				languages = targetLanguages[project.Id]
+			}
+			if !stringSliceContains(languages, languageId) {
+				targetLanguages[project.Id] = append(
+					targetLanguages[project.Id],
+					languageId,
 				)
 			}
 
-			_, err := os.Stat(cfgResource.SourceFile)
-			if err != nil {
-				if os.IsNotExist(err) {
-					fmt.Println(pterm.Error.Sprintf(
-						"could not find file '%s'. Aborting.",
-						cfgResource.SourceFile,
-					))
-					return fmt.Errorf(
-						"could not find file '%s'. Aborting",
-						cfgResource.SourceFile,
-					)
-				} else {
-					fmt.Println(pterm.Error.Sprintf(
-						"something went wrong while examining the source " +
-							"file path",
-					))
-					return fmt.Errorf(
-						"something went wrong while examining the source " +
-							"file path",
-					)
-				}
-			}
-			cfgResources = append(cfgResources, cfgResource)
-		}
-	} else {
-		for i := range cfg.Local.Resources {
-			cfgResource := &cfg.Local.Resources[i]
-			_, err := os.Stat(cfgResource.SourceFile)
-			if err != nil {
-				if os.IsNotExist(err) {
-					fmt.Println(pterm.Error.Sprintf(
-						"could not find file '%s'. Aborting",
-						cfgResource.SourceFile,
-					))
-					return fmt.Errorf(
-						"could not find file '%s'. Aborting",
-						cfgResource.SourceFile,
-					)
-				} else {
-					fmt.Println(pterm.Error.Sprintf(
-						"something went wrong while examining the source " +
-							"file path",
-					))
-					return fmt.Errorf(
-						"something went wrong while examining the source " +
-							"file path",
-					)
-				}
-			}
-			cfgResources = append(cfgResources, cfgResource)
+		case <-waitChannel:
+			exitfor = true
 		}
 	}
 
-	for i := range cfgResources {
-		cfgResource := cfgResources[i]
-		if args.Branch != "" {
-			cfgResource.ResourceSlug = fmt.Sprintf("%s--%s",
-				slug.Make(args.Branch),
-				cfgResource.ResourceSlug)
+	if pool.IsAborted {
+		fmt.Println("Aborted")
+		return errors.New("Aborted")
+	}
+
+	// Step 2: Create missing remote target languages
+	if len(targetLanguages) > 0 {
+		fmt.Print("\n# Create missing remote target languages\n\n")
+
+		pool = worker_pool.New(args.Workers, len(targetLanguages))
+		for projectId, languages := range targetLanguages {
+			sort.Slice(languages, func(i, j int) bool {
+				return languages[i] < languages[j]
+			})
+			pool.Add(LanguagePushTask{projects[projectId], languages})
+		}
+		pool.Start()
+		<-pool.Wait()
+		if pool.IsAborted {
+			fmt.Println("Aborted")
+			return errors.New("Aborted")
 		}
 	}
 
-	for _, cfgResource := range cfgResources {
-		err := pushResource(&api, cfg, *cfgResource, args)
-		if err != nil {
-			if !args.Skip {
-				return err
-			}
+	// Step 3: SourceFiles
+
+	if len(sourceFileTasks) > 0 {
+		fmt.Print("\n# Pushing source files\n\n")
+
+		sort.Slice(sourceFileTasks, func(i, j int) bool {
+			return sourceFileTasks[i].resource.Id < sourceFileTasks[j].resource.Id
+		})
+		pool = worker_pool.New(args.Workers, len(sourceFileTasks))
+		for _, sourceFileTask := range sourceFileTasks {
+			pool.Add(sourceFileTask)
+		}
+		pool.Start()
+		<-pool.Wait()
+
+		if pool.IsAborted {
+			fmt.Println("Aborted")
+			return errors.New("Aborted")
 		}
 	}
+
+	// Step 4: Translations
+
+	if len(translationFileTasks) > 0 {
+		sort.Slice(translationFileTasks, func(i, j int) bool {
+			left := translationFileTasks[i]
+			right := translationFileTasks[j]
+			if left.resource.Id != right.resource.Id {
+				return left.resource.Id < right.resource.Id
+			} else {
+				return left.languageCode < right.languageCode
+			}
+		})
+		fmt.Print("\n# Pushing translations\n\n")
+
+		pool = worker_pool.New(args.Workers, len(translationFileTasks))
+		for _, translationFileTask := range translationFileTasks {
+			pool.Add(translationFileTask)
+		}
+		pool.Start()
+		<-pool.Wait()
+
+		if pool.IsAborted {
+			fmt.Println("Aborted")
+			return errors.New("Aborted")
+		}
+	}
+
 	return nil
 }
 
-func pushResource(
-	api *jsonapi.Connection, cfg *config.Config, cfgResource config.Resource,
-	args PushCommandArguments,
-) error {
-	pterm.DefaultSection.Printf("Resource %s\n", cfgResource.Name())
-	duration, _ := time.ParseDuration("1s")
+type TargetLanguageMessage struct {
+	project    *jsonapi.Resource
+	languageId string
+}
 
-	msg := fmt.Sprintf("Searching for resource '%s'", cfgResource.ResourceSlug)
-	spinner, err := pterm.DefaultSpinner.Start(msg)
-	if err != nil {
-		return err
+type ResourceTask struct {
+	cfg                    *config.Config
+	cfgResource            *config.Resource
+	sourceTaskChannel      chan SourceFileTask
+	translationTaskChannel chan TranslationFileTask
+	api                    *jsonapi.Connection
+	args                   PushCommandArguments
+	targetLanguagesChannel chan TargetLanguageMessage
+}
+
+func (task ResourceTask) Run(send func(string), abort func()) {
+	cfg := task.cfg
+	cfgResource := task.cfgResource
+	sourceTaskChannel := task.sourceTaskChannel
+	translationTaskChannel := task.translationTaskChannel
+	api := task.api
+	args := task.args
+	targetLanguagesChannel := task.targetLanguagesChannel
+
+	sendMessage := func(body string) {
+		send(fmt.Sprintf(
+			"%s.%s - %s",
+			cfgResource.ProjectSlug,
+			cfgResource.ResourceSlug,
+			body,
+		))
 	}
-
+	sendMessage("Getting info")
 	resource, err := txapi.GetResourceById(api, cfgResource.GetAPv3Id())
 	if err != nil {
-		spinner.Fail(msg + ": " + err.Error())
-		return err
+		sendMessage(fmt.Sprintf("Error while fetching resource: %s", err))
+		return
 	}
-	resourceIsNew := false
-	if resource != nil {
-		spinner.Success(
-			fmt.Sprintf("Resource with slug '%s' found", cfgResource.ResourceSlug),
-		)
-	} else {
-		spinner.Warning(
-			fmt.Sprintf(
-				"Resource with slug '%s' not found. We will try to create it for you.",
-				cfgResource.ResourceSlug,
-			),
-		)
+
+	resourceIsNew := resource == nil
+	if resourceIsNew {
+		sendMessage("Resource does not exist; creating")
 		if cfgResource.Type == "" {
-			return fmt.Errorf(
-				"resource '%s - %s - %s' does not exist; cannot create "+
-					"because the configuration is missing the 'type' field",
-				cfgResource.OrganizationSlug,
-				cfgResource.ProjectSlug,
-				cfgResource.ResourceSlug)
+			sendMessage("Error: Cannot create resource, i18n type is unknown")
+			if !args.Skip {
+				abort()
+			}
+			return
 		}
 		var resourceName string
 		if args.Branch == "" {
 			resourceName = cfgResource.ResourceName()
 		} else {
-			resourceName = fmt.Sprintf("(branch %s) %s",
+			resourceName = fmt.Sprintf(
+				"%s (branch %s)",
+				cfgResource.ResourceName(),
 				args.Branch,
-				cfgResource.ResourceName())
+			)
 		}
 		resource, err = txapi.CreateResource(
 			api,
@@ -189,142 +258,199 @@ func pushResource(
 			cfgResource.ResourceSlug,
 			cfgResource.Type)
 		if err != nil {
-			spinner.Fail(msg + ": " + err.Error())
-			return err
+			sendMessage(fmt.Sprintf("Error while creating resource, %s", err))
+			if !args.Skip {
+				abort()
+			}
+			return
 		}
-		spinner.Success(
-			fmt.Sprintf("Created resource with name '%s' and slug '%s'",
-				resourceName,
-				cfgResource.ResourceSlug,
-			))
-		resourceIsNew = true
 	}
 
-	msg = "Fetching stats"
-	spinner, err = pterm.DefaultSpinner.Start(msg)
-	if err != nil {
-		return err
-	}
+	sendMessage("Getting stats")
 	remoteStats, err := getRemoteStats(api, resource, args)
 	if err != nil {
-		spinner.Fail(msg + ": " + err.Error())
-		return err
+		sendMessage(fmt.Sprintf("Error while fetching stats, %s", err))
+		if !args.Skip {
+			abort()
+		}
+		return
 	}
-	spinner.Success("Stats fetched")
-
-	var sourceUpload *jsonapi.Resource
-	// should push source either when -s flag is set or when neither -s, -t are
 	if args.Source || !args.Translation {
-		fmt.Print("\nPushing source:\n\n")
-		msg = fmt.Sprintf("Pushing source file '%s'", cfgResource.SourceFile)
-		spinner, err = pterm.DefaultSpinner.Start(msg)
-		if err != nil {
-			return err
-		}
-		sourceUpload, err = pushSource(
-			api, resource, cfgResource.SourceFile, remoteStats, args,
+		sourceTaskChannel <- SourceFileTask{
+			api,
+			resource,
+			cfgResource.SourceFile,
+			remoteStats,
+			args,
 			resourceIsNew,
-		)
-		if err != nil {
-			spinner.Fail(msg + ": " + err.Error())
-			if !args.Skip {
-				return err
-			}
-		}
-		if sourceUpload != nil {
-			spinner.Success(
-				fmt.Sprintf("Source file '%s' pushed", cfgResource.SourceFile),
-			)
-		} else {
-			spinner.Warning(
-				fmt.Sprintf(
-					"Source file '%s' skipped because remote file is newer "+
-						"than local",
-					cfgResource.SourceFile,
-				),
-			)
 		}
 	}
-
-	var translationUploads []*jsonapi.Resource
 	if args.Translation { // -t flag is set
-		translationUploads, err = pushTranslations(api, resource, cfg,
-			cfgResource, remoteStats, args, resourceIsNew)
+		reverseLanguageMappings := makeReverseLanguageMappings(*cfg, *cfgResource)
+		overrides := cfgResource.Overrides
+		projectRelationship, err := resource.Fetch("project")
 		if err != nil {
+			sendMessage(fmt.Sprintf("Error while fetching project, %s", err))
 			if !args.Skip {
-				return err
+				abort()
 			}
+			return
 		}
-	}
+		project := projectRelationship.DataSingular
 
-	if sourceUpload != nil || len(translationUploads) > 0 {
-		fmt.Print("\nPolling for upload completion:\n\n")
-	}
-	if sourceUpload != nil {
-		msg = "Polling for source upload"
-		spinner, err := pterm.DefaultSpinner.Start(msg)
+		sendMessage("Fetching remote languages")
+		// TODO see if we can figure our remote languages from stats
+		remoteLanguages, err := txapi.GetProjectLanguages(project)
 		if err != nil {
-			return err
-		}
-		err = txapi.PollSourceUpload(sourceUpload, duration)
-		if err != nil {
-			spinner.Fail(msg + ": " + err.Error())
+			sendMessage(fmt.Sprintf("Error while fetching remote languages, %s", err))
 			if !args.Skip {
-				return err
+				abort()
 			}
+			return
 		}
-		spinner.Success("Source language upload verified")
-	}
-
-	for _, upload := range translationUploads {
-		languageRelationship, err := upload.Fetch("language")
+		curDir, err := os.Getwd()
 		if err != nil {
-			return err
-		}
-		language := languageRelationship.DataSingular
-		var languageAttributes txapi.LanguageAttributes
-		err = language.MapAttributes(&languageAttributes)
-		if err != nil {
-			return err
-		}
-
-		msg = fmt.Sprintf("Polling for language '%s' upload",
-			languageAttributes.Code)
-		spinner, err := pterm.DefaultSpinner.Start(msg)
-		if err != nil {
-			return err
-		}
-		err = txapi.PollTranslationUpload(upload, duration)
-		if err != nil {
-			spinner.Fail(msg + ": " + err.Error())
+			sendMessage(err.Error())
 			if !args.Skip {
-				return err
+				abort()
 			}
+			return
 		}
-		spinner.Success(
-			fmt.Sprintf("Language '%s' upload verified",
-				languageAttributes.Code),
+		fileFilter := cfgResource.FileFilter
+		err = isFileFilterValid(fileFilter)
+		if err != nil {
+			sendMessage(err.Error())
+			if !args.Skip {
+				abort()
+			}
+			return
+		}
+		if args.Xliff {
+			fileFilter = fmt.Sprintf("%s.xlf", fileFilter)
+		}
+
+		languageCodesToPush, pathsToPush, newLanguageCodes, err := getFilesToPush(
+			curDir, fileFilter, reverseLanguageMappings, remoteLanguages,
+			remoteStats, overrides, args, resourceIsNew,
 		)
-	}
+		if err != nil {
+			sendMessage(err.Error())
+			if !args.Skip {
+				abort()
+			}
+			return
+		}
 
-	return nil
+		allLanguages, err := txapi.GetLanguages(api)
+		if err != nil {
+			sendMessage(err.Error())
+			abort()
+			return
+		}
+		sourceLanguageId := project.Relationships["source_language"].DataSingular.Id
+		for _, languageCode := range newLanguageCodes {
+			language, exists := allLanguages[languageCode]
+			if !exists || fmt.Sprintf("l:%s", languageCode) == sourceLanguageId {
+				continue
+			}
+			remoteLanguages[languageCode] = language
+			targetLanguagesChannel <- TargetLanguageMessage{project, languageCode}
+		}
+		for i := range languageCodesToPush {
+			languageCode := languageCodesToPush[i]
+			path := pathsToPush[i]
+
+			_, exists := allLanguages[languageCode]
+			if !exists || fmt.Sprintf("l:%s", languageCode) == sourceLanguageId {
+				continue
+			}
+
+			translationTaskChannel <- TranslationFileTask{
+				api,
+				languageCode,
+				path,
+				resource,
+				remoteLanguages,
+				args,
+				remoteStats,
+				resourceIsNew,
+			}
+		}
+	}
+	sendMessage("Done")
 }
 
-func pushSource(
-	api *jsonapi.Connection,
-	resource *jsonapi.Resource,
-	sourceFile string,
-	remoteStats map[string]*jsonapi.Resource,
-	args PushCommandArguments,
-	resourceIsNew bool,
-) (*jsonapi.Resource, error) {
+type LanguagePushTask struct {
+	project   *jsonapi.Resource
+	languages []string
+}
+
+func (task LanguagePushTask) Run(send func(string), abort func()) {
+	project := task.project
+	languages := task.languages
+
+	parts := strings.Split(project.Id, ":")
+
+	sendMessage := func(body string) {
+		send(fmt.Sprintf(
+			"%s (%s) - %s",
+			parts[3],
+			strings.Join(languages, ", "),
+			body,
+		))
+	}
+	sendMessage("Pushing")
+
+	var payload []*jsonapi.Resource
+	for _, language := range languages {
+		payload = append(payload, &jsonapi.Resource{
+			Type: "languages",
+			Id:   fmt.Sprintf("l:%s", language),
+		})
+	}
+	err := project.Add("languages", payload)
+	if err != nil {
+		sendMessage(err.Error())
+		abort()
+		return
+	}
+
+	sendMessage("Done")
+}
+
+type SourceFileTask struct {
+	api           *jsonapi.Connection
+	resource      *jsonapi.Resource
+	sourceFile    string
+	remoteStats   map[string]*jsonapi.Resource
+	args          PushCommandArguments
+	resourceIsNew bool
+}
+
+func (task SourceFileTask) Run(send func(string), abort func()) {
+	api := task.api
+	resource := task.resource
+	sourceFile := task.sourceFile
+	remoteStats := task.remoteStats
+	args := task.args
+	resourceIsNew := task.resourceIsNew
+
+	parts := strings.Split(resource.Id, ":")
+
+	sendMessage := func(body string) {
+		send(fmt.Sprintf("%s.%s - %s", parts[3], parts[5], body))
+	}
+
 	if sourceFile == "" {
-		return nil, errors.New("cannot push source file because the " +
-			"configuration is missing the 'source_file' field")
+		return
 	}
 	file, err := os.Open(sourceFile)
 	if err != nil {
-		return nil, err
+		sendMessage(err.Error())
+		if !args.Skip {
+			abort()
+		}
+		return
 	}
 	defer file.Close()
 
@@ -333,119 +459,289 @@ func pushSource(
 		// Project should already be pre-fetched
 		projectRelationship, err := resource.Fetch("project")
 		if err != nil {
-			return nil, err
+			sendMessage(err.Error())
+			if !args.Skip {
+				abort()
+			}
+			return
 		}
 		project := projectRelationship.DataSingular
 		sourceLanguageRelationship := project.Relationships["source_language"]
 		remoteStat := remoteStats[sourceLanguageRelationship.DataSingular.Id]
-		skip, err := shouldSkipPush(sourceFile, remoteStat,
-			args.UseGitTimestamps)
-		if err != nil {
-			return nil, err
-		}
+		skip, err := shouldSkipPush(
+			sourceFile, remoteStat, args.UseGitTimestamps,
+		)
 		if skip {
-			return nil, nil
+			sendMessage("Skipping")
+			return
+		}
+		if err != nil {
+			sendMessage(err.Error())
+			if !args.Skip {
+				abort()
+			}
+			return
 		}
 	}
-	return txapi.UploadSource(api, resource, file)
+
+	sendMessage("Uploading file")
+
+	var sourceUpload *jsonapi.Resource
+	err = handleThrottling(
+		func() error {
+			var err error
+			sourceUpload, err = txapi.UploadSource(api, resource, file)
+			return err
+		},
+		sendMessage,
+	)
+	if err != nil {
+		sendMessage(err.Error())
+		if !args.Skip {
+			abort()
+		}
+		return
+	}
+
+	sendMessage("Polling")
+
+	err = handleThrottling(
+		func() error {
+			return txapi.PollSourceUpload(sourceUpload, time.Second)
+		},
+		sendMessage,
+	)
+	if err != nil {
+		sendMessage(err.Error())
+		if !args.Skip {
+			abort()
+		}
+		return
+	}
+
+	sendMessage("Done")
 }
 
-func pushTranslations(
-	api *jsonapi.Connection,
-	resource *jsonapi.Resource,
-	cfg *config.Config,
-	cfgResource config.Resource,
-	remoteStats map[string]*jsonapi.Resource,
-	args PushCommandArguments,
-	resourceIsNew bool,
-) ([]*jsonapi.Resource, error) {
-	fmt.Print("\nPushing translations:\n\n")
+type TranslationFileTask struct {
+	api             *jsonapi.Connection
+	languageCode    string
+	path            string
+	resource        *jsonapi.Resource
+	remoteLanguages map[string]*jsonapi.Resource
+	args            PushCommandArguments
+	remoteStats     map[string]*jsonapi.Resource
+	resourceIsNew   bool
+}
 
-	reverseLanguageMappings := makeReverseLanguageMappings(*cfg, cfgResource)
-	overrides := cfgResource.Overrides
-	projectRelationship, err := resource.Fetch("project")
-	if err != nil {
-		return nil, err
-	}
-	project := projectRelationship.DataSingular
+func (task TranslationFileTask) Run(send func(string), abort func()) {
+	api := task.api
+	languageCode := task.languageCode
+	path := task.path
+	resource := task.resource
+	remoteLanguages := task.remoteLanguages
+	args := task.args
+	remoteStats := task.remoteStats
+	resourceIsNew := task.resourceIsNew
 
-	msg := "Fetching project's remote languages"
-	spinner, err := pterm.DefaultSpinner.Start(msg)
-	if err != nil {
-		return nil, err
-	}
-	remoteLanguages, err := txapi.GetProjectLanguages(project)
-	if err != nil {
-		spinner.Fail(msg + ": " + err.Error())
-		return nil, err
-	}
-	var languageCodes []string
-	for languageCode := range remoteLanguages {
-		languageCodes = append(languageCodes, languageCode)
-	}
-	spinner.Success(
-		fmt.Sprintf("Project's remote languages fetched: %s",
-			strings.Join(languageCodes, ", ")),
-	)
+	parts := strings.Split(resource.Id, ":")
 
-	curDir, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-	fileFilter := cfgResource.FileFilter
-	if err := isFileFilterValid(fileFilter); err != nil {
-		return nil, err
-	}
-	if args.Xliff {
-		fileFilter = fmt.Sprintf("%s.xlf", fileFilter)
+	sendMessage := func(body string) {
+		send(fmt.Sprintf("%s.%s [%s] - %s", parts[3], parts[5], languageCode, body))
 	}
 
-	languageCodesToPush, pathsToPush, newLanguageCodes, err := getFilesToPush(
-		curDir, fileFilter, reverseLanguageMappings, remoteLanguages,
-		remoteStats, overrides, args, resourceIsNew,
-	)
-	if err != nil {
-		return nil, err
-	}
+	sendMessage("Uploading file")
 
-	if len(newLanguageCodes) > 0 {
-		remoteLanguages, err = createNewLanguages(
-			api, project, remoteLanguages, newLanguageCodes,
-		)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if len(languageCodesToPush) < 1 {
-		spinner.Warning("No language files found to push. Aborting")
-	}
-	var uploads []*jsonapi.Resource
-	for i := range languageCodesToPush {
-		languageCode := languageCodesToPush[i]
-		path := pathsToPush[i]
-		_, exists := remoteLanguages[languageCode]
-		if !exists {
-			continue
-		}
-
-		msg := fmt.Sprintf("Uploading '%s'", path)
-		spinner, err := pterm.DefaultSpinner.Start(msg)
-		if err != nil {
-			return nil, err
-		}
-		upload, err := pushTranslation(
-			api, languageCode, path, resource, remoteLanguages, args,
-		)
-		if err != nil {
-			spinner.Fail(msg + ": " + err.Error())
-			if !args.Skip {
-				return nil, err
+	// Only check timestamps if -f isn't set and if resource isn't new
+	if !args.Force && !resourceIsNew {
+		languageId := fmt.Sprintf("l:%s", languageCode)
+		remoteStat, exists := remoteStats[languageId]
+		if exists {
+			skip, err := shouldSkipPush(path, remoteStat, args.UseGitTimestamps)
+			if err != nil {
+				sendMessage(err.Error())
+				if !args.Skip {
+					abort()
+				}
+				return
+			}
+			if skip {
+				sendMessage("Skipping because remote file is newer than local")
+				return
 			}
 		}
-		spinner.Success(fmt.Sprintf("'%s' uploaded", path))
-		uploads = append(uploads, upload)
 	}
-	return uploads, nil
+
+	var upload *jsonapi.Resource
+	err := handleThrottling(
+		func() error {
+			var err error
+			upload, err = pushTranslation(
+				api, languageCode, path, resource, remoteLanguages, args,
+			)
+			return err
+		},
+		sendMessage,
+	)
+	if err != nil {
+		sendMessage(err.Error())
+		if !args.Skip {
+			abort()
+		}
+		return
+	}
+
+	sendMessage("Polling")
+	err = handleThrottling(
+		func() error {
+			return txapi.PollTranslationUpload(upload, time.Second)
+		},
+		sendMessage,
+	)
+	if err != nil {
+		sendMessage(err.Error())
+		if !args.Skip {
+			abort()
+		}
+		return
+	}
+	sendMessage("Done")
+}
+
+func figureOutBranch(branch string) string {
+	if branch == "-1" {
+		return ""
+	} else if branch == "" {
+		return getGitBranch()
+	} else {
+		return branch
+	}
+}
+
+func figureOutResources(
+	resourceIds []string,
+	cfg *config.Config,
+) ([]*config.Resource, error) {
+	var result []*config.Resource
+
+	if len(resourceIds) != 0 {
+		result = make([]*config.Resource, 0, len(resourceIds))
+		for _, resourceId := range resourceIds {
+			cfgResource := cfg.FindResource(resourceId)
+			if cfgResource == nil {
+				fmt.Println(pterm.Error.Sprintf(
+					"could not find resource '%s' in local configuration or your resource slug is invalid",
+					resourceId,
+				))
+				return nil, fmt.Errorf(
+					"could not find resource '%s' in local configuration or your resource slug is invalid",
+					resourceId,
+				)
+			}
+
+			_, err := os.Stat(cfgResource.SourceFile)
+			if err != nil {
+				if os.IsNotExist(err) {
+					fmt.Println(pterm.Error.Sprintf(
+						"could not find file '%s'. Aborting.",
+						cfgResource.SourceFile,
+					))
+					return nil, fmt.Errorf(
+						"could not find file '%s'. Aborting",
+						cfgResource.SourceFile,
+					)
+				} else {
+					fmt.Println(pterm.Error.Sprintf(
+						"something went wrong while examining the source " +
+							"file path",
+					))
+					return nil, fmt.Errorf(
+						"something went wrong while examining the source " +
+							"file path",
+					)
+				}
+			}
+			result = append(result, cfgResource)
+		}
+	} else {
+		for i := range cfg.Local.Resources {
+			cfgResource := &cfg.Local.Resources[i]
+			_, err := os.Stat(cfgResource.SourceFile)
+			if err != nil {
+				if os.IsNotExist(err) {
+					fmt.Println(pterm.Error.Sprintf(
+						"could not find file '%s'. Aborting.",
+						cfgResource.SourceFile,
+					))
+					return nil, fmt.Errorf(
+						"could not find file '%s'. Aborting",
+						cfgResource.SourceFile,
+					)
+				} else {
+					fmt.Println(pterm.Error.Sprintf(
+						"something went wrong while examining the source " +
+							"file path",
+					))
+					return nil, fmt.Errorf(
+						"something went wrong while examining the source " +
+							"file path",
+					)
+				}
+			}
+			result = append(result, cfgResource)
+		}
+	}
+	return result, nil
+}
+
+func applyBranchToResources(cfgResources []*config.Resource, branch string) {
+	for i := range cfgResources {
+		cfgResource := cfgResources[i]
+		if branch != "" {
+			cfgResource.ResourceSlug = fmt.Sprintf(
+				"%s--%s",
+				cfgResource.ResourceSlug,
+				slug.Make(branch))
+		}
+	}
+}
+
+// Trivial contains function
+func stringSliceContains(haystack []string, needle string) bool {
+	for _, item := range haystack {
+		if item == needle {
+			return true
+		}
+	}
+	return false
+}
+
+/*
+Run 'do'. If the error returned by 'do' is a jsonapi.ThrottleError, sleep the number of
+seconds indicated by the error and try again. Meanwhile, inform the user of
+what's going on using 'send'.
+*/
+func handleThrottling(do func() error, send func(string)) error {
+	for {
+		err := do()
+		if err == nil {
+			return nil
+		} else {
+			var e *jsonapi.ThrottleError
+			if errors.As(err, &e) {
+				retryAfter := e.RetryAfter
+				for retryAfter > 0 {
+					send(fmt.Sprintf(
+						"Throttled, will retry after %d seconds",
+						retryAfter,
+					))
+					time.Sleep(time.Second)
+					retryAfter -= 1
+				}
+			} else {
+				return err
+			}
+		}
+	}
 }
 
 func getFilesToPush(
@@ -484,8 +780,8 @@ func getFilesToPush(
 		// if -l is set and the language is not in one of the languages, we
 		// must skip
 		if len(args.Languages) > 0 &&
-			(!contains(args.Languages, localLanguageCode) &&
-				!contains(args.Languages, remoteLanguageCode)) {
+			(!stringSliceContains(args.Languages, localLanguageCode) &&
+				!stringSliceContains(args.Languages, remoteLanguageCode)) {
 			continue
 		}
 
@@ -497,8 +793,8 @@ func getFilesToPush(
 			// if --all is set or -l is set and the code is in one of the
 			// languages, we need to create the remote language
 			if args.All || (len(args.Languages) > 0 &&
-				(contains(args.Languages, localLanguageCode) ||
-					contains(args.Languages, remoteLanguageCode))) {
+				(stringSliceContains(args.Languages, localLanguageCode) ||
+					stringSliceContains(args.Languages, remoteLanguageCode))) {
 				languageCodesToPush = append(languageCodesToPush,
 					remoteLanguageCode)
 				pathsToPush = append(pathsToPush, path)
@@ -572,16 +868,6 @@ func shouldSkipPush(
 	return localTime.Before(remoteTime), nil
 }
 
-// Trivial contains function
-func contains(pool []string, target string) bool {
-	for _, candidate := range pool {
-		if target == candidate {
-			return true
-		}
-	}
-	return false
-}
-
 func isFileFilterValid(fileFilter string) error {
 	if fileFilter == "" {
 		return errors.New("cannot push translations because the " +
@@ -647,82 +933,4 @@ func getRemoteStats(
 		}
 	}
 	return result, nil
-}
-
-func createNewLanguages(
-	api *jsonapi.Connection,
-	project *jsonapi.Resource,
-	remoteLanguages map[string]*jsonapi.Resource,
-	newLanguageCodes []string,
-) (map[string]*jsonapi.Resource, error) {
-	// msg := fmt.Sprintf("Adding '%s' to the project's remote languages",
-	// 	strings.Join(newLanguageCodes, ", "))
-	// spinner, err := pterm.DefaultSpinner.Start(msg)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	allLanguages, err := txapi.GetLanguages(api)
-	if err != nil {
-		// spinner.Fail(msg + ": " + err.Error())
-		return nil, errors.New("failed to fetch languages")
-	}
-	// var skippedLanguageCodes []string
-	var languagesToCreate []*jsonapi.Resource
-	for _, languageCode := range newLanguageCodes {
-		language, exists := allLanguages[languageCode]
-		if !exists {
-			// skippedLanguageCodes = append(skippedLanguageCodes, languageCode)
-			continue
-		}
-		sourceLanguageRelationship, err := project.Fetch("source_language")
-		if err != nil {
-			// spinner.Fail(msg + ": " + err.Error())
-			return nil, err
-		}
-		sourceLanguage := sourceLanguageRelationship.DataSingular
-		var sourceLanguageAttributes txapi.LanguageAttributes
-		err = sourceLanguage.MapAttributes(&sourceLanguageAttributes)
-		if err != nil {
-			// spinner.Fail(msg + ": " + err.Error())
-			return nil, err
-		}
-		if languageCode == sourceLanguageAttributes.Code {
-			// skippedLanguageCodes = append(skippedLanguageCodes, languageCode)
-			continue
-		}
-
-		languagesToCreate = append(languagesToCreate, language)
-	}
-	// newLanguageCodes = make([]string, 0, len(languagesToCreate))
-	if len(languagesToCreate) > 0 {
-		for _, language := range languagesToCreate {
-			var languageAttributes txapi.LanguageAttributes
-			err := language.MapAttributes(&languageAttributes)
-			if err != nil {
-				// spinner.Fail(msg + ": " + err.Error())
-				return nil, err
-			}
-			// newLanguageCodes = append(newLanguageCodes,
-			// 	languageAttributes.Code)
-		}
-		err := project.Add("languages", languagesToCreate)
-		if err != nil {
-			// spinner.Fail(msg + ": " + err.Error())
-			return nil, err
-		}
-		remoteLanguages, err = txapi.GetProjectLanguages(project)
-		if err != nil {
-			// spinner.Fail(msg + ": " + err.Error())
-			return nil, err
-		}
-	}
-	// msg = fmt.Sprintf("Added languages: '%s'",
-	// 	strings.Join(newLanguageCodes, ", "))
-	// if len(skippedLanguageCodes) > 0 {
-	// 	msg = msg + fmt.Sprintf(", skipped: '%s'",
-	// 		strings.Join(skippedLanguageCodes, ", "))
-	// }
-	// spinner.Success(msg)
-	return remoteLanguages, nil
 }
