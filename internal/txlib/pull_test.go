@@ -35,7 +35,7 @@ func TestPullCommandResourceExists(t *testing.T) {
 	}
 
 	projectsUrl := "/projects/o:orgslug:p:projslug"
-	resourcesUrl := "/resources/o:orgslug:p:projslug:r:resslug"
+	resourceUrl := "/resources/o:orgslug:p:projslug:r:resslug"
 	projectLanguagesUrl := "/projects/o:orgslug:p:projslug/languages"
 	mockData := jsonapi.MockData{
 		projectsUrl: &jsonapi.MockEndpoint{
@@ -63,7 +63,7 @@ func TestPullCommandResourceExists(t *testing.T) {
 				},
 			}},
 		},
-		resourcesUrl: &jsonapi.MockEndpoint{
+		resourceUrl: &jsonapi.MockEndpoint{
 			Requests: []jsonapi.MockRequest{{
 				Response: jsonapi.MockResponse{
 					Text: `{"data": {"type": "resources",
@@ -130,10 +130,10 @@ func TestPullCommandResourceExists(t *testing.T) {
 		t.Errorf("Got request '%+v', expected %+v", actual, expected)
 	}
 
-	endpoint = mockData[resourcesUrl]
+	endpoint = mockData[resourceUrl]
 	if endpoint.Count != 1 {
 		t.Errorf("Made %d requests to '%s', expected 1",
-			endpoint.Count, resourcesUrl)
+			endpoint.Count, resourceUrl)
 	}
 	actual = endpoint.Requests[0].Request
 	expected = jsonapi.CapturedRequest{Method: "GET"}
@@ -201,7 +201,7 @@ func TestPullCommandFileExists(t *testing.T) {
 	defer ts.Close()
 
 	projectsUrl := "/projects/o:orgslug:p:projslug"
-	resourcesUrl := "/resources/o:orgslug:p:projslug:r:resslug"
+	resourceUrl := "/resources/o:orgslug:p:projslug:r:resslug"
 	projectLanguagesUrl := "/projects/o:orgslug:p:projslug/languages"
 	asyncDownloadsUrl := "/resource_translations_async_downloads/download_1"
 	mockData := jsonapi.MockData{
@@ -239,7 +239,7 @@ func TestPullCommandFileExists(t *testing.T) {
 				},
 			}},
 		},
-		resourcesUrl: &jsonapi.MockEndpoint{
+		resourceUrl: &jsonapi.MockEndpoint{
 			Requests: []jsonapi.MockRequest{{
 				Response: jsonapi.MockResponse{
 					Text: `{"data": {"type": "resources",
@@ -302,10 +302,10 @@ func TestPullCommandFileExists(t *testing.T) {
 		t.Errorf("Got request '%+v', expected %+v", actual, expected)
 	}
 
-	endpoint = mockData[resourcesUrl]
+	endpoint = mockData[resourceUrl]
 	if endpoint.Count != 1 {
 		t.Errorf("Made %d requests to '%s', expected 1",
-			endpoint.Count, resourcesUrl)
+			endpoint.Count, resourceUrl)
 	}
 	actual = endpoint.Requests[0].Request
 	expected = jsonapi.CapturedRequest{Method: "GET"}
@@ -376,7 +376,7 @@ func TestPullCommandDownloadSource(t *testing.T) {
 	}
 
 	projectsUrl := "/projects/o:orgslug:p:projslug"
-	resourcesUrl := "/resources/o:orgslug:p:projslug:r:resslug"
+	resourceUrl := "/resources/o:orgslug:p:projslug:r:resslug"
 	mockData := jsonapi.MockData{
 		projectsUrl: &jsonapi.MockEndpoint{
 			Requests: []jsonapi.MockRequest{{
@@ -389,7 +389,7 @@ func TestPullCommandDownloadSource(t *testing.T) {
 				},
 			}},
 		},
-		resourcesUrl: &jsonapi.MockEndpoint{
+		resourceUrl: &jsonapi.MockEndpoint{
 			Requests: []jsonapi.MockRequest{{
 				Response: jsonapi.MockResponse{
 					Text: `{"data": {"type": "resources",
@@ -449,10 +449,10 @@ func TestPullCommandDownloadSource(t *testing.T) {
 		t.Errorf("Got request '%+v', expected %+v", actual, expected)
 	}
 
-	endpoint = mockData[resourcesUrl]
+	endpoint = mockData[resourceUrl]
 	if endpoint.Count != 1 {
 		t.Errorf("Made %d requests to '%s', expected 1",
-			endpoint.Count, resourcesUrl)
+			endpoint.Count, resourceUrl)
 	}
 	actual = endpoint.Requests[0].Request
 	expected = jsonapi.CapturedRequest{Method: "GET"}
@@ -918,7 +918,7 @@ func getSkipMinPercentageMockData(translatedStrings int,
 	reviewedStrings int,
 	proofreadStrings int) jsonapi.MockData {
 	projectsUrl := "/projects/o:orgslug:p:projslug"
-	resourcesUrl := "/resources/o:orgslug:p:projslug:r:resslug"
+	resourceUrl := "/resources/o:orgslug:p:projslug:r:resslug"
 	projectLanguagesUrl := "/projects/o:orgslug:p:projslug/languages"
 	resourceLangStatsUrl := "/resource_language_stats?filter%5Bproject%5D=" +
 		"o%3Aorgslug%3Ap%3Aprojslug&filter%5Bresource%5D=o%3Aorgslug%3Ap%3A" +
@@ -980,7 +980,7 @@ func getSkipMinPercentageMockData(translatedStrings int,
 				},
 			}},
 		},
-		resourcesUrl: &jsonapi.MockEndpoint{
+		resourceUrl: &jsonapi.MockEndpoint{
 			Requests: []jsonapi.MockRequest{{
 				Response: jsonapi.MockResponse{
 					Text: `{"data": {"type": "resources",

@@ -699,8 +699,9 @@ func applyBranchToResources(cfgResources []*config.Resource, branch string) {
 		if branch != "" {
 			cfgResource.ResourceSlug = fmt.Sprintf(
 				"%s--%s",
+				slug.Make(branch),
 				cfgResource.ResourceSlug,
-				slug.Make(branch))
+			)
 		}
 	}
 }

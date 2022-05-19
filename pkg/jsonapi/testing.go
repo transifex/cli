@@ -8,6 +8,7 @@ type CapturedRequest struct {
 	ContentType string
 }
 type MockResponse struct {
+	Status   int
 	Text     string
 	Redirect string
 }
@@ -49,7 +50,10 @@ func GetTestConnection(mockData MockData) Connection {
 			mockRequest.Request.Payload = payload
 			mockRequest.Request.ContentType = contentType
 
-			if mockRequest.Response.Redirect == "" {
+			err := parseErrorResponse(mockRequest.Response.Status, []byte(mockRequest.Response.Text))
+			if err != nil {
+				return nil, err
+			} else if mockRequest.Response.Redirect == "" {
 				return []byte(mockRequest.Response.Text), nil
 			} else {
 				return nil, &RedirectError{mockRequest.Response.Redirect}

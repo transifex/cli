@@ -18,20 +18,20 @@ func TestPushCommandResourceExists(t *testing.T) {
 	defer afterTest()
 
 	mockData := jsonapi.MockData{
-		resourcesUrl:                               getResourcesEndpoint(),
+		resourceUrl:                                getResourceEndpoint(),
 		"/resource_strings_async_uploads":          getSourceUploadPostEndpoint(),
 		"/resource_strings_async_uploads/upload_1": getSourceUploadGetEndpoint(),
 	}
 	api := jsonapi.GetTestConnection(mockData)
 
 	err := PushCommand(getStandardConfig(), api, PushCommandArguments{
-		Force: true, Branch: "-1",
+		Force: true, Branch: "-1", Workers: 1,
 	})
 	if err != nil {
 		t.Errorf("%s", err)
 	}
 
-	testSimpleGet(t, mockData, resourcesUrl)
+	testSimpleGet(t, mockData, resourceUrl)
 	testSimpleUpload(t, mockData, "/resource_strings_async_uploads")
 	testSimpleGet(t, mockData, "/resource_strings_async_uploads/upload_1")
 }
@@ -41,7 +41,7 @@ func TestPushSpecificResource(t *testing.T) {
 	defer afterTest()
 
 	mockData := jsonapi.MockData{
-		resourcesUrl:                               getResourcesEndpoint(),
+		resourceUrl:                                getResourceEndpoint(),
 		"/resource_strings_async_uploads":          getSourceUploadPostEndpoint(),
 		"/resource_strings_async_uploads/upload_1": getSourceUploadGetEndpoint(),
 	}
@@ -51,12 +51,13 @@ func TestPushSpecificResource(t *testing.T) {
 		Force:       true,
 		ResourceIds: []string{"projslug.resslug"},
 		Branch:      "-1",
+		Workers:     1,
 	})
 	if err != nil {
 		t.Errorf("%s", err)
 	}
 
-	testSimpleGet(t, mockData, resourcesUrl)
+	testSimpleGet(t, mockData, resourceUrl)
 	testSimpleUpload(t, mockData, "/resource_strings_async_uploads")
 	testSimpleGet(t, mockData, "/resource_strings_async_uploads/upload_1")
 }
@@ -66,20 +67,36 @@ func TestPushCommandResourceDoesNotExist(t *testing.T) {
 	defer afterTest()
 
 	mockData := jsonapi.MockData{
-		resourcesUrl:                               getEmptyEndpoint(),
-		"/resource_strings_async_uploads":          getSourceUploadPostEndpoint(),
+		resourceUrl:                       getEmptyEndpoint(),
+		resourcesUrl:                      getResourceCreatedEndpoint(),
+		"/resource_strings_async_uploads": getSourceUploadPostEndpoint(),
 		"/resource_strings_async_uploads/upload_1": getSourceUploadGetEndpoint(),
 	}
 	api := jsonapi.GetTestConnection(mockData)
 
 	err := PushCommand(getStandardConfig(), api, PushCommandArguments{
-		Force:  true,
-		Branch: "-1",
+		Force:   true,
+		Branch:  "-1",
+		Workers: 1,
 	})
 	if err != nil {
 		t.Errorf("%s", err)
 	}
 
+	testSimpleGet(t, mockData, resourceUrl)
+	testSimplePost(
+		t,
+		mockData,
+		resourcesUrl,
+		`{"data": {
+			"type": "resources",
+			"attributes": {"name": "aaa.json", "slug": "resslug"},
+			"relationships": {
+				"project": {"data": {"type": "projects", "id": "o:orgslug:p:projslug"}},
+				"i18n_format": {"data": {"type": "i18n_formats", "id": "I18N_TYPE"}}
+			}
+		}}`,
+	)
 	testSimpleUpload(t, mockData, "/resource_strings_async_uploads")
 	testSimpleGet(t, mockData, "/resource_strings_async_uploads/upload_1")
 }
@@ -89,8 +106,9 @@ func TestPushTranslation(t *testing.T) {
 	defer afterTest()
 
 	mockData := jsonapi.MockData{
+		resourceUrl:  getResourceEndpoint(),
 		projectUrl:   getProjectEndpoint(),
-		resourcesUrl: getResourcesEndpoint(),
+		"/languages": getLanguagesEndpoint([]string{"en", "fr"}),
 		"/projects/o:orgslug:p:projslug/languages": getLanguagesEndpoint(
 			[]string{"fr"},
 		),
@@ -103,12 +121,13 @@ func TestPushTranslation(t *testing.T) {
 		Translation: true,
 		Force:       true,
 		Branch:      "-1",
+		Workers:     1,
 	})
 	if err != nil {
 		t.Error(err)
 	}
 
-	testSimpleGet(t, mockData, resourcesUrl)
+	testSimpleGet(t, mockData, resourceUrl)
 	testSimpleGet(t, mockData, "/projects/o:orgslug:p:projslug/languages")
 	testSimpleUpload(t, mockData, uploadsUrl)
 	testSimpleGet(t, mockData, uploadUrl)
@@ -133,7 +152,7 @@ func TestPushXliff(t *testing.T) {
 	}
 
 	mockData := jsonapi.MockData{
-		resourcesUrl: getResourcesEndpoint(),
+		resourceUrl: getResourceEndpoint(),
 		"/projects/o:orgslug:p:projslug/languages": getLanguagesEndpoint(
 			[]string{"fr"},
 		),
@@ -148,13 +167,14 @@ func TestPushXliff(t *testing.T) {
 		Force:       true,
 		Xliff:       true,
 		Branch:      "-1",
+		Workers:     1,
 	})
 	if err != nil {
 		t.Error(err)
 	}
 
 	testSimpleGet(t, mockData, projectUrl)
-	testSimpleGet(t, mockData, resourcesUrl)
+	testSimpleGet(t, mockData, resourceUrl)
 	testSimpleGet(t, mockData, "/projects/o:orgslug:p:projslug/languages")
 	testSimpleUpload(t, mockData, uploadsUrl)
 	testSimpleGet(t, mockData, uploadUrl)
@@ -170,8 +190,8 @@ func TestPushTranslationWithLanguageMapping(t *testing.T) {
 	}
 
 	mockData := jsonapi.MockData{
-		projectUrl:   getProjectEndpoint(),
-		resourcesUrl: getResourcesEndpoint(),
+		projectUrl:  getProjectEndpoint(),
+		resourceUrl: getResourceEndpoint(),
 		"/projects/o:orgslug:p:projslug/languages": getLanguagesEndpoint(
 			[]string{"fr"},
 		),
@@ -184,13 +204,14 @@ func TestPushTranslationWithLanguageMapping(t *testing.T) {
 		Translation: true,
 		Force:       true,
 		Branch:      "-1",
+		Workers:     1,
 	})
 	if err != nil {
 		t.Error(err)
 	}
 
 	testSimpleGet(t, mockData, projectUrl)
-	testSimpleGet(t, mockData, resourcesUrl)
+	testSimpleGet(t, mockData, resourceUrl)
 	testSimpleGet(t, mockData, "/projects/o:orgslug:p:projslug/languages")
 	testSimpleUpload(t, mockData, uploadsUrl)
 	testSimpleGet(t, mockData, uploadUrl)
@@ -208,8 +229,8 @@ func TestPushTranslationWithOverrides(t *testing.T) {
 	}
 
 	mockData := jsonapi.MockData{
-		projectUrl:   getProjectEndpoint(),
-		resourcesUrl: getResourcesEndpoint(),
+		projectUrl:  getProjectEndpoint(),
+		resourceUrl: getResourceEndpoint(),
 		"/projects/o:orgslug:p:projslug/languages": getLanguagesEndpoint(
 			[]string{"fr"},
 		),
@@ -222,13 +243,14 @@ func TestPushTranslationWithOverrides(t *testing.T) {
 		Translation: true,
 		Force:       true,
 		Branch:      "-1",
+		Workers:     1,
 	})
 	if err != nil {
 		t.Error(err)
 	}
 
 	testSimpleGet(t, mockData, projectUrl)
-	testSimpleGet(t, mockData, resourcesUrl)
+	testSimpleGet(t, mockData, resourceUrl)
 	testSimpleGet(t, mockData, "/projects/o:orgslug:p:projslug/languages")
 	testSimpleUpload(t, mockData, uploadsUrl)
 	testSimpleGet(t, mockData, uploadUrl)
@@ -239,8 +261,8 @@ func TestPushTranslationRemoteLanguageDoesNotExist(t *testing.T) {
 	defer afterTest()
 
 	mockData := jsonapi.MockData{
-		projectUrl:   getProjectEndpoint(),
-		resourcesUrl: getResourcesEndpoint(),
+		projectUrl:  getProjectEndpoint(),
+		resourceUrl: getResourceEndpoint(),
 		"/projects/o:orgslug:p:projslug/languages": getLanguagesEndpoint(nil),
 	}
 	api := jsonapi.GetTestConnection(mockData)
@@ -249,13 +271,14 @@ func TestPushTranslationRemoteLanguageDoesNotExist(t *testing.T) {
 		Translation: true,
 		Force:       true,
 		Branch:      "-1",
+		Workers:     1,
 	})
 	if err != nil {
 		t.Error(err)
 	}
 
 	testSimpleGet(t, mockData, projectUrl)
-	testSimpleGet(t, mockData, resourcesUrl)
+	testSimpleGet(t, mockData, resourceUrl)
 	testSimpleGet(t, mockData, "/projects/o:orgslug:p:projslug/languages")
 }
 
@@ -267,8 +290,8 @@ func TestPushTranslationLocalFileIsOlderThanRemote(t *testing.T) {
 	duration, _ := time.ParseDuration("5m")
 	languagesUrl := "/projects/o:orgslug:p:projslug/languages"
 	mockData := jsonapi.MockData{
-		projectUrl:   getProjectEndpoint(),
-		resourcesUrl: getResourcesEndpoint(),
+		projectUrl:  getProjectEndpoint(),
+		resourceUrl: getResourceEndpoint(),
 		resourceLanguageStatsUrl: getResourceLanguageStatsEndpoint(
 			now.Add(duration),
 		),
@@ -279,13 +302,14 @@ func TestPushTranslationLocalFileIsOlderThanRemote(t *testing.T) {
 	err := PushCommand(getStandardConfig(), api, PushCommandArguments{
 		Translation: true,
 		Branch:      "-1",
+		Workers:     1,
 	})
 	if err != nil {
 		t.Error(err)
 	}
 
 	testSimpleGet(t, mockData, projectUrl)
-	testSimpleGet(t, mockData, resourcesUrl)
+	testSimpleGet(t, mockData, resourceUrl)
 	testSimpleGet(t, mockData, resourceLanguageStatsUrl)
 	testSimpleGet(t, mockData, "/projects/o:orgslug:p:projslug/languages")
 }
@@ -298,7 +322,7 @@ func TestPushTranslationLocalFileIsNewerThanRemote(t *testing.T) {
 	duration, _ := time.ParseDuration("-5m")
 	mockData := jsonapi.MockData{
 		projectUrl:               getProjectEndpoint(),
-		resourcesUrl:             getResourcesEndpoint(),
+		resourceUrl:              getResourceEndpoint(),
 		resourceLanguageStatsUrl: getResourceLanguageStatsEndpoint(now.Add(duration)),
 		"/projects/o:orgslug:p:projslug/languages": getLanguagesEndpoint(
 			[]string{"fr"},
@@ -311,13 +335,14 @@ func TestPushTranslationLocalFileIsNewerThanRemote(t *testing.T) {
 	err := PushCommand(getStandardConfig(), api, PushCommandArguments{
 		Translation: true,
 		Branch:      "-1",
+		Workers:     1,
 	})
 	if err != nil {
 		t.Error(err)
 	}
 
 	testSimpleGet(t, mockData, projectUrl)
-	testSimpleGet(t, mockData, resourcesUrl)
+	testSimpleGet(t, mockData, resourceUrl)
 	testSimpleGet(t, mockData, resourceLanguageStatsUrl)
 	testSimpleGet(t, mockData, "/projects/o:orgslug:p:projslug/languages")
 	testSimpleUpload(t, mockData, uploadsUrl)
@@ -329,8 +354,8 @@ func TestPushTranslationLimitLanguages(t *testing.T) {
 	defer afterTest()
 
 	mockData := jsonapi.MockData{
-		projectUrl:   getProjectEndpoint(),
-		resourcesUrl: getResourcesEndpoint(),
+		projectUrl:  getProjectEndpoint(),
+		resourceUrl: getResourceEndpoint(),
 		"/projects/o:orgslug:p:projslug/languages": getLanguagesEndpoint(
 			[]string{"el", "fr"},
 		),
@@ -344,13 +369,14 @@ func TestPushTranslationLimitLanguages(t *testing.T) {
 		Force:       true,
 		Languages:   []string{"fr"},
 		Branch:      "-1",
+		Workers:     1,
 	})
 	if err != nil {
 		t.Error(err)
 	}
 
 	testSimpleGet(t, mockData, projectUrl)
-	testSimpleGet(t, mockData, resourcesUrl)
+	testSimpleGet(t, mockData, resourceUrl)
 	testSimpleGet(t, mockData, "/projects/o:orgslug:p:projslug/languages")
 	testSimpleUpload(t, mockData, uploadsUrl)
 	testSimpleGet(t, mockData, uploadUrl)
@@ -360,21 +386,17 @@ func TestProjectNotFound(t *testing.T) {
 	afterTest := beforePushTest(t, nil, nil)
 	defer afterTest()
 	mockData := jsonapi.MockData{
-		resourcesUrl: getResourceEndpoint(),
+		resourceUrl: getResourceEndpoint(),
 	}
 	api := jsonapi.GetTestConnection(mockData)
 	err := PushCommand(
-		getStandardConfig(), api, PushCommandArguments{Branch: "-1"},
+		getStandardConfig(),
+		api,
+		PushCommandArguments{Branch: "-1", Workers: 1},
 	)
 	if err == nil {
 		t.Error("Expected error")
 	}
-	expected := "/projects/o:orgslug:p:projslug not found"
-	if err != nil && err.Error() != expected {
-		t.Errorf("Got error message '%s', expected '%s'",
-			err, expected)
-	}
-
 }
 
 func TestLocalFileNotFound(t *testing.T) {
@@ -387,12 +409,12 @@ func TestLocalFileNotFound(t *testing.T) {
 	}
 	api := jsonapi.GetTestConnection(mockData)
 	err := PushCommand(
-		getStandardConfig(), api, PushCommandArguments{Branch: "-1"},
+		getStandardConfig(), api, PushCommandArguments{Branch: "-1", Workers: 1},
 	)
 	if err == nil {
 		t.Error("Expected error")
 	}
-	expected := "could not find file 'aaa.json'. Aborting."
+	expected := "could not find file 'aaa.json'. Aborting"
 	if err != nil && err.Error() != expected {
 		t.Errorf("Got error message '%s', expected '%s'",
 			err, expected)
@@ -421,8 +443,9 @@ func TestPushCommandBranch(t *testing.T) {
 	api := jsonapi.GetTestConnection(mockData)
 
 	err := PushCommand(getStandardConfig(), api, PushCommandArguments{
-		Force:  true,
-		Branch: "branch",
+		Force:   true,
+		Branch:  "branch",
+		Workers: 1,
 	})
 	if err != nil {
 		t.Errorf("%s", err)
@@ -440,28 +463,14 @@ func TestPushNewLanguage(t *testing.T) {
 
 	languagesUrl := "/projects/o:orgslug:p:projslug/relationships/languages"
 	mockData := jsonapi.MockData{
-		projectUrl:   getProjectEndpoint(),
-		resourcesUrl: getResourcesEndpoint(),
+		resourceUrl: getResourceEndpoint(),
+		projectUrl:  getProjectEndpoint(),
 		"/projects/o:orgslug:p:projslug/languages": &jsonapi.MockEndpoint{
 			Requests: []jsonapi.MockRequest{
 				{Response: jsonapi.MockResponse{Text: `{"data": []}`}},
-				{Response: jsonapi.MockResponse{Text: `{"data": [{
-					"type": "languages",
-					"id": "l:fr",
-					"attributes": {"code": "fr"}
-				}]}`}},
 			},
 		},
-		"/languages": getLanguagesEndpoint([]string{"fr"}),
-		"/languages/l:en": &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{{
-				Response: jsonapi.MockResponse{
-					Text: `{"data": {"type": "languages",
-					                 "id": "l:en",
-									 "attributes": {"code": "en"}}}`,
-				},
-			}},
-		},
+		"/languages": getLanguagesEndpoint([]string{"en", "fr"}),
 		languagesUrl: &jsonapi.MockEndpoint{
 			Requests: []jsonapi.MockRequest{{
 				Response: jsonapi.MockResponse{
@@ -479,30 +488,27 @@ func TestPushNewLanguage(t *testing.T) {
 		Force:       true,
 		Translation: true,
 		Languages:   []string{"fr"},
+		Workers:     1,
 	})
 	if err != nil {
 		t.Error(err)
 	}
 
 	testSimpleGet(t, mockData, projectUrl)
-	testSimpleGet(t, mockData, resourcesUrl)
+	testSimpleGet(t, mockData, resourceUrl)
 	endpoint := mockData["/projects/o:orgslug:p:projslug/languages"]
-	if endpoint.Count != 2 {
+	if endpoint.Count != 1 {
 		t.Errorf(
 			"Got %d requests to '/projects/o:orgslug:p:projslug/languages', "+
-				"expected 2",
+				"expected 1",
 			endpoint.Count,
 		)
 	}
-	for i := 0; i < 2; i++ {
-		actual := endpoint.Requests[i].Request
-		expected := jsonapi.CapturedRequest{Method: "GET"}
-		if !reflect.DeepEqual(actual, expected) {
-			t.Errorf("Got request '%+v', expected '%+v'", actual, expected)
-		}
+	actual := endpoint.Requests[0].Request
+	expected := jsonapi.CapturedRequest{Method: "GET"}
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("Got request '%+v', expected '%+v'", actual, expected)
 	}
-	testSimpleGet(t, mockData, "/languages")
-	testSimpleGet(t, mockData, "/languages/l:en")
 	testSimplePost(t, mockData,
 		"/projects/o:orgslug:p:projslug/relationships/languages",
 		`{"data": [{"type": "languages", "id": "l:fr"}]}`)
@@ -516,8 +522,8 @@ func TestPushAll(t *testing.T) {
 
 	languagesUrl := "/projects/o:orgslug:p:projslug/relationships/languages"
 	mockData := jsonapi.MockData{
-		projectUrl:   getProjectEndpoint(),
-		resourcesUrl: getResourcesEndpoint(),
+		projectUrl:  getProjectEndpoint(),
+		resourceUrl: getResourceEndpoint(),
 		"/projects/o:orgslug:p:projslug/languages": &jsonapi.MockEndpoint{
 			Requests: []jsonapi.MockRequest{
 				{Response: jsonapi.MockResponse{Text: `{"data": []}`}},
@@ -528,16 +534,7 @@ func TestPushAll(t *testing.T) {
 				}]}`}},
 			},
 		},
-		"/languages": getLanguagesEndpoint([]string{"fr"}),
-		"/languages/l:en": &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{{
-				Response: jsonapi.MockResponse{
-					Text: `{"data": {"type": "languages",
-					                 "id": "l:en",
-									 "attributes": {"code": "en"}}}`,
-				},
-			}},
-		},
+		"/languages": getLanguagesEndpoint([]string{"en", "fr"}),
 		languagesUrl: &jsonapi.MockEndpoint{
 			Requests: []jsonapi.MockRequest{{
 				Response: jsonapi.MockResponse{
@@ -555,29 +552,26 @@ func TestPushAll(t *testing.T) {
 		Force:       true,
 		Translation: true,
 		All:         true,
+		Workers:     1,
 	})
 	if err != nil {
 		t.Error(err)
 	}
 
-	testSimpleGet(t, mockData, resourcesUrl)
+	testSimpleGet(t, mockData, resourceUrl)
 	endpoint := mockData["/projects/o:orgslug:p:projslug/languages"]
-	if endpoint.Count != 2 {
+	if endpoint.Count != 1 {
 		t.Errorf(
 			"Got %d requests to '/projects/o:orgslug:p:projslug/languages', "+
-				"expected 2",
+				"expected 1",
 			endpoint.Count,
 		)
 	}
-	for i := 0; i < 2; i++ {
-		actual := endpoint.Requests[i].Request
-		expected := jsonapi.CapturedRequest{Method: "GET"}
-		if !reflect.DeepEqual(actual, expected) {
-			t.Errorf("Got request '%+v', expected '%+v'", actual, expected)
-		}
+	actual := endpoint.Requests[0].Request
+	expected := jsonapi.CapturedRequest{Method: "GET"}
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("Got request '%+v', expected '%+v'", actual, expected)
 	}
-	testSimpleGet(t, mockData, "/languages")
-	testSimpleGet(t, mockData, "/languages/l:en")
 	testSimplePost(t, mockData,
 		"/projects/o:orgslug:p:projslug/relationships/languages",
 		`{"data": [{"type": "languages", "id": "l:fr"}]}`)
@@ -589,7 +583,8 @@ const (
 	projectUrl  = "/projects/o:orgslug:p:projslug"
 	projectsUrl = "/projects?" +
 		"filter%5Borganization%5D=o%3Aorgslug&filter%5Bslug%5D=projslug"
-	resourcesUrl             = "/resources/o:orgslug:p:projslug:r:resslug"
+	resourceUrl              = "/resources/o:orgslug:p:projslug:r:resslug"
+	resourcesUrl             = "/resources"
 	resourceLanguageStatsUrl = "/resource_language_stats?" +
 		"filter%5Bproject%5D=o%3Aorgslug%3Ap%3Aprojslug&" +
 		"filter%5Bresource%5D=o%3Aorgslug%3Ap%3Aprojslug%3Ar%3Aresslug"
@@ -693,33 +688,15 @@ func getResourceEndpoint() *jsonapi.MockEndpoint {
 	return &jsonapi.MockEndpoint{
 		Requests: []jsonapi.MockRequest{{
 			Response: jsonapi.MockResponse{
-				Text: `{"data": {"type": "resources",
-								 "id": "o:orgslug:p:projslug:r:resslug",
-								 "attributes": {"slug": "resslug"},
-								 "relationships": {
-									"project": {
-										"data": {"type": "projects", "id": "o:orgslug:p:projslug"}
-									}
-								}
-						}}`,
-			},
-		}},
-	}
-}
-
-func getResourcesEndpoint() *jsonapi.MockEndpoint {
-	return &jsonapi.MockEndpoint{
-		Requests: []jsonapi.MockRequest{{
-			Response: jsonapi.MockResponse{
-				Text: `{"data": {"type": "resources",
-								  "id": "o:orgslug:p:projslug:r:resslug",
-								  "attributes": {"slug": "resslug"},
-								  "relationships": {
-										"project": {
-											"data": {"type": "projects", "id": "o:orgslug:p:projslug"}
-										}
-									}
-						}}`,
+				Text: `{"data": {
+					"type": "resources",
+					"id": "o:orgslug:p:projslug:r:resslug",
+					"attributes": {"slug": "resslug"},
+					"relationships": {
+						"project": {"data": {"type": "projects",
+						                     "id": "o:orgslug:p:projslug"}}
+					}
+				}}`,
 			},
 		}},
 	}
@@ -728,7 +705,27 @@ func getResourcesEndpoint() *jsonapi.MockEndpoint {
 func getEmptyEndpoint() *jsonapi.MockEndpoint {
 	return &jsonapi.MockEndpoint{
 		Requests: []jsonapi.MockRequest{{
-			Response: jsonapi.MockResponse{Text: `{"data": {}}`},
+			Response: jsonapi.MockResponse{Status: 404},
+		}},
+	}
+}
+
+func getResourceCreatedEndpoint() *jsonapi.MockEndpoint {
+	return &jsonapi.MockEndpoint{
+		Requests: []jsonapi.MockRequest{{
+			Response: jsonapi.MockResponse{
+				Text: `{"data": {
+						"type": "resources",
+						"id": "o:orgslug:p:projslug:r:resslug",
+						"attributes": {"name": "aaa", "slug": "resslug"},
+						"relationships": {
+							"project": {"data": {"type": "projects",
+							                     "id": "o:orgslug:p:projslug"}},
+							"i18n_format": {"data": {"type": "i18n_formats",
+							                         "id": "I18N_TYPE"}}
+						}
+					}}`,
+			},
 		}},
 	}
 }
