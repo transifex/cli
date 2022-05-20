@@ -87,8 +87,8 @@ func Main() {
 				},
 			},
 			{
-				Name:  "pushparallel",
-				Usage: "tx pushparallel [options] [resource_id...]",
+				Name:  "push",
+				Usage: "tx push [options] [resource_id...]",
 				Flags: []cli.Flag{
 					&cli.BoolFlag{
 						Name:    "source",

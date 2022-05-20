@@ -123,13 +123,11 @@ type message_t struct {
 
 type Pool struct {
 	numWorkers     int
+	numTasks       int
 	taskChannel    chan taskContainer_t
 	innerWaitGroup sync.WaitGroup
 	outerWaitGroup sync.WaitGroup
 	counter        int
-	messages       []string
-	messageChannel chan message_t
-	writer         *uilive.Writer
 
 	IsAborted bool
 }
@@ -137,9 +135,8 @@ type Pool struct {
 func New(numWorkers, numTasks int) *Pool {
 	var pool Pool
 	pool.numWorkers = numWorkers
+	pool.numTasks = numTasks
 	pool.taskChannel = make(chan taskContainer_t, numTasks)
-	pool.messages = make([]string, numTasks)
-	pool.messageChannel = make(chan message_t)
 	return &pool
 }
 
@@ -150,8 +147,10 @@ func (pool *Pool) Add(task Task) {
 }
 
 func (pool *Pool) Start() {
-	pool.writer = uilive.New()
-	pool.writer.Start()
+	messages := make([]string, pool.numTasks)
+	messageChannel := make(chan message_t)
+	writer := uilive.New()
+	writer.Start()
 	pool.outerWaitGroup.Add(1)
 
 	for i := 0; i < pool.numWorkers; i++ {
@@ -159,7 +158,7 @@ func (pool *Pool) Start() {
 			for taskContainer := range pool.taskChannel {
 				if !pool.IsAborted {
 					send := func(body string) {
-						pool.messageChannel <- message_t{taskContainer.i, body}
+						messageChannel <- message_t{taskContainer.i, body}
 					}
 					taskContainer.task.Run(send, pool.abort)
 				}
@@ -178,19 +177,20 @@ func (pool *Pool) Start() {
 		exitfor := false
 		for !exitfor {
 			select {
-			case msg := <-pool.messageChannel:
-				pool.messages[msg.i] = msg.body
+			case msg := <-messageChannel:
+				messages[msg.i] = msg.body
 				var tmpMessages []string
-				for _, line := range pool.messages {
+				for _, line := range messages {
 					if len(line) > 0 {
 						tmpMessages = append(tmpMessages, line)
 					}
 				}
-				fmt.Fprintln(pool.writer, strings.Join(tmpMessages, "\n"))
-				pool.writer.Flush()
+				fmt.Fprintln(writer, strings.Join(tmpMessages, "\n"))
+				writer.Flush()
 			case <-waitChannel:
 				exitfor = true
-				pool.writer.Stop()
+				writer.Stop()
+				close(messageChannel)
 				pool.outerWaitGroup.Done()
 			}
 		}
@@ -198,6 +198,7 @@ func (pool *Pool) Start() {
 }
 
 func (pool *Pool) abort() {
+	// No need to protect this with a Mutex since it only goes from false -> true
 	pool.IsAborted = true
 }
 
