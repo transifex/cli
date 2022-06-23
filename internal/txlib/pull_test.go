@@ -2,105 +2,29 @@ package txlib
 
 import (
 	"fmt"
-	"io/ioutil"
-	"log"
-	"net/http"
-	"net/http/httptest"
 	"os"
-	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/pterm/pterm"
-	"github.com/transifex/cli/internal/txlib/config"
 	"github.com/transifex/cli/pkg/assert"
 	"github.com/transifex/cli/pkg/jsonapi"
 )
 
 func TestPullCommandResourceExists(t *testing.T) {
-	cfg := config.Config{
-		Local: &config.LocalConfig{
-			Resources: []config.Resource{
-				{
-					OrganizationSlug: "orgslug",
-					ProjectSlug:      "projslug",
-					ResourceSlug:     "resslug",
-					Type:             "I18N_TYPE",
-					SourceFile:       "source",
-				},
-			},
-		},
-	}
+	afterTest := beforeTest(t, nil, nil)
+	defer afterTest()
 
-	projectsUrl := "/projects/o:orgslug:p:projslug"
-	resourcesUrl := "/resources/o:orgslug:p:projslug:r:resslug"
-	projectLanguagesUrl := "/projects/o:orgslug:p:projslug/languages"
+	cfg := getStandardConfig()
+
+	ts := getNewTestServer("This is the content")
+	defer ts.Close()
+
 	mockData := jsonapi.MockData{
-		projectsUrl: &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{{
-				Response: jsonapi.MockResponse{
-					Text: `{"data": {
-						"type": "project",
-						"id": "o:orgslug:p:projslug",
-						"relationships": {
-							"organization": {},
-							"languages": {"links": {
-								"related": "/projects/o:orgslug:p:projslug/languages"
-							}}
-						}
-					}}`,
-				},
-			}},
-		},
-		projectLanguagesUrl: &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{{
-				Response: jsonapi.MockResponse{
-					Text: `{"data": [{"type": "languages",
-						              "id": "l:el",
-						              "attributes": {"code": "el"}}]}`,
-				},
-			}},
-		},
-		resourcesUrl: &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{{
-				Response: jsonapi.MockResponse{
-					Text: `{"data": {"type": "resources",
-						              "id": "o:orgslug:p:projslug:r:resslug",
-						              "attributes": {"slug": "resslug"},
-						              "relationships": {"project": {}}},
-							"links": {"next": "",
-									  "previous": "",
-									  "self": ""}}`,
-				},
-			}},
-		},
-		"/resource_translations_async_downloads": &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{{
-				Response: jsonapi.MockResponse{
-					Text: `{"data": {
-						"type": "resource_translations_async_downloads",
-						"id": "download_1",
-						"relationships": {"resource": {"data": {
-							"type": "resources",
-							"id": "o:orgslug:p:projslug:r:resslug"
-						}}}
-					}}`,
-				},
-			}},
-		},
-		"/resource_translations_async_downloads/download_1": &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{{
-				Response: jsonapi.MockResponse{
-					Text: `{"data": {
-						"type": "resource_translations_async_downloads",
-						"id": "download_1",
-						"attributes": {"status": "succeeded"}
-					}}`,
-				},
-			}},
-		},
+		resourceUrl:             getResourceEndpoint(),
+		projectUrl:              getProjectEndpoint(),
+		statsUrlAllLanguages:    getStatsEndpointAllLanguages(),
+		translationDownloadsUrl: getTranslationDownloadsEndpoint(),
+		translationDownloadUrl:  getDownloadEndpoint(ts.URL),
 	}
 
 	api := jsonapi.GetTestConnection(mockData)
@@ -112,397 +36,158 @@ func TestPullCommandResourceExists(t *testing.T) {
 		All:               true,
 		ResourceIds:       nil,
 		MinimumPercentage: -1,
+		Workers:           1,
 	}
 
-	err := PullCommand(&cfg, api, &arguments)
+	err := PullCommand(cfg, &api, &arguments)
 	if err != nil {
 		t.Errorf("%s", err)
 	}
 
-	endpoint := mockData[projectsUrl]
-	if endpoint.Count != 1 {
-		t.Errorf("Made %d requests to '%s', expected 1",
-			endpoint.Count, projectsUrl)
-	}
-	actual := endpoint.Requests[0].Request
-	expected := jsonapi.CapturedRequest{Method: "GET"}
-	if !reflect.DeepEqual(actual, expected) {
-		t.Errorf("Got request '%+v', expected %+v", actual, expected)
-	}
+	testSimpleGet(t, mockData, resourceUrl)
+	testSimpleGet(t, mockData, projectUrl)
+	testSimpleGet(t, mockData, statsUrlAllLanguages)
+	testSimpleTranslationDownload(t, mockData)
+	testSimpleGet(t, mockData, translationDownloadUrl)
 
-	endpoint = mockData[resourcesUrl]
-	if endpoint.Count != 1 {
-		t.Errorf("Made %d requests to '%s', expected 1",
-			endpoint.Count, resourcesUrl)
+	data, err := os.ReadFile("aaa-el.json")
+	if err != nil {
+		t.Error(err)
 	}
-	actual = endpoint.Requests[0].Request
-	expected = jsonapi.CapturedRequest{Method: "GET"}
-	if !reflect.DeepEqual(actual, expected) {
-		t.Errorf("Got request '%+v', expected %+v", actual, expected)
-	}
-
-	endpoint = mockData["/resource_translations_async_downloads"]
-	if endpoint.Count != 1 {
-		t.Errorf(
-			"Made %d requests to '/resource_translations_async_downloads', "+
-				"expected 1",
-			endpoint.Count,
-		)
-	}
-	actual = endpoint.Requests[0].Request
-	if actual.Method != "POST" ||
-		len(actual.Payload) == 0 {
-		t.Errorf("Something was wrong with the request '%+v'", actual)
-	}
-
-	endpoint = mockData["/resource_translations_async_downloads/download_1"]
-	if endpoint.Count != 1 {
-		t.Errorf("Made %d requests to '%s', expected 1",
-			endpoint.Count,
-			"/resource_translations_async_downloads/download_1")
-	}
-	actual = endpoint.Requests[0].Request
-	expected = jsonapi.CapturedRequest{Method: "GET"}
-	if !reflect.DeepEqual(actual, expected) {
-		t.Errorf("Got request '%+v', expected %+v", actual, expected)
+	actual := strings.Trim(string(data), " \n")
+	expected := "This is the content"
+	if actual != expected {
+		t.Errorf("Wrong file saved; expected: '%s', got '%s'", expected, actual)
 	}
 }
 
 func TestPullCommandFileExists(t *testing.T) {
-	cfg := config.Config{
-		Local: &config.LocalConfig{
-			Resources: []config.Resource{
-				{
-					OrganizationSlug: "orgslug",
-					ProjectSlug:      "projslug",
-					ResourceSlug:     "resslug",
-					Type:             "I18N_TYPE",
-					SourceFile:       "source",
-					FileFilter:       "locale/<lang>/file",
-					LanguageMappings: map[string]string{
-						"el": "el",
-					},
-				},
-			},
-		},
-	}
+	afterTest := beforeTest(t, []string{"el"}, nil)
+	defer afterTest()
 
-	ts := createTestServer()
-	workingDir, err := os.Getwd()
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = os.MkdirAll(filepath.Join(workingDir, "locale", "el"), os.ModePerm)
-	if err != nil {
-		log.Fatal(err)
-	}
+	cfg := getStandardConfig()
 
-	ts.Start()
+	ts := getNewTestServer("This is the content")
 	defer ts.Close()
 
-	projectsUrl := "/projects/o:orgslug:p:projslug"
-	resourcesUrl := "/resources/o:orgslug:p:projslug:r:resslug"
-	projectLanguagesUrl := "/projects/o:orgslug:p:projslug/languages"
-	asyncDownloadsUrl := "/resource_translations_async_downloads/download_1"
 	mockData := jsonapi.MockData{
-		"/organizations": &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{{
-				Response: jsonapi.MockResponse{
-					Text: `{"data": [{"type": "organizations",
-					                  "id": "o:orgslug",
-									  "attributes": {"slug": "orgslug"}}]}`,
-				},
-			}},
-		},
-		projectsUrl: &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{{
-				Response: jsonapi.MockResponse{
-					Text: `{"data": {
-						"type": "project",
-						"id": "o:orgslug:p:projslug",
-						"relationships": {
-							"organization": {},
-							"languages": {"links": {
-								"related": "/projects/o:orgslug:p:projslug/languages"
-							}}
-						}
-					}}`,
-				},
-			}},
-		},
-		projectLanguagesUrl: &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{{
-				Response: jsonapi.MockResponse{
-					Text: `{"data": [{"type": "languages",
-						              "id": "l:el",
-						              "attributes": {"code": "el"}}]}`,
-				},
-			}},
-		},
-		resourcesUrl: &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{{
-				Response: jsonapi.MockResponse{
-					Text: `{"data": {"type": "resources",
-						              "id": "o:orgslug:p:projslug:r:resslug",
-						              "attributes": {"slug": "resslug"},
-						              "relationships": {"project": {}}},
-							"links": {"next": "", "previous": "", "self": ""}}`,
-				},
-			}},
-		},
-		"/resource_translations_async_downloads": &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{{
-				Response: jsonapi.MockResponse{
-					Text: `{"data": {
-						"type": "resource_translations_async_downloads",
-						"id": "download_1",
-						"relationships": {"resource": {"data": {
-							"type": "resources",
-							"id": "o:orgslug:p:projslug:r:resslug"
-						}},
-							"language": {"data": {"id": "l:el",
-							                      "type": "languages", "attributes": {"code": "el"}}}
-						}
-					}}`,
-				},
-			}},
-		},
-		asyncDownloadsUrl: &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{{
-				Response: jsonapi.MockResponse{
-					Redirect: ts.URL,
-				},
-			}},
-		},
+		resourceUrl:             getResourceEndpoint(),
+		projectUrl:              getProjectEndpoint(),
+		statsUrlAllLanguages:    getStatsEndpointAllLanguages(),
+		translationDownloadsUrl: getTranslationDownloadsEndpoint(),
+		translationDownloadUrl:  getDownloadEndpoint(ts.URL),
 	}
 
 	api := jsonapi.GetTestConnection(mockData)
 
 	arguments := PullCommandArguments{
-		FileType:    "default",
-		Mode:        "default",
-		Force:       true,
-		All:         true,
-		ResourceIds: nil,
+		FileType:          "default",
+		Mode:              "default",
+		Force:             true,
+		All:               true,
+		ResourceIds:       nil,
+		MinimumPercentage: -1,
+		Workers:           1,
 	}
 
-	err = PullCommand(&cfg, api, &arguments)
+	err := PullCommand(cfg, &api, &arguments)
 	if err != nil {
 		t.Errorf("%s", err)
 	}
 
-	endpoint := mockData[projectsUrl]
-	if endpoint.Count != 1 {
-		t.Errorf("Made %d requests to '%s', expected 1",
-			endpoint.Count, projectsUrl)
-	}
-	actual := endpoint.Requests[0].Request
-	expected := jsonapi.CapturedRequest{Method: "GET"}
-	if !reflect.DeepEqual(actual, expected) {
-		t.Errorf("Got request '%+v', expected %+v", actual, expected)
-	}
+	testSimpleGet(t, mockData, resourceUrl)
+	testSimpleGet(t, mockData, projectUrl)
+	testSimpleGet(t, mockData, statsUrlAllLanguages)
+	testSimpleTranslationDownload(t, mockData)
+	testSimpleGet(t, mockData, translationDownloadUrl)
 
-	endpoint = mockData[resourcesUrl]
-	if endpoint.Count != 1 {
-		t.Errorf("Made %d requests to '%s', expected 1",
-			endpoint.Count, resourcesUrl)
-	}
-	actual = endpoint.Requests[0].Request
-	expected = jsonapi.CapturedRequest{Method: "GET"}
-	if !reflect.DeepEqual(actual, expected) {
-		t.Errorf("Got request '%+v', expected %+v", actual, expected)
-	}
-
-	endpoint = mockData["/resource_translations_async_downloads"]
-	if endpoint.Count != 1 {
-		t.Errorf(
-			"Made %d requests to '/resource_translations_async_downloads', "+
-				"expected 1",
-			endpoint.Count,
-		)
-	}
-	actual = endpoint.Requests[0].Request
-	if actual.Method != "POST" ||
-		len(actual.Payload) == 0 {
-		t.Errorf("Something was wrong with the request '%+v'", actual)
-	}
-
-	endpoint = mockData[asyncDownloadsUrl]
-	if endpoint.Count != 1 {
-		t.Errorf("Made %d requests to '%s', expected 1",
-			endpoint.Count, asyncDownloadsUrl)
-	}
-	actual = endpoint.Requests[0].Request
-	expected = jsonapi.CapturedRequest{Method: "GET"}
-	if !reflect.DeepEqual(actual, expected) {
-		t.Errorf("Got request '%+v', expected %+v", actual, expected)
-	}
-
-	bytes, err := os.ReadFile(filepath.Join(
-		workingDir, "locale", "el", "file",
-	))
+	data, err := os.ReadFile("aaa-el.json")
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Error(err)
 	}
-	expectedPayloadBytes := []byte(fmt.Sprintln(`Here comes the sun`))
-
-	if !reflect.DeepEqual(bytes, expectedPayloadBytes) {
-		t.Errorf("File created contains '%+v', expected '%+v'",
-			bytes, expectedPayloadBytes)
+	actual := strings.Trim(string(data), " \n")
+	expected := "This is the content"
+	if actual != expected {
+		t.Errorf("Wrong file saved; expected: '%s', got '%s'", expected, actual)
 	}
-
-	// Clean up
-	os.Remove(filepath.Join(workingDir, "locale", "el", "file"))
-	os.Remove(filepath.Join(workingDir, "locale", "el"))
-	os.Remove(filepath.Join(workingDir, "locale"))
 }
 
 func TestPullCommandDownloadSource(t *testing.T) {
-	cfg := config.Config{
-		Local: &config.LocalConfig{
-			Resources: []config.Resource{
-				{
-					OrganizationSlug: "orgslug",
-					ProjectSlug:      "projslug",
-					ResourceSlug:     "resslug",
-					Type:             "I18N_TYPE",
-					SourceFile:       "source",
-					LanguageMappings: map[string]string{
-						"el": "el",
-					},
-				},
-			},
-		},
-	}
+	afterTest := beforeTest(t, nil, nil)
+	defer afterTest()
 
-	projectsUrl := "/projects/o:orgslug:p:projslug"
-	resourcesUrl := "/resources/o:orgslug:p:projslug:r:resslug"
+	cfg := getStandardConfig()
+
+	ts := getNewTestServer("New source")
+	defer ts.Close()
+
 	mockData := jsonapi.MockData{
-		projectsUrl: &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{{
-				Response: jsonapi.MockResponse{
-					Text: `{"data": {
-						"type": "project",
-						"id": "o:orgslug:p:projslug",
-						"relationships": {"organization": {}}
-					}}`,
-				},
-			}},
-		},
-		resourcesUrl: &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{{
-				Response: jsonapi.MockResponse{
-					Text: `{"data": {"type": "resources",
-						              "id": "o:orgslug:p:projslug:r:resslug",
-						              "attributes": {"slug": "resslug"},
-						              "relationships": {"project": {}}}}`,
-				},
-			}},
-		},
-		"/resource_strings_async_downloads": &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{{
-				Response: jsonapi.MockResponse{
-					Text: `{"data": {
-						"type": "resource_strings_async_downloads",
-						"id": "download_1",
-						"relationships": {"resource": {"data": {
-							"type": "resources",
-							"id": "o:orgslug:p:projslug:r:resslug"
-						}}}
-					}}`,
-				},
-			}},
-		},
-		"/resource_strings_async_downloads/download_1": &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{{
-				Response: jsonapi.MockResponse{
-					Text: `{"data": {"type": "resource_strings_async_downloads",
-					                 "id": "download_1",
-									 "attributes": {"status": "succeeded"}}}`,
-				},
-			}},
-		},
+		resourceUrl:            getResourceEndpoint(),
+		projectUrl:             getProjectEndpoint(),
+		statsUrlSourceLanguage: getStatsEndpointSourceLanguage(),
+		sourceDownloadsUrl:     getSourceDownloadsEndpoint(),
+		sourceDownloadUrl:      getDownloadEndpoint(ts.URL),
 	}
 
 	api := jsonapi.GetTestConnection(mockData)
 	err := PullCommand(
-		&cfg,
-		api,
+		cfg,
+		&api,
 		&PullCommandArguments{
-			Force:       true,
-			Source:      true,
-			ResourceIds: []string{"projslug.resslug"},
+			FileType:          "default",
+			Mode:              "default",
+			Force:             true,
+			Source:            true,
+			ResourceIds:       nil,
+			MinimumPercentage: -1,
+			Workers:           1,
 		},
 	)
 	if err != nil {
 		t.Errorf("%s", err)
 	}
 
-	endpoint := mockData[projectsUrl]
-	if endpoint.Count != 1 {
-		t.Errorf("Made %d requests to '%s', expected 1",
-			endpoint.Count, projectsUrl)
-	}
-	actual := endpoint.Requests[0].Request
-	expected := jsonapi.CapturedRequest{Method: "GET"}
-	if !reflect.DeepEqual(actual, expected) {
-		t.Errorf("Got request '%+v', expected %+v", actual, expected)
-	}
+	testSimpleGet(t, mockData, resourceUrl)
+	testSimpleGet(t, mockData, projectUrl)
+	testSimpleGet(t, mockData, statsUrlSourceLanguage)
+	testSimpleSourceDownload(t, mockData)
+	testSimpleGet(t, mockData, sourceDownloadUrl)
 
-	endpoint = mockData[resourcesUrl]
-	if endpoint.Count != 1 {
-		t.Errorf("Made %d requests to '%s', expected 1",
-			endpoint.Count, resourcesUrl)
+	data, err := os.ReadFile("aaa.json")
+	if err != nil {
+		t.Errorf("%s", err)
 	}
-	actual = endpoint.Requests[0].Request
-	expected = jsonapi.CapturedRequest{Method: "GET"}
-	if !reflect.DeepEqual(actual, expected) {
-		t.Errorf("Got request '%+v', expected %+v", actual, expected)
-	}
-
-	endpoint = mockData["/resource_strings_async_downloads"]
-	if endpoint.Count != 1 {
-		t.Errorf(
-			"Made %d requests to '/resource_strings_async_downloads', "+
-				"expected 1",
-			endpoint.Count,
-		)
-	}
-	actual = endpoint.Requests[0].Request
-	if actual.Method != "POST" ||
-		len(actual.Payload) == 0 {
-		t.Errorf("Something was wrong with the request '%+v'", actual)
-	}
-
-	endpoint = mockData["/resource_strings_async_downloads/download_1"]
-	if endpoint.Count != 1 {
-		t.Errorf("Made %d requests to '%s', expected 1",
-			endpoint.Count, "/resource_strings_async_downloads/download_1")
-	}
-	actual = endpoint.Requests[0].Request
-	expected = jsonapi.CapturedRequest{Method: "GET"}
-	if !reflect.DeepEqual(actual, expected) {
-		t.Errorf("Got request '%+v', expected %+v", actual, expected)
+	actual := strings.Trim(string(data), " \n")
+	expected := "New source"
+	if actual != expected {
+		t.Errorf("Wrong file saved; expected: '%s', got '%s'", expected, actual)
 	}
 }
 
 func TestPullCommandSkipOnTranslatedMinPerc(t *testing.T) {
-	cfg := config.Config{
-		Local: &config.LocalConfig{
-			Resources: []config.Resource{
-				{
-					OrganizationSlug:  "orgslug",
-					ProjectSlug:       "projslug",
-					ResourceSlug:      "resslug",
-					Type:              "I18N_TYPE",
-					SourceFile:        "source",
-					MinimumPercentage: 40,
-				},
-			},
-		},
+	afterTest := beforeTest(t, nil, nil)
+	defer afterTest()
+
+	cfg := getStandardConfig()
+
+	mockData := jsonapi.MockData{
+		resourceUrl: getResourceEndpoint(),
+		projectUrl:  getProjectEndpoint(),
+		statsUrlAllLanguages: jsonapi.GetMockTextResponse(fmt.Sprintf(
+			`{"data": [{"type": "resource_language_stats",
+			            "id": "%s:l:en",
+						"relationships": {"language": {"data": {"type": "languages",
+						                                        "id": "l:en"}}}},
+			           {"type": "resource_language_stats",
+					    "id": "%s:l:el",
+						"attributes": {"translated_strings": 30, "total_strings": 100},
+						"relationships": {"language": {"data": {"type": "languages",
+						                                        "id": "l:el"}}}}]}`,
+			resourceId,
+			resourceId,
+		)),
 	}
 
-	mockData := getSkipMinPercentageMockData(2, 0, 0)
 	api := jsonapi.GetTestConnection(mockData)
 
 	arguments := PullCommandArguments{
@@ -510,173 +195,159 @@ func TestPullCommandSkipOnTranslatedMinPerc(t *testing.T) {
 		Mode:              "default",
 		All:               true,
 		ResourceIds:       nil,
-		MinimumPercentage: -1,
+		MinimumPercentage: 40,
+		Workers:           1,
 	}
 
-	err := PullCommand(&cfg, api, &arguments)
+	err := PullCommand(cfg, &api, &arguments)
 	if err != nil {
 		t.Errorf("%s", err)
 	}
 
-	endpoint := mockData["/resource_translations_async_downloads/download_1"]
-	if endpoint.Count != 0 {
-		t.Errorf("Made %d requests to '%s', expected 0"+
-			"because of translated strings minimum perc",
-			endpoint.Count,
-			"/resource_translations_async_downloads/download_1")
-	}
+	testSimpleGet(t, mockData, resourceUrl)
+	testSimpleGet(t, mockData, projectUrl)
+	testSimpleGet(t, mockData, statsUrlAllLanguages)
 }
 
 func TestPullCommandProceedOnEqualTranslatedMinPerc(t *testing.T) {
-	cfg := config.Config{
-		Local: &config.LocalConfig{
-			Resources: []config.Resource{
-				{
-					OrganizationSlug:  "orgslug",
-					ProjectSlug:       "projslug",
-					ResourceSlug:      "resslug",
-					Type:              "I18N_TYPE",
-					SourceFile:        "source",
-					MinimumPercentage: 40,
-				},
-			},
-		},
+	afterTest := beforeTest(t, []string{"el"}, nil)
+	defer afterTest()
+
+	cfg := getStandardConfig()
+
+	ts := getNewTestServer("This is the content")
+	defer ts.Close()
+
+	mockData := jsonapi.MockData{
+		resourceUrl: getResourceEndpoint(),
+		projectUrl:  getProjectEndpoint(),
+		statsUrlAllLanguages: jsonapi.GetMockTextResponse(fmt.Sprintf(
+			`{"data": [{"type": "resource_language_stats",
+			            "id": "%s:l:en",
+						"relationships": {"language": {"data": {"type": "languages",
+						                                        "id": "l:en"}}}},
+			           {"type": "resource_language_stats",
+					    "id": "%s:l:el",
+						"attributes": {"translated_strings": 40, "total_strings": 100},
+						"relationships": {"language": {"data": {"type": "languages",
+						                                        "id": "l:el"}}}}]}`,
+			resourceId,
+			resourceId,
+		)),
+		translationDownloadsUrl: getTranslationDownloadsEndpoint(),
+		translationDownloadUrl:  getDownloadEndpoint(ts.URL),
 	}
 
-	mockData := getSkipMinPercentageMockData(4, 0, 0)
 	api := jsonapi.GetTestConnection(mockData)
 
 	arguments := PullCommandArguments{
 		FileType:          "default",
 		Mode:              "default",
+		Force:             true,
 		All:               true,
 		ResourceIds:       nil,
-		MinimumPercentage: -1,
+		MinimumPercentage: 40,
+		Workers:           1,
 	}
 
-	err := PullCommand(&cfg, api, &arguments)
+	err := PullCommand(cfg, &api, &arguments)
 	if err != nil {
 		t.Errorf("%s", err)
 	}
 
-	endpoint := mockData["/resource_translations_async_downloads/download_1"]
-	if endpoint.Count != 1 {
-		t.Errorf("Made %d requests to '%s', expected 1 "+
-			"because of translated strings is equal to minimum perc",
-			endpoint.Count,
-			"/resource_translations_async_downloads/download_1")
+	testSimpleGet(t, mockData, resourceUrl)
+	testSimpleGet(t, mockData, projectUrl)
+	testSimpleGet(t, mockData, statsUrlAllLanguages)
+	testSimpleTranslationDownload(t, mockData)
+	testSimpleGet(t, mockData, translationDownloadUrl)
+
+	data, err := os.ReadFile("aaa-el.json")
+	if err != nil {
+		t.Error(err)
+	}
+	actual := strings.Trim(string(data), " \n")
+	expected := "This is the content"
+	if actual != expected {
+		t.Errorf("Wrong file saved; expected: '%s', got '%s'", expected, actual)
 	}
 }
 
 func TestPullCommandOverrides(t *testing.T) {
-	rescueStdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-	pterm.SetDefaultOutput(os.Stdout)
-	pterm.RawOutput = true
-	cfg := config.Config{
-		Local: &config.LocalConfig{
-			Resources: []config.Resource{
-				{
-					OrganizationSlug: "orgslug",
-					ProjectSlug:      "projslug",
-					ResourceSlug:     "resslug",
-					Type:             "I18N_TYPE",
-					SourceFile:       "source.po",
-					FileFilter:       "<lang>/source.po",
-					Overrides: map[string]string{
-						"el": "somethingelse/source.po",
-					},
-				},
-			},
-		},
+	afterTest := beforeTest(t, []string{"el"}, nil)
+	defer afterTest()
+
+	cfg := getStandardConfig()
+	cfg.Local.Resources[0].Overrides = map[string]string{"el": "custom_path.json"}
+
+	ts := getNewTestServer("This is the content")
+	defer ts.Close()
+
+	mockData := jsonapi.MockData{
+		resourceUrl:             getResourceEndpoint(),
+		projectUrl:              getProjectEndpoint(),
+		statsUrlAllLanguages:    getStatsEndpointAllLanguages(),
+		translationDownloadsUrl: getTranslationDownloadsEndpoint(),
+		translationDownloadUrl:  getDownloadEndpoint(ts.URL),
 	}
 
-	mockData := getSkipMinPercentageMockData(10, 10, 10)
 	api := jsonapi.GetTestConnection(mockData)
 
 	arguments := PullCommandArguments{
 		FileType:          "default",
 		Mode:              "default",
+		Force:             true,
 		All:               true,
 		ResourceIds:       nil,
 		MinimumPercentage: -1,
+		Workers:           1,
 	}
 
-	err := PullCommand(&cfg, api, &arguments)
+	err := PullCommand(cfg, &api, &arguments)
 	if err != nil {
 		t.Errorf("%s", err)
 	}
-	w.Close()
-	out, _ := ioutil.ReadAll(r)
-	os.Stdout = rescueStdout
-	assert.True(t, strings.Contains(
-		string(out), "Translation file 'somethingelse/source.po' downloaded"))
-}
 
-func TestPullCommandOverridesWithoutAll(t *testing.T) {
-	rescueStdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-	pterm.SetDefaultOutput(os.Stdout)
-	pterm.RawOutput = true
-	cfg := config.Config{
-		Local: &config.LocalConfig{
-			Resources: []config.Resource{
-				{
-					OrganizationSlug: "orgslug",
-					ProjectSlug:      "projslug",
-					ResourceSlug:     "resslug",
-					Type:             "I18N_TYPE",
-					SourceFile:       "source.po",
-					FileFilter:       "<lang>/source.po",
-					Overrides: map[string]string{
-						"el": "somethingelse/source.po",
-					},
-				},
-			},
-		},
-	}
+	testSimpleGet(t, mockData, resourceUrl)
+	testSimpleGet(t, mockData, projectUrl)
+	testSimpleGet(t, mockData, statsUrlAllLanguages)
+	testSimpleTranslationDownload(t, mockData)
+	testSimpleGet(t, mockData, translationDownloadUrl)
 
-	mockData := getSkipMinPercentageMockData(10, 10, 10)
-	api := jsonapi.GetTestConnection(mockData)
-
-	arguments := PullCommandArguments{
-		FileType:          "default",
-		Mode:              "default",
-		All:               false,
-		ResourceIds:       nil,
-		MinimumPercentage: -1,
-	}
-
-	err := PullCommand(&cfg, api, &arguments)
+	data, err := os.ReadFile("custom_path.json")
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Error(err)
 	}
-	w.Close()
-	out, _ := ioutil.ReadAll(r)
-	os.Stdout = rescueStdout
-	assert.True(t, strings.Contains(
-		string(out), "Translation file 'somethingelse/source.po' downloaded"))
+	actual := strings.Trim(string(data), " \n")
+	expected := "This is the content"
+	if actual != expected {
+		t.Errorf("Wrong file saved; expected: '%s', got '%s'", expected, actual)
+	}
 }
 
 func TestPullCommandSkipOnReviewedMinPerc(t *testing.T) {
-	cfg := config.Config{
-		Local: &config.LocalConfig{
-			Resources: []config.Resource{
-				{
-					OrganizationSlug:  "orgslug",
-					ProjectSlug:       "projslug",
-					ResourceSlug:      "resslug",
-					Type:              "I18N_TYPE",
-					SourceFile:        "source",
-					MinimumPercentage: 40,
-				},
-			},
-		},
+	afterTest := beforeTest(t, nil, nil)
+	defer afterTest()
+
+	cfg := getStandardConfig()
+
+	mockData := jsonapi.MockData{
+		resourceUrl: getResourceEndpoint(),
+		projectUrl:  getProjectEndpoint(),
+		statsUrlAllLanguages: jsonapi.GetMockTextResponse(fmt.Sprintf(
+			`{"data": [{"type": "resource_language_stats",
+			            "id": "%s:l:en",
+						"relationships": {"language": {"data": {"type": "languages",
+						                                        "id": "l:en"}}}},
+			           {"type": "resource_language_stats",
+					    "id": "%s:l:el",
+						"attributes": {"reviewed_strings": 30, "total_strings": 100},
+						"relationships": {"language": {"data": {"type": "languages",
+						                                        "id": "l:el"}}}}]}`,
+			resourceId,
+			resourceId,
+		)),
 	}
 
-	mockData := getSkipMinPercentageMockData(0, 2, 0)
 	api := jsonapi.GetTestConnection(mockData)
 
 	arguments := PullCommandArguments{
@@ -684,21 +355,155 @@ func TestPullCommandSkipOnReviewedMinPerc(t *testing.T) {
 		Mode:              "reviewed",
 		All:               true,
 		ResourceIds:       nil,
-		MinimumPercentage: -1,
+		MinimumPercentage: 40,
+		Workers:           1,
 	}
 
-	err := PullCommand(&cfg, api, &arguments)
+	err := PullCommand(cfg, &api, &arguments)
 	if err != nil {
 		t.Errorf("%s", err)
 	}
 
-	endpoint := mockData["/resource_translations_async_downloads/download_1"]
-	if endpoint.Count != 0 {
-		t.Errorf("Made %d requests to '%s', expected 0 "+
-			"because of reviewed strings minimum perc",
-			endpoint.Count,
-			"/resource_translations_async_downloads/download_1")
+	testSimpleGet(t, mockData, resourceUrl)
+	testSimpleGet(t, mockData, projectUrl)
+	testSimpleGet(t, mockData, statsUrlAllLanguages)
+}
+
+func TestPullCommandSkipOnProofreadMinPerc(t *testing.T) {
+	afterTest := beforeTest(t, nil, nil)
+	defer afterTest()
+
+	cfg := getStandardConfig()
+
+	mockData := jsonapi.MockData{
+		resourceUrl: getResourceEndpoint(),
+		projectUrl:  getProjectEndpoint(),
+		statsUrlAllLanguages: jsonapi.GetMockTextResponse(fmt.Sprintf(
+			`{"data": [{"type": "resource_language_stats",
+			            "id": "%s:l:en",
+						"relationships": {"language": {"data": {"type": "languages",
+						                                        "id": "l:en"}}}},
+			           {"type": "resource_language_stats",
+					    "id": "%s:l:el",
+						"attributes": {"proofread_strings": 30, "total_strings": 100},
+						"relationships": {"language": {"data": {"type": "languages",
+						                                        "id": "l:el"}}}}]}`,
+			resourceId,
+			resourceId,
+		)),
 	}
+
+	api := jsonapi.GetTestConnection(mockData)
+
+	arguments := PullCommandArguments{
+		FileType:          "default",
+		Mode:              "proofread",
+		All:               true,
+		ResourceIds:       nil,
+		MinimumPercentage: 40,
+		Workers:           1,
+	}
+
+	err := PullCommand(cfg, &api, &arguments)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+
+	testSimpleGet(t, mockData, resourceUrl)
+	testSimpleGet(t, mockData, projectUrl)
+	testSimpleGet(t, mockData, statsUrlAllLanguages)
+}
+
+func TestPullCommandPercentageArgumentShouldWinOverResource(t *testing.T) {
+	afterTest := beforeTest(t, nil, nil)
+	defer afterTest()
+
+	cfg := getStandardConfig()
+	cfg.Local.Resources[0].MinimumPercentage = 30
+
+	mockData := jsonapi.MockData{
+		resourceUrl: getResourceEndpoint(),
+		projectUrl:  getProjectEndpoint(),
+		statsUrlAllLanguages: jsonapi.GetMockTextResponse(fmt.Sprintf(
+			`{"data": [{"type": "resource_language_stats",
+			            "id": "%s:l:en",
+						"relationships": {"language": {"data": {"type": "languages",
+						                                        "id": "l:en"}}}},
+			           {"type": "resource_language_stats",
+					    "id": "%s:l:el",
+						"attributes": {"translated_strings": 40, "total_strings": 100},
+						"relationships": {"language": {"data": {"type": "languages",
+						                                        "id": "l:el"}}}}]}`,
+			resourceId,
+			resourceId,
+		)),
+	}
+
+	api := jsonapi.GetTestConnection(mockData)
+
+	arguments := PullCommandArguments{
+		FileType:          "default",
+		Mode:              "default",
+		All:               true,
+		ResourceIds:       nil,
+		MinimumPercentage: 50,
+		Workers:           1,
+	}
+
+	err := PullCommand(cfg, &api, &arguments)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+
+	testSimpleGet(t, mockData, resourceUrl)
+	testSimpleGet(t, mockData, projectUrl)
+	testSimpleGet(t, mockData, statsUrlAllLanguages)
+}
+
+func TestPercentageWinsOverForce(t *testing.T) {
+	afterTest := beforeTest(t, nil, nil)
+	defer afterTest()
+
+	cfg := getStandardConfig()
+
+	mockData := jsonapi.MockData{
+		resourceUrl: getResourceEndpoint(),
+		projectUrl:  getProjectEndpoint(),
+		statsUrlAllLanguages: jsonapi.GetMockTextResponse(fmt.Sprintf(
+			`{"data": [{"type": "resource_language_stats",
+			            "id": "%s:l:en",
+						"relationships": {"language": {"data": {"type": "languages",
+						                                        "id": "l:en"}}}},
+			           {"type": "resource_language_stats",
+					    "id": "%s:l:el",
+						"attributes": {"translated_strings": 30, "total_strings": 100},
+						"relationships": {"language": {"data": {"type": "languages",
+						                                        "id": "l:el"}}}}]}`,
+			resourceId,
+			resourceId,
+		)),
+	}
+
+	api := jsonapi.GetTestConnection(mockData)
+
+	arguments := PullCommandArguments{
+		FileType:          "default",
+		Mode:              "default",
+		All:               true,
+		ResourceIds:       nil,
+		MinimumPercentage: 40,
+		Workers:           1,
+		Force:             true,
+	}
+
+	err := PullCommand(cfg, &api, &arguments)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+
+	testSimpleGet(t, mockData, resourceUrl)
+	testSimpleGet(t, mockData, projectUrl)
+	testSimpleGet(t, mockData, statsUrlAllLanguages)
 }
 
 func TestGetActedOnStringsPercentage(t *testing.T) {
@@ -738,294 +543,75 @@ func TestShouldSkipDueToStringPercentage(t *testing.T) {
 	assert.Equal(t, result, true)
 }
 
-func TestPullCommandSkipOnProofreadMinPerc(t *testing.T) {
-	cfg := config.Config{
-		Local: &config.LocalConfig{
-			Resources: []config.Resource{
-				{
-					OrganizationSlug:  "orgslug",
-					ProjectSlug:       "projslug",
-					ResourceSlug:      "resslug",
-					Type:              "I18N_TYPE",
-					SourceFile:        "source",
-					MinimumPercentage: 40,
-				},
+func getTranslationDownloadsEndpoint() *jsonapi.MockEndpoint {
+	return jsonapi.GetMockTextResponse(
+		`{"data": {"type": "resource_translations_async_downloads",
+				   "id": "download_1"}}`,
+	)
+}
+
+func getSourceDownloadsEndpoint() *jsonapi.MockEndpoint {
+	return jsonapi.GetMockTextResponse(
+		`{"data": {"type": "resource_strings_async_downloads",
+				   "id": "download_1"}}`,
+	)
+}
+
+func getDownloadEndpoint(url string) *jsonapi.MockEndpoint {
+	return &jsonapi.MockEndpoint{
+		Requests: []jsonapi.MockRequest{{
+			Response: jsonapi.MockResponse{
+				Status:   303,
+				Redirect: url,
 			},
-		},
-	}
-
-	mockData := getSkipMinPercentageMockData(0, 0, 2)
-	api := jsonapi.GetTestConnection(mockData)
-
-	arguments := PullCommandArguments{
-		FileType:          "default",
-		Mode:              "reviewed",
-		All:               true,
-		ResourceIds:       nil,
-		MinimumPercentage: -1,
-	}
-
-	err := PullCommand(&cfg, api, &arguments)
-	if err != nil {
-		t.Errorf("%s", err)
-	}
-
-	endpoint := mockData["/resource_translations_async_downloads/download_1"]
-	if endpoint.Count != 0 {
-		t.Errorf("Made %d requests to '%s', expected 0 "+
-			"because of proofread strings minimum perc",
-			endpoint.Count,
-			"/resource_translations_async_downloads/download_1")
+		}},
 	}
 }
 
-func createTestServer() *httptest.Server {
-	ts := httptest.NewUnstartedServer(http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintln(w, "Here comes the sun")
-		},
-	))
-	ts.EnableHTTP2 = true
-
-	return ts
-}
-
-func TestPullCommandPercentageArgumentShouldWinOverResource(t *testing.T) {
-	cfg := config.Config{
-		Local: &config.LocalConfig{
-			Resources: []config.Resource{
-				{
-					OrganizationSlug:  "orgslug",
-					ProjectSlug:       "projslug",
-					ResourceSlug:      "resslug",
-					Type:              "I18N_TYPE",
-					SourceFile:        "source",
-					MinimumPercentage: 40,
-				},
-			},
-		},
-	}
-
-	mockData := getSkipMinPercentageMockData(2, 0, 0)
-	api := jsonapi.GetTestConnection(mockData)
-
-	arguments := PullCommandArguments{
-		FileType:          "default",
-		Mode:              "default",
-		All:               true,
-		ResourceIds:       nil,
-		MinimumPercentage: 20,
-	}
-
-	err := PullCommand(&cfg, api, &arguments)
-	if err != nil {
-		t.Errorf("%s", err)
-	}
-
-	endpoint := mockData["/resource_translations_async_downloads/download_1"]
-	if endpoint.Count != 1 {
-		t.Errorf("Made %d requests to '%s', expected 1"+
-			"because of translated strings minimum perc",
-			endpoint.Count,
-			"/resource_translations_async_downloads/download_1")
-	}
-}
-
-func TestPercentageWinsOverForce(t *testing.T) {
-	cfg := config.Config{
-		Local: &config.LocalConfig{
-			Resources: []config.Resource{
-				{
-					OrganizationSlug:  "orgslug",
-					ProjectSlug:       "projslug",
-					ResourceSlug:      "resslug",
-					Type:              "I18N_TYPE",
-					SourceFile:        "source",
-					MinimumPercentage: 90,
-				},
-			},
-		},
-	}
-
-	mockData := getSkipMinPercentageMockData(2, 0, 0)
-	api := jsonapi.GetTestConnection(mockData)
-
-	arguments := PullCommandArguments{
-		FileType:          "default",
-		Mode:              "default",
-		All:               true,
-		ResourceIds:       nil,
-		Force:             true,
-		MinimumPercentage: -1,
-	}
-
-	err := PullCommand(&cfg, api, &arguments)
-	if err != nil {
-		t.Errorf("%s", err)
-	}
-
-	endpoint := mockData["/resource_translations_async_downloads/download_1"]
-	if endpoint.Count != 0 {
-		t.Errorf("Made %d requests to '%s', expected 0"+
-			"because of translated strings minimum perc",
-			endpoint.Count,
-			"/resource_translations_async_downloads/download_1")
-	}
-}
-
-func TestForceShouldWinIfThereIsNoMinPercentage(t *testing.T) {
-	cfg := config.Config{
-		Local: &config.LocalConfig{
-			Resources: []config.Resource{
-				{
-					OrganizationSlug: "orgslug",
-					ProjectSlug:      "projslug",
-					ResourceSlug:     "resslug",
-					Type:             "I18N_TYPE",
-					SourceFile:       "source",
-				},
-			},
-		},
-	}
-
-	mockData := getSkipMinPercentageMockData(2, 0, 0)
-	api := jsonapi.GetTestConnection(mockData)
-
-	arguments := PullCommandArguments{
-		FileType:          "default",
-		Mode:              "default",
-		All:               true,
-		ResourceIds:       nil,
-		Force:             true,
-		MinimumPercentage: -1,
-	}
-
-	err := PullCommand(&cfg, api, &arguments)
-	if err != nil {
-		t.Errorf("%s", err)
-	}
-
-	endpoint := mockData["/resource_translations_async_downloads/download_1"]
-	if endpoint.Count != 1 {
-		t.Errorf("Made %d requests to '%s', expected 1"+
-			"because force flag was used",
-			endpoint.Count,
-			"/resource_translations_async_downloads/download_1")
-	}
-}
-
-func getSkipMinPercentageMockData(translatedStrings int,
-	reviewedStrings int,
-	proofreadStrings int) jsonapi.MockData {
-	projectsUrl := "/projects/o:orgslug:p:projslug"
-	resourcesUrl := "/resources/o:orgslug:p:projslug:r:resslug"
-	projectLanguagesUrl := "/projects/o:orgslug:p:projslug/languages"
-	resourceLangStatsUrl := "/resource_language_stats?filter%5Bproject%5D=" +
-		"o%3Aorgslug%3Ap%3Aprojslug&filter%5Bresource%5D=o%3Aorgslug%3Ap%3A" +
-		"projslug%3Ar%3Aresslug"
-	now := time.Now().UTC()
-	duration, _ := time.ParseDuration("-5m")
-	return jsonapi.MockData{
-		resourceLangStatsUrl: &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{{
-				Response: jsonapi.MockResponse{
-					Text: fmt.Sprintf(
-						`{"data": [{
-							"type": "resource_language_stats",
-							"id":"stats1",
-							"attributes": {
-								"last_update": "%s",
-								"translated_strings": %d,
-								"total_strings": 10,
-								"reviewed_strings": %d,
-								"proofread_strings": %d
-
-							},
-							"relationships": {
-								"language": {"data": {"type": "languages",
-													  "id": "l:el"}},
-								"resource": {}
-							}
-						}]}`,
-						now.Add(duration).Format(time.RFC3339),
-						translatedStrings,
-						reviewedStrings,
-						proofreadStrings,
-					),
-				},
-			}},
-		},
-		projectsUrl: &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{{
-				Response: jsonapi.MockResponse{
-					Text: `{"data": {
-					"type": "project",
-					"id": "o:orgslug:p:projslug",
-					"relationships": {
-						"organization": {},
-						"languages": {"links": {
-							"related": "/projects/o:orgslug:p:projslug/languages"
-						}}
-					}
-				}}`,
-				},
-			}},
-		},
-		projectLanguagesUrl: &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{{
-				Response: jsonapi.MockResponse{
-					Text: `{"data": [{"type": "languages",
-								  "id": "l:el",
-								  "attributes": {"code": "el"}}]}`,
-				},
-			}},
-		},
-		resourcesUrl: &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{{
-				Response: jsonapi.MockResponse{
-					Text: `{"data": {"type": "resources",
-								  "id": "o:orgslug:p:projslug:r:resslug",
-								  "attributes": {"slug": "resslug"},
-								  "relationships": {"projects": {
-									  "type": "projects",
-									  "id": "o:orgslug:p:projslug"
-								  }}},
-						"links": {"next": "",
-								  "previous": "",
-								  "self": ""}}`,
-				},
-			}},
-		},
-		"/resource_translations_async_downloads": &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{{
-				Response: jsonapi.MockResponse{
-					Text: `{"data": {
-					"type": "resource_translations_async_downloads",
-					"id": "download_1",
-					"relationships": {"resource": {"data": {
-						"type": "resources",
-						"id": "o:orgslug:p:projslug:r:resslug"
-					}},
-					"language": {"data": {
-						"type": "languages",
-						"id": "l:el"
-					}}
+func testSimpleTranslationDownload(
+	t *testing.T,
+	mockData jsonapi.MockData,
+) {
+	testSimplePost(
+		t,
+		mockData,
+		translationDownloadsUrl,
+		fmt.Sprintf(
+			`{"data": {
+				"type": "resource_translations_async_downloads",
+				"attributes": {"content_encoding": "",
+							   "file_type": "default",
+							   "mode": "default",
+							   "pseudo": false},
+				"relationships": {
+					"language": {"data": {"type": "languages", "id": "l:el"}},
+					"resource": {"data": {"type": "resources", "id": "%s"}}
 				}
-				}}`,
-				},
-			}},
-		},
-		"/resource_translations_async_downloads/download_1": &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{{
-				Response: jsonapi.MockResponse{
-					Text: `{"data": {
-					"type": "resource_translations_async_downloads",
-					"id": "download_1",
-					"attributes": {"status": "succeeded"}
-				}}`,
-				},
-			}},
-		},
-	}
+			}}`,
+			resourceId,
+		),
+	)
+}
 
+func testSimpleSourceDownload(
+	t *testing.T,
+	mockData jsonapi.MockData,
+) {
+	testSimplePost(
+		t,
+		mockData,
+		sourceDownloadsUrl,
+		fmt.Sprintf(
+			`{"data": {
+				"type": "resource_strings_async_downloads",
+				"attributes": {"content_encoding": "",
+							   "file_type": "default",
+							   "pseudo": false},
+				"relationships": {
+					"resource": {"data": {"type": "resources", "id": "%s"}}
+				}
+			}}`,
+			resourceId,
+		),
+	)
 }

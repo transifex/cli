@@ -3,6 +3,8 @@ package jsonapi
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -73,4 +75,23 @@ func (m *RedirectError) Error() string {
 	return "jsonapi does not handle redirects. You can access the Location " +
 		"header with " +
 		"`var e *jsonapi.RedirectError; errors.As(err, &e); e.Location`"
+}
+
+type ThrottleError struct {
+	RetryAfter int
+}
+
+func (err ThrottleError) Error() string {
+	return fmt.Sprintf("throttled; retry after %d", err.RetryAfter)
+}
+
+func parseThrottleResponse(response *http.Response) *ThrottleError {
+	if response.StatusCode != 429 {
+		return nil
+	}
+	retryAfter, err := strconv.Atoi(response.Header.Get("Retry-After"))
+	if err != nil {
+		return &ThrottleError{1}
+	}
+	return &ThrottleError{retryAfter}
 }
