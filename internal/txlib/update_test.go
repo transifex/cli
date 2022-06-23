@@ -18,7 +18,7 @@ func TestUpdateCommandVersionLessThanProduction(t *testing.T) {
 	rescueStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
-	UpdateCommand(arguments)
+	_ = UpdateCommand(arguments)
 	w.Close()
 	out, _ := ioutil.ReadAll(r)
 	os.Stdout = rescueStdout
@@ -36,7 +36,7 @@ func TestUpdateCommandCheckGreaterThanProduction(t *testing.T) {
 	rescueStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
-	UpdateCommand(arguments)
+	_ = UpdateCommand(arguments)
 	w.Close()
 	out, _ := ioutil.ReadAll(r)
 	os.Stdout = rescueStdout
@@ -58,7 +58,7 @@ func TestUpdateCommandCheckEQtoProduction(t *testing.T) {
 	rescueStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
-	UpdateCommand(arguments)
+	_ = UpdateCommand(arguments)
 	w.Close()
 	out, _ := ioutil.ReadAll(r)
 	os.Stdout = rescueStdout
@@ -75,7 +75,7 @@ func TestUpdateCommandCheckLessThanProduction(t *testing.T) {
 	rescueStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
-	UpdateCommand(arguments)
+	_ = UpdateCommand(arguments)
 	w.Close()
 	out, _ := ioutil.ReadAll(r)
 	os.Stdout = rescueStdout
@@ -96,7 +96,7 @@ func TestUpdateCommandGreaterThanProduction(t *testing.T) {
 	rescueStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
-	UpdateCommand(arguments)
+	_ = UpdateCommand(arguments)
 	w.Close()
 	out, _ := ioutil.ReadAll(r)
 	os.Stdout = rescueStdout
@@ -117,7 +117,7 @@ func TestUpdateCommandEQtoProduction(t *testing.T) {
 	rescueStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
-	UpdateCommand(arguments)
+	_ = UpdateCommand(arguments)
 	w.Close()
 	out, _ := ioutil.ReadAll(r)
 	os.Stdout = rescueStdout

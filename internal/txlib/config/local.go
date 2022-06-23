@@ -415,14 +415,6 @@ func (localCfg *Resource) ResourceName() string {
 	return parts[len(parts)-1]
 }
 
-func getLocalPath() (string, error) {
-	curDir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(curDir, ".tx", "config"), nil
-}
-
 func findLocalPath(path string) (string, error) {
 	curDir := path
 	if path == "" {

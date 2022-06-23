@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/gosimple/slug"
 	"github.com/transifex/cli/pkg/txapi"
 
 	"github.com/manifoldco/promptui"
-	"github.com/pterm/pterm"
 	"github.com/transifex/cli/internal/txlib/config"
 	"github.com/transifex/cli/pkg/jsonapi"
 )
@@ -66,6 +66,9 @@ func validateSourceFile(input string) error {
 	}
 
 	curDir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
 	_, err = os.Stat(filepath.Join(curDir, input))
 
 	if err != nil {
@@ -414,8 +417,9 @@ func AddCommand(
 	}
 
 	fmt.Println()
-	pterm.Success.Println(`Your configuration has been saved in '.tx/config'
-You can now push and pull content with 'tx push' and 'tx pull'`)
+	green := color.New(color.FgGreen).SprintFunc()
+	fmt.Println(green(`Your configuration has been saved in '.tx/config'
+You can now push and pull content with 'tx push' and 'tx pull'`))
 
 	return nil
 }

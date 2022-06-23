@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/blang/semver"
+	"github.com/fatih/color"
 	"github.com/manifoldco/promptui"
-	"github.com/pterm/pterm"
 	"github.com/rhysd/go-github-selfupdate/selfupdate"
 )
 
@@ -78,17 +78,18 @@ func UpdateCommand(arguments UpdateCommandArguments) error {
 				return err
 			}
 
-			msg := fmt.Sprintf("Updating to v%s", latest.Version)
-			spinner, err := pterm.DefaultSpinner.Start(msg)
-			// Update executable
-			if err := selfupdate.UpdateTo(latest.AssetURL, exe); err != nil {
-				spinner.Fail("Error occurred while updating binary:" +
-					err.Error())
+			msg := fmt.Sprintf("# Updating to v%s", latest.Version)
+			fmt.Println(msg)
+			if err != nil {
 				return err
 			}
-			spinner.Success(
-				fmt.Sprintf("Successfully updated to version v%s", latest.Version),
-			)
+			// Update executable
+			if err := selfupdate.UpdateTo(latest.AssetURL, exe); err != nil {
+				return err
+			}
+			green := color.New(color.FgGreen).SprintFunc()
+			fmt.Printf(green(
+				"Successfully updated to version v%s", latest.Version))
 
 		}
 

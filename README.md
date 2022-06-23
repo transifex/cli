@@ -351,7 +351,7 @@ have just cloned a repository or pulled a branch. In this case, the filesystem
 modification time will reflect the time you pulled and not the time the file
 was edited by an actual person. If you use the `--use-git-timestamps` flag and
 no information about a local git repository can be found, then the client will
-default to taking the filesystem timestamp into account.
+fall back to taking the filesystem timestamp into account.
 
 **Other flags:**
 
@@ -392,6 +392,10 @@ default to taking the filesystem timestamp into account.
   of the failed upload may be a syntax error in _one_ of the language files. If
   you set the `--skip` flag and an upload fails, then the client will simply
   print a warning and move on to the next language file.
+
+- `--workers/-w` (default 5): The client will push files in parallel to improve
+  speed. The `--workers` flag sets the number of concurrent uploads possible at
+  any time.
 
 ### Pulling Files from Transifex
 
@@ -450,7 +454,7 @@ For instance, if the directory structure looks like this:
 
 and the `.tx/config` contains:
 
-```shell
+```ini
 source_file = locale/en.php
 file_filter = locale/<lang>.php
 ```
@@ -463,9 +467,7 @@ then you will pull both the source file, and the translation files.
 
 Then the client will try to search for any existing language file located
 at the `locale/<lang>` path (where `<lang>` is the language code) and will
-try to update it.
-
-i.e `locale/el.php`, `locale/fr.php` etc
+try to update it, for example `locale/el.php`, `locale/fr.php`, etc.
 
 In case that there aren't any translation files, like in the structure above,
 then you must either use the `-l/--language` or the `-a/--all` flag.
@@ -572,7 +574,12 @@ default to taking the filesystem timestamp into account.
   you set the `--skip` flag and an upload fails, then the client will simply
   print a warning and move on to the next language file.
 
-- `--minimum_perc=MINIMUM_PERC` Specify the minimum translation completion threshold required in order for a file to be downloaded.
+- `--minimum_perc=MINIMUM_PERC` Specify the minimum translation completion
+  threshold required in order for a file to be downloaded.
+
+- `--workers/-w` (default 5): The client will pull files in parallel to improve
+  speed. The `--workers` flag sets the number of concurrent downloads possible at
+  any time.
 
 ### Removing resources from Transifex
 The tx delete command lets you delete a resource that's in your `config` file and on Transifex.
@@ -641,7 +648,7 @@ Translation Files:
 > ```
 
 ### Updating the CLI app
-The `tx update` command provide's a way to self update the application wihtout going to Github releases page.
+The `tx update` command provides a way to self update the application without going to Github releases page.
 
  ```
  tx update

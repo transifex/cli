@@ -20,52 +20,26 @@ func TestSuccessfulFindOrganizationSlug(t *testing.T) {
 	org2ProjectsUrl := "/projects?filter%5Borganization%5D=o%3Aorg2&" +
 		"filter%5Bslug%5D=projslug"
 	mockData := jsonapi.MockData{
-		"/organizations": &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{
-				{
-					Response: jsonapi.MockResponse{
-						Text: `{"data": [
-							{"type": "organizations",
-							 "id": "o:org",
-							 "attributes": {"slug": "org"}},
-							{"type": "organizations",
-							 "id": "o:org2",
-							 "attributes": {"slug": "org2"}}
-						]}`,
-					},
-				},
-			},
-		},
-		org1ProjectsUrl: &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{
-				{
-					Response: jsonapi.MockResponse{
-						Text: `{"data": [{
-							"type": "projects",
-							"id": "o:orgslug:p:projslug",
-							"attributes": {"name": "Proj Name",
-							               "slug": "projslug"},
-							"relationships": {"organization": {
-								"data": {"type": "organizations",
-										 "id": "o:orgslug"},
-								"links": {
-									"related": "/organizations/o:orgslug"
-								}
-							}}
-						}]}`,
-					},
-				},
-			},
-		},
-		org2ProjectsUrl: &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{
-				{
-					Response: jsonapi.MockResponse{
-						Text: `{"data": []}`,
-					},
-				},
-			},
-		},
+		"/organizations": jsonapi.GetMockTextResponse(
+			`{"data": [{"type": "organizations",
+			            "id": "o:org",
+									"attributes": {"slug": "org"}},
+			           {"type": "organizations",
+								  "id": "o:org2",
+									"attributes": {"slug": "org2"}}]}`,
+		),
+		org1ProjectsUrl: jsonapi.GetMockTextResponse(
+			`{"data": [{
+				"type": "projects",
+				"id": "o:orgslug:p:projslug",
+				"attributes": {"name": "Proj Name", "slug": "projslug"},
+				"relationships": {"organization": {
+					"data": {"type": "organizations", "id": "o:orgslug"},
+					"links": {"related": "/organizations/o:orgslug"}
+				}}
+			}]}`,
+		),
+		org2ProjectsUrl: jsonapi.GetMockTextResponse(`{"data": []}`),
 	}
 
 	api := jsonapi.GetTestConnection(mockData)
@@ -85,52 +59,26 @@ func TestFailToFindOrganizationSlug(t *testing.T) {
 	org2ProjectsUrl := "/projects?filter%5Borganization%5D=o%3Aorg2&" +
 		"filter%5Bslug%5D=projslug"
 	mockData := jsonapi.MockData{
-		"/organizations": &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{
-				{
-					Response: jsonapi.MockResponse{
-						Text: `{"data": [
-							{"type": "organizations",
-							 "id": "o:org",
-							 "attributes": {"slug": "org"}},
-							{"type": "organizations",
-							 "id": "o:org2",
-							 "attributes": {"slug": "org2"}}
-						]}`,
-					},
-				},
-			},
-		},
-		org1ProjectsUrl: &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{
-				{
-					Response: jsonapi.MockResponse{
-						Text: `{"data": [{
-							"type": "projects",
-							"id": "o:orgslug:p:projslug",
-							"attributes": {"name": "Proj Name",
-							               "slug": "projslug"},
-							"relationships": {"organization": {
-								"data": {"type": "organizations",
-										 "id": "o:orgslug"},
-								"links": {
-									"related": "/organizations/o:orgslug"
-								}
-							}}
-						}]}`,
-					},
-				},
-			},
-		},
-		org2ProjectsUrl: &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{
-				{
-					Response: jsonapi.MockResponse{
-						Text: `{"data": []}`,
-					},
-				},
-			},
-		},
+		"/organizations": jsonapi.GetMockTextResponse(
+			`{"data": [{"type": "organizations",
+			            "id": "o:org",
+									"attributes": {"slug": "org"}},
+			           {"type": "organizations",
+								  "id": "o:org2",
+									"attributes": {"slug": "org2"}}]}`,
+		),
+		org1ProjectsUrl: jsonapi.GetMockTextResponse(
+			`{"data": [{
+				"type": "projects",
+				"id": "o:orgslug:p:projslug",
+				"attributes": {"name": "Proj Name", "slug": "projslug"},
+				"relationships": {"organization": {
+					"data": {"type": "organizations", "id": "o:orgslug"},
+					"links": {"related": "/organizations/o:orgslug"}
+				}}
+			}]}`,
+		),
+		org2ProjectsUrl: jsonapi.GetMockTextResponse(`{"data": []}`),
 	}
 
 	api := jsonapi.GetTestConnection(mockData)
@@ -162,52 +110,26 @@ func TestSuccessfulMigration(t *testing.T) {
 	org2ProjectsUrl := "/projects?filter%5Borganization%5D=o%3Aorg2&" +
 		"filter%5Bslug%5D=projslug"
 	mockData := jsonapi.MockData{
-		"/organizations": &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{
-				{
-					Response: jsonapi.MockResponse{
-						Text: `{"data": [
-							{"type": "organizations",
-							 "id": "o:org",
-							 "attributes": {"slug": "org"}},
-							{"type": "organizations",
-							 "id": "o:org2",
-							 "attributes": {"slug": "org2"}}
-						]}`,
-					},
-				},
-			},
-		},
-		org1ProjectsUrl: &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{
-				{
-					Response: jsonapi.MockResponse{
-						Text: `{"data": [{
-							"type": "projects",
-							"id": "o:orgslug:p:projslug",
-							"attributes": {"name": "Proj Name",
-							               "slug": "projslug"},
-							"relationships": {"organization": {
-								"data": {"type": "organizations",
-										 "id": "o:orgslug"},
-								"links": {
-									"related": "/organizations/o:orgslug"
-								}
-							}}
-					}]}`,
-					},
-				},
-			},
-		},
-		org2ProjectsUrl: &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{
-				{
-					Response: jsonapi.MockResponse{
-						Text: `{"data": []}`,
-					},
-				},
-			},
-		},
+		"/organizations": jsonapi.GetMockTextResponse(
+			`{"data": [{"type": "organizations",
+			            "id": "o:org",
+									"attributes": {"slug": "org"}},
+			           {"type": "organizations",
+								  "id": "o:org2",
+									"attributes": {"slug": "org2"}}]}`,
+		),
+		org1ProjectsUrl: jsonapi.GetMockTextResponse(
+			`{"data": [{
+				"type": "projects",
+				"id": "o:orgslug:p:projslug",
+				"attributes": {"name": "Proj Name", "slug": "projslug"},
+				"relationships": {"organization": {
+					"data": {"type": "organizations", "id": "o:orgslug"},
+					"links": {"related": "/organizations/o:orgslug"}
+				}}
+			}]}`,
+		),
+		org2ProjectsUrl: jsonapi.GetMockTextResponse(`{"data": []}`),
 	}
 
 	// Create deprecated config & .transifexrc
@@ -317,52 +239,26 @@ func TestSuccessfulMigrationWithSourceFileConstruction(t *testing.T) {
 	org2ProjectsUrl := "/projects?filter%5Borganization%5D=o%3Aorg2&" +
 		"filter%5Bslug%5D=projslug"
 	mockData := jsonapi.MockData{
-		"/organizations": &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{
-				{
-					Response: jsonapi.MockResponse{
-						Text: `{"data": [
-							{"type": "organizations",
-							 "id": "o:org",
-							 "attributes": {"slug": "org"}},
-							{"type": "organizations",
-							 "id": "o:org2",
-							 "attributes": {"slug": "org2"}}
-						]}`,
-					},
-				},
-			},
-		},
-		org1ProjectsUrl: &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{
-				{
-					Response: jsonapi.MockResponse{
-						Text: `{"data": [{
-							"type": "projects",
-							"id": "o:orgslug:p:projslug",
-							"attributes": {"name": "Proj Name",
-							               "slug": "projslug"},
-							"relationships": {"organization": {
-								"data": {"type": "organizations",
-										 "id": "o:orgslug"},
-								"links": {
-									"related": "/organizations/o:orgslug"
-								}
-							}}
-					}]}`,
-					},
-				},
-			},
-		},
-		org2ProjectsUrl: &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{
-				{
-					Response: jsonapi.MockResponse{
-						Text: `{"data": []}`,
-					},
-				},
-			},
-		},
+		"/organizations": jsonapi.GetMockTextResponse(
+			`{"data": [{"type": "organizations",
+			            "id": "o:org",
+									"attributes": {"slug": "org"}},
+			           {"type": "organizations",
+								  "id": "o:org2",
+									"attributes": {"slug": "org2"}}]}`,
+		),
+		org1ProjectsUrl: jsonapi.GetMockTextResponse(
+			`{"data": [{
+				"type": "projects",
+				"id": "o:orgslug:p:projslug",
+				"attributes": {"name": "Proj Name", "slug": "projslug"},
+				"relationships": {"organization": {
+					"data": {"type": "organizations", "id": "o:orgslug"},
+					"links": {"related": "/organizations/o:orgslug"}
+				}}
+			}]}`,
+		),
+		org2ProjectsUrl: jsonapi.GetMockTextResponse(`{"data": []}`),
 	}
 
 	// Create deprecated config & .transifexrc
@@ -464,15 +360,7 @@ func TestNeedsTokenInRootConfig(t *testing.T) {
 	}
 	// Requests Data
 	mockData := jsonapi.MockData{
-		"/organizations": &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{
-				{
-					Response: jsonapi.MockResponse{
-						Text: `{"data": []}`,
-					},
-				},
-			},
-		},
+		"/organizations": jsonapi.GetMockTextResponse(`{"data": []}`),
 	}
 
 	// Create deprecated config & .transifexrc
@@ -565,15 +453,7 @@ func TestNoTransifexRcFile(t *testing.T) {
 	}
 	// Requests Data
 	mockData := jsonapi.MockData{
-		"/organizations": &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{
-				{
-					Response: jsonapi.MockResponse{
-						Text: `{"data": []}`,
-					},
-				},
-			},
-		},
+		"/organizations": jsonapi.GetMockTextResponse(`{"data": []}`),
 	}
 
 	// Create deprecated config & .transifexrc
@@ -679,57 +559,29 @@ func TestResourceMigrationFailed(t *testing.T) {
 				},
 			},
 		},
-		project1Url: &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{
-				{
-					Response: jsonapi.MockResponse{
-						Text: `{"data": [{
-							"type": "projects",
-							"id": "o:orgslug:p:projslug",
-							"attributes": {"name": "Proj Name",
-							               "slug": "projslug"},
-							"relationships": {"organization": {
-								"data": {"type": "organizations",
-										 "id": "o:orgslug"},
-								"links": {
-									"related": "/organizations/o:orgslug"
-								}
-							}}
-						}]}`,
-					},
-				},
-			},
-		},
-		project2Url: &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{
-				{
-					Response: jsonapi.MockResponse{
-						Text: `{"data": [{
-							"type": "projects",
-							"id": "o:orgslug:p:projslug2",
-							"attributes": {"name": "Proj Name 2",
-							               "slug": "projslug2"},
-							"relationships": {"organization": {
-								"data": {"type": "organizations",
-										 "id": "o:orgslug"},
-								"links": {
-									"related": "/organizations/o:orgslug"
-								}
-							}}
-						}]}`,
-					},
-				},
-			},
-		},
-		org2ProjectsUrl: &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{
-				{
-					Response: jsonapi.MockResponse{
-						Text: `{"data": []}`,
-					},
-				},
-			},
-		},
+		project1Url: jsonapi.GetMockTextResponse(
+			`{"data": [{
+				"type": "projects",
+				"id": "o:orgslug:p:projslug",
+				"attributes": {"name": "Proj Name", "slug": "projslug"},
+				"relationships": {"organization": {
+					"data": {"type": "organizations", "id": "o:orgslug"},
+					"links": {"related": "/organizations/o:orgslug"}
+				}}
+			}]}`,
+		),
+		project2Url: jsonapi.GetMockTextResponse(
+			`{"data": [{
+				"type": "projects",
+				"id": "o:orgslug:p:projslug2",
+				"attributes": {"name": "Proj Name 2", "slug": "projslug2"},
+				"relationships": {"organization": {
+					"data": {"type": "organizations", "id": "o:orgslug"},
+					"links": {"related": "/organizations/o:orgslug"}
+				}}
+			}]}`,
+		),
+		org2ProjectsUrl: jsonapi.GetMockTextResponse(`{"data": []}`),
 	}
 
 	// Create deprecated config & .transifexrc
@@ -848,52 +700,26 @@ func TestBackUpFileCreated(t *testing.T) {
 
 	// Requests Data
 	mockData := jsonapi.MockData{
-		"/organizations": &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{
-				{
-					Response: jsonapi.MockResponse{
-						Text: `{"data": [
-							{"type": "organizations",
-							 "id": "o:org",
-							 "attributes": {"slug": "org"}},
-							{"type": "organizations",
-							 "id": "o:org2",
-							 "attributes": {"slug": "org2"}}
-						]}`,
-					},
-				},
-			},
-		},
-		"/projects?filter%5Borganization%5D=o%3Aorg&filter%5Bslug%5D=projslug": &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{
-				{
-					Response: jsonapi.MockResponse{
-						Text: `{"data": [
-							{
-								"type": "projects",
-								"id": "o:orgslug:p:projslug",
-								"attributes": {"name": "Proj Name", "slug": "projslug"},
-								"relationships": {
-									"organization": {
-										"data": {"type": "organizations", "id": "o:orgslug"},
-										"links": {"related": "/organizations/o:orgslug"}
-									}
-								}
-							}
-						]}`,
-					},
-				},
-			},
-		},
-		"/projects?filter%5Borganization%5D=o%3Aorg2&filter%5Bslug%5D=projslug": &jsonapi.MockEndpoint{
-			Requests: []jsonapi.MockRequest{
-				{
-					Response: jsonapi.MockResponse{
-						Text: `{"data": []}`,
-					},
-				},
-			},
-		},
+		"/organizations": jsonapi.GetMockTextResponse(
+			`{"data": [{"type": "organizations",
+			            "id": "o:org",
+									"attributes": {"slug": "org"}},
+			           {"type": "organizations",
+								  "id": "o:org2",
+									"attributes": {"slug": "org2"}}]}`,
+		),
+		"/projects?filter%5Borganization%5D=o%3Aorg&filter%5Bslug%5D=projslug": jsonapi.GetMockTextResponse(
+			`{"data": [{
+				"type": "projects",
+				"id": "o:orgslug:p:projslug",
+				"attributes": {"name": "Proj Name", "slug": "projslug"},
+				"relationships": {"organization": {
+					"data": {"type": "organizations", "id": "o:orgslug"},
+					"links": {"related": "/organizations/o:orgslug"}
+				}}
+			}]}`,
+		),
+		"/projects?filter%5Borganization%5D=o%3Aorg2&filter%5Bslug%5D=projslug": jsonapi.GetMockTextResponse(`{"data": []}`),
 	}
 
 	// Create deprecated config & .transifexrc

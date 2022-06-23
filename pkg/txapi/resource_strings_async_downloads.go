@@ -8,50 +8,34 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/transifex/cli/internal/txlib/config"
 	"github.com/transifex/cli/pkg/jsonapi"
 )
 
-type CreateResourceStringDownloadArguments struct {
-	OrganizationSlug string
-	ProjectSlug      string
-	ResourceSlug     string
-	Resource         *jsonapi.Resource
-	FileType         string
-	ContentEncoding  string
-}
-
-type ResourceStringsAsyncDownloadAttributes struct {
-	ContentEncoding string `json:"content_encoding"`
-	FileType        string `json:"file_type"`
-	Pseudo          bool   `json:"pseudo"`
-}
-
 func CreateResourceStringsAsyncDownload(
-	api *jsonapi.Connection, arguments CreateResourceStringDownloadArguments,
+	api *jsonapi.Connection,
+	resource *jsonapi.Resource,
+	contentEncoding string,
+	fileType string,
 ) (*jsonapi.Resource, error) {
-	download := jsonapi.Resource{
+	download := &jsonapi.Resource{
 		API:  api,
 		Type: "resource_strings_async_downloads",
 		Attributes: map[string]interface{}{
-			"content_encoding": arguments.ContentEncoding,
-			"file_type":        arguments.FileType,
+			"content_encoding": contentEncoding,
+			"file_type":        fileType,
 			"pseudo":           false,
 		},
 	}
-	download.SetRelated("resource", arguments.Resource)
+	download.SetRelated("resource", resource)
 	err := download.Save(nil)
-	if err != nil {
-		return nil, err
-	}
-	return &download, nil
+	return download, err
 }
 
 func PollResourceStringsDownload(
 	download *jsonapi.Resource,
 	duration time.Duration,
-	cfgResource *config.Resource,
-	fileType string) error {
+	filePath string,
+) error {
 	for {
 		err := download.Reload()
 		if err != nil {
@@ -68,8 +52,7 @@ func PollResourceStringsDownload(
 				return err
 			}
 
-			dir, _ := filepath.Split(cfgResource.SourceFile)
-
+			dir, _ := filepath.Split(filePath)
 			if dir != "" {
 				if _, statErr := os.Stat(dir); os.IsNotExist(statErr) {
 					err := fmt.Errorf("directory '%s' does not exist", dir)
@@ -77,30 +60,21 @@ func PollResourceStringsDownload(
 				}
 			}
 
-			sourceFile := cfgResource.SourceFile
-
-			if fileType == "xliff" {
-				sourceFile = fmt.Sprintf("%s.xlf", sourceFile)
-			}
-			err = ioutil.WriteFile(sourceFile, bodyBytes, 0644)
+			err = ioutil.WriteFile(filePath, bodyBytes, 0644)
 			if err != nil {
 				return err
 			}
 			resp.Body.Close()
-			break
-		}
-
-		if download.Attributes["status"] == "failed" {
-			err = fmt.Errorf(
+			return nil
+		} else if download.Attributes["status"] == "failed" {
+			return fmt.Errorf(
 				"download of translation '%s' failed",
 				download.Relationships["resource"].DataSingular.Id,
 			)
-			return err
 
 		} else if download.Attributes["status"] == "succeeded" {
-			break
+			return nil
 		}
 		time.Sleep(duration)
 	}
-	return nil
 }

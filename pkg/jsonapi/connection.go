@@ -10,9 +10,9 @@ import (
 )
 
 type Connection struct {
-	Host   string
-	Token  string
-	Client http.Client
+	Host    string
+	Token   string
+	Client  http.Client
 	Headers map[string]string
 
 	// Used for testing
@@ -64,6 +64,11 @@ func (c *Connection) request(
 		return nil, err
 	}
 	defer response.Body.Close()
+
+	throttleErrorResponse := parseThrottleResponse(response)
+	if throttleErrorResponse != nil {
+		return nil, throttleErrorResponse
+	}
 
 	errorResponse := parseErrorResponse(response.StatusCode, body)
 	if errorResponse != nil {

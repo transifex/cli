@@ -79,7 +79,7 @@ func TestStatusWithNoResourcesAsParameters(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	StatusCommand(
+	_ = StatusCommand(
 		cfg,
 		api,
 		&StatusCommandArguments{},
@@ -114,7 +114,7 @@ func TestStatusWithOverrides(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	StatusCommand(
+	_ = StatusCommand(
 		cfg,
 		api,
 		&StatusCommandArguments{},
@@ -149,7 +149,7 @@ func TestStatusWithResourceAsParameter(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	StatusCommand(
+	_ = StatusCommand(
 		cfg,
 		api,
 		&StatusCommandArguments{
@@ -308,28 +308,13 @@ func statusGetProjectsEndpoint() *jsonapi.MockEndpoint {
 }
 
 func statusGetResourceEndpoint() *jsonapi.MockEndpoint {
-	return &jsonapi.MockEndpoint{
-		Requests: []jsonapi.MockRequest{{
-			Response: jsonapi.MockResponse{
-				Text: `{"data": {"type": "resources",
-								 "id": "o:orgslug:p:projslug:r:resslug",
-								 "attributes": {"slug": "resslug"}}}`,
-			},
-		}},
-	}
+	return jsonapi.GetMockTextResponse(
+		`{"data": {"type": "resources",
+		           "id": "o:orgslug:p:projslug:r:resslug",
+							 "attributes": {"slug": "resslug"}}}`,
+	)
 }
 
-func statusGetResource1Endpoint() *jsonapi.MockEndpoint {
-	return &jsonapi.MockEndpoint{
-		Requests: []jsonapi.MockRequest{{
-			Response: jsonapi.MockResponse{
-				Text: `{"data": {"type": "resources",
-								 "id": "o:orgslug:p:projslug:r:resslug1",
-								 "attributes": {"slug": "resslug1"}}}`,
-			},
-		}},
-	}
-}
 func statusGetResourcesEndpoint() *jsonapi.MockEndpoint {
 	return &jsonapi.MockEndpoint{
 		Requests: []jsonapi.MockRequest{
@@ -352,27 +337,15 @@ func statusGetResourcesEndpoint() *jsonapi.MockEndpoint {
 }
 
 func statusGetLanguagesEndpoint() *jsonapi.MockEndpoint {
-	return &jsonapi.MockEndpoint{
-		Requests: []jsonapi.MockRequest{{
-			Response: jsonapi.MockResponse{
-				Text: `{"data": {"type": "languages",
-								  "id": "l:en",
-								  "attributes": {"code": "en"}}}`,
-			},
-		}},
-	}
+	return jsonapi.GetMockTextResponse(
+		`{"data": {"type": "languages", "id": "l:en", "attributes": {"code": "en"}}}`,
+	)
 }
 
 func statusGetLanguagesEndpointEl() *jsonapi.MockEndpoint {
-	return &jsonapi.MockEndpoint{
-		Requests: []jsonapi.MockRequest{{
-			Response: jsonapi.MockResponse{
-				Text: `{"data": {"type": "languages",
-								  "id": "l:el",
-								  "attributes": {"code": "el"}}}`,
-			},
-		}},
-	}
+	return jsonapi.GetMockTextResponse(
+		`{"data": {"type": "languages", "id": "l:el", "attributes": {"code": "el"}}}`,
+	)
 }
 
 func getMockedDataForResourceStatus() jsonapi.MockData {

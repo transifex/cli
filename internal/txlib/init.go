@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/fatih/color"
 	"github.com/manifoldco/promptui"
-	"github.com/pterm/pterm"
 	"github.com/transifex/cli/internal/txlib/config"
 )
 
@@ -31,7 +31,7 @@ func InitCommand() error {
 		_, err := prompt.Run()
 
 		if err != nil {
-			pterm.Warning.Println("Init was cancelled!")
+			fmt.Println("Init was cancelled!")
 			return nil
 		}
 	}
@@ -71,7 +71,9 @@ func InitCommand() error {
 	}
 
 	// Everything is great! Continue!
-	msg := fmt.Sprintf("Successful creation of '%s' file", configName)
-	pterm.Success.Println(msg)
+	green := color.New(color.FgGreen).SprintFunc()
+	msg := green(fmt.Sprintf("Successful creation of '%s' file", configName))
+
+	fmt.Println(msg)
 	return nil
 }
