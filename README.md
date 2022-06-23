@@ -393,7 +393,7 @@ fall back to taking the filesystem timestamp into account.
   you set the `--skip` flag and an upload fails, then the client will simply
   print a warning and move on to the next language file.
 
-- `--workers/-w` (default 5): The client will push files in parallel to improve
+- `--workers/-w` (default 5, max 30): The client will push files in parallel to improve
   speed. The `--workers` flag sets the number of concurrent uploads possible at
   any time.
 
@@ -577,7 +577,7 @@ default to taking the filesystem timestamp into account.
 - `--minimum_perc=MINIMUM_PERC` Specify the minimum translation completion
   threshold required in order for a file to be downloaded.
 
-- `--workers/-w` (default 5): The client will pull files in parallel to improve
+- `--workers/-w` (default 5, max 30): The client will pull files in parallel to improve
   speed. The `--workers` flag sets the number of concurrent downloads possible at
   any time.
 
