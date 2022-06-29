@@ -114,14 +114,13 @@ func (task *ResourcePullTask) Run(send func(string), abort func()) {
 	filePullTaskChannel := task.filePullTaskChannel
 	cfg := task.cfg
 
-	white := color.New(color.FgWhite).SprintFunc()
 
 	sendMessage := func(body string) {
 		send(fmt.Sprintf(
 			"%s.%s - %s",
 			cfgResource.ProjectSlug,
 			cfgResource.ResourceSlug,
-			white(body),
+			body,
 		))
 	}
 	sendMessage("Getting info")
@@ -314,13 +313,12 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 		}
 
 		cyan := color.New(color.FgCyan).SprintFunc()
-		white := color.New(color.FgWhite).SprintFunc()
 		send(fmt.Sprintf(
 			"%s.%s %s - %s",
 			cfgResource.ProjectSlug,
 			cfgResource.ResourceSlug,
 			cyan("["+code+"]"),
-			white(body),
+			body,
 		))
 	}
 	sendMessage("Pulling file")
