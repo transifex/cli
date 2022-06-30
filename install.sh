@@ -47,6 +47,11 @@
         fi
     }
 
+    if [ -f tx ]; then
+        echo "Filename 'tx' already exists. Please remove it or try running the script from a different folder"
+        exit 1
+    fi
+
     # Get the latest version as string from Github API
     LATEST_URL="https://api.github.com/repos/transifex/cli/releases/latest"
     LATEST_VERSION="$(curl -s "$LATEST_URL" | grep "tag_name" |
@@ -79,7 +84,7 @@
     URL="https://github.com/transifex/cli/releases/download/$LATEST_VERSION/tx-$OS-$ARCH.tar.gz"
 
     echo -e "** Installing CLI from $URL\n"
-    curl -L "$URL" | tar xz
+    curl -L "$URL" | tar xz --skip-old-files
 
     # Try to add tx to PATH
     echo -e "\n** Adding CLI to PATH"
