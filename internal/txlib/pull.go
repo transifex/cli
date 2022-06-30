@@ -197,7 +197,7 @@ func (task *ResourcePullTask) Run(send func(string), abort func()) {
 		})
 
 		// Local stuff
-		err = isFileFilterValid(cfgResource.FileFilter)
+		err = checkFileFilter(cfgResource.FileFilter)
 		if err != nil {
 			sendMessage(err.Error())
 			if !args.Skip {
