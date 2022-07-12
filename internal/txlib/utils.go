@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gosimple/slug"
@@ -138,5 +139,18 @@ func handleThrottling(do func() error, initialMsg string, send func(string)) err
 				return err
 			}
 		}
+	}
+}
+
+func checkFileFilter(fileFilter string) error {
+	if fileFilter == "" {
+		return errors.New("file filter is empty")
+	} else if strings.Count(fileFilter, "<lang>") != 1 {
+		return fmt.Errorf(
+			"file filter '%s' should have exactly one occurrence of '<lang>'",
+			fileFilter,
+		)
+	} else {
+		return nil
 	}
 }

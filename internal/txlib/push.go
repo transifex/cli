@@ -337,7 +337,7 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 			return
 		}
 		fileFilter := cfgResource.FileFilter
-		err = isFileFilterValid(fileFilter)
+		err = checkFileFilter(fileFilter)
 		if err != nil {
 			sendMessage(err.Error())
 			if !args.Skip {
@@ -727,18 +727,4 @@ func shouldSkipPush(
 	// Don't push if local file is older than remote
 	// resource-language
 	return localTime.Before(remoteTime), nil
-}
-
-func isFileFilterValid(fileFilter string) error {
-	if fileFilter == "" {
-		return errors.New("cannot push translations because the " +
-			"configuration file is missing the 'file_filter' field")
-	} else if strings.Count(fileFilter, "<lang>") != 1 {
-		return errors.New(
-			"cannot push translations because the file_filter' field " +
-				"doesn't have exactly one occurrence of '<lang>'",
-		)
-	} else {
-		return nil
-	}
 }
