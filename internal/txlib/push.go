@@ -211,13 +211,12 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 	args := task.args
 	targetLanguagesChannel := task.targetLanguagesChannel
 
-	white := color.New(color.FgWhite).SprintFunc()
 	sendMessage := func(body string) {
 		send(fmt.Sprintf(
 			"%s.%s - %s",
 			cfgResource.ProjectSlug,
 			cfgResource.ResourceSlug,
-			white(body),
+			body,
 		))
 	}
 	sendMessage("Getting info")
@@ -450,9 +449,8 @@ func (task *SourceFilePushTask) Run(send func(string), abort func()) {
 	resourceIsNew := task.resourceIsNew
 
 	parts := strings.Split(resource.Id, ":")
-	white := color.New(color.FgWhite).SprintFunc()
 	sendMessage := func(body string) {
-		send(fmt.Sprintf("%s.%s - %s", parts[3], parts[5], white(body)))
+		send(fmt.Sprintf("%s.%s - %s", parts[3], parts[5], body))
 	}
 
 	file, err := os.Open(sourceFile)
@@ -545,11 +543,10 @@ func (task *TranslationFileTask) Run(send func(string), abort func()) {
 
 	parts := strings.Split(resource.Id, ":")
 	cyan := color.New(color.FgCyan).SprintFunc()
-	white := color.New(color.FgWhite).SprintFunc()
 	sendMessage := func(body string) {
 		send(fmt.Sprintf(
 			"%s.%s %s - %s", parts[3], parts[5],
-			cyan("["+languageCode+"]"), white(body),
+			cyan("["+languageCode+"]"), body,
 		))
 	}
 
