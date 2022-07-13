@@ -9,6 +9,11 @@ builds:
     binary: tx
     ldflags:
       - -s -w -X 'github.com/transifex/cli/internal/txlib.Version={{.Version}}'
+    ignore:
+      - goos: windows
+        goarch: arm64
+      - goos: darwin
+        goarch: 386
 archives:
   - format_overrides:
       - goos: windows
