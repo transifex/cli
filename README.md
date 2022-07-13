@@ -235,6 +235,76 @@ all the flags:
     locale/en.php
 ```
 
+#### Adding resources in bulk
+
+> With the old client I could add multiple resource at the same time with `tx
+> config mapping-bulk`. What should I do now?
+
+We decided not to implement this functionality in the new client because its
+usage was complicated and it couldn't satisfy every user's need anyway. You can
+add multiple resources with a relatively simple shell script. For example:
+
+1. Add every subfolder of a `locale` folder as a resource:
+
+   ```sh
+   for FOLDER in $(ls locale); do
+       # Exclusion list
+       if echo "excluded_a excluded_b" | grep -w -q $FOLDER; then
+           continue
+       fi
+
+       tx add \
+           --organization org \
+           --project proj \
+           --resource $FOLDER \
+           --file-filter "locale/$FOLDER/<lang>.po" \
+           --type PO \
+           "locale/$FOLDER/en.po"
+   done
+   ```
+
+2. Add specific folders as resources:
+
+   ```sh
+   for FOLDER in $(echo path/to/folder_a path/to/folder_b path/to/folder_c); do
+
+       # path/to/folder_a => path_to_folder_a
+       RESOURCE_SLUG=$(echo $FOLDER | tr '/' '_')
+
+       tx add \
+           --organization org \
+           --project proj \
+           --resource $RESOURCE_SLUG \
+           --file-filter "$FOLDER/<lang>.po" \
+           --type PO \
+           "$FOLDER/en.po"
+   done
+   ```
+
+3. Turn every `.po` file into a configured resource:
+
+   ```sh
+   for FILEPATH in $(find . -name '*.po'); do
+
+       # ./examples/locale/en.po => examples/locale/en.po
+       FILEPATH=$(echo $FILEPATH | sed 's/^\.\///')
+
+       # examples/locale/en.po => examples_locale
+       RESOURCE_SLUG=$(echo $FILEPATH | sed 's/\/[^\/]*$//' | tr '/' '_')
+
+       # examples/locale/en.po => examples/locale/<lang>.po
+       FILE_FILTER=$(echo $FILEPATH | sed 's/[^\/]*$/<lang>.po/')
+
+       tx add \
+           --organization org \
+           --project proj \
+           --resource $RESOURCE_SLUG \
+           --file-filter "$FILE_FILTER" \
+           --type PO \
+           $FILEPATH
+   done
+   ```
+
 ### Pushing Files to Transifex
 
 `tx push` is used to push language files (usually source language files) from
