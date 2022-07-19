@@ -4,31 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
-
-	"github.com/transifex/cli/internal/txlib/config"
 )
-
-// Takes a local language and converts it to a transifex language code
-func getTxLanguageCode(
-	languageMappings map[string]string,
-	localLanguageCode string,
-	cfgResource *config.Resource,
-) string {
-	reverseLanguageOverrides := make(map[string]string)
-
-	for k, v := range languageMappings {
-		reverseLanguageOverrides[v] = k
-	}
-
-	for k, v := range cfgResource.LanguageMappings {
-		reverseLanguageOverrides[v] = k
-	}
-
-	if val, ok := reverseLanguageOverrides[localLanguageCode]; ok {
-		return val
-	}
-	return localLanguageCode
-}
 
 const PathSeparator = string(os.PathSeparator)
 

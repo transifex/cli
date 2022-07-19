@@ -87,9 +87,7 @@ func UpdateCommand(arguments UpdateCommandArguments) error {
 			if err := selfupdate.UpdateTo(latest.AssetURL, exe); err != nil {
 				return err
 			}
-			green := color.New(color.FgGreen).SprintFunc()
-			fmt.Printf(green(
-				"Successfully updated to version v%s", latest.Version))
+			color.Green("Successfully updated to version v%s", latest.Version)
 
 		}
 

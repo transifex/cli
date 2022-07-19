@@ -42,7 +42,7 @@ func DeleteCommand(
 		if len(parts) != 2 {
 			if !arguments.Skip {
 				return fmt.Errorf(
-					"Wrong resource id for %s. Aborting",
+					"wrong resource id for %s. Aborting",
 					resourceId,
 				)
 			} else {
@@ -129,7 +129,7 @@ func deleteResource(
 	}
 
 	if organization == nil {
-		return fmt.Errorf("Organization '%s' not found",
+		return fmt.Errorf("organization '%s' not found",
 			cfgResource.OrganizationSlug)
 	}
 
@@ -141,7 +141,7 @@ func deleteResource(
 	}
 
 	if project == nil {
-		return fmt.Errorf("Project '%s - %s' not found",
+		return fmt.Errorf("project '%s - %s' not found",
 			cfgResource.OrganizationSlug,
 			cfgResource.ProjectSlug)
 
@@ -154,7 +154,7 @@ func deleteResource(
 	}
 
 	if resource == nil {
-		return fmt.Errorf("Resource '%s - %s - %s' not found",
+		return fmt.Errorf("resource '%s - %s - %s' not found",
 			cfgResource.OrganizationSlug,
 			cfgResource.ProjectSlug,
 			cfgResource.ResourceSlug)
