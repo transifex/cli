@@ -27,7 +27,7 @@ func StatusCommand(
 		cfgResource := cfg.FindResource(resourceId)
 		if cfgResource == nil {
 			return fmt.Errorf(
-				"could not find resource '%s' in local configuration.",
+				"could not find resource '%s' in local configuration",
 				resourceId,
 			)
 		}
