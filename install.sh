@@ -84,7 +84,12 @@
     URL="https://github.com/transifex/cli/releases/download/$LATEST_VERSION/tx-$OS-$ARCH.tar.gz"
 
     echo -e "** Installing CLI from $URL\n"
-    curl -L "$URL" | tar xz --skip-old-files
+    if tar --version | grep -q 'gnu'
+    then
+        curl -L "$URL" | tar xz --skip-old-files
+    else
+        curl -L "$URL" | tar kxz
+    fi
 
     # Try to add tx to PATH
     echo -e "\n** Adding CLI to PATH"
