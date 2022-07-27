@@ -588,6 +588,112 @@ func Main() {
 						Usage: "The file format type of your resource",
 					},
 				},
+				Subcommands: []*cli.Command{
+					{
+						Name:  "remote",
+						Usage: "tx add remote https://www.transifex.com/myorganization/myproject/dashboard/",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name: "file-filter",
+								Usage: "Path expression pointing to the location of " +
+									"the translation files, supported parameters: " +
+									"<project_slug>, <resource_slug>, <lang>, <ext>",
+								Value: "translations/<project_slug>.<resource_slug>/" +
+									"<lang>.<ext>",
+							},
+							&cli.IntFlag{
+								Name: "minimum-perc",
+								Usage: "Specify the minimum acceptable percentage of " +
+									"a translation mode in order to download it.",
+								Value: -1,
+							},
+						},
+						Action: func(c *cli.Context) error {
+							cfg, err := config.LoadFromPaths(
+								c.String("root-config"),
+								c.String("config"),
+							)
+							if err != nil {
+								return cli.Exit(
+									errorColor(
+										"Error loading configuration: %s",
+										err,
+									),
+									1,
+								)
+							}
+							hostname, token, err := txlib.GetHostAndToken(
+								&cfg, c.String("hostname"), c.String("token"),
+							)
+							if err != nil {
+								return cli.Exit(
+									errorColor(
+										"Error getting API token: %s",
+										err,
+									),
+									1,
+								)
+							}
+							client, err := txlib.GetClient(c.String("cacert"))
+							if err != nil {
+								return cli.Exit(
+									errorColor(
+										"Error getting HTTP client configuration: %s",
+										err,
+									),
+									1,
+								)
+							}
+							api := jsonapi.Connection{
+								Host:   hostname,
+								Token:  token,
+								Client: client,
+								Headers: map[string]string{
+									"Integration": "txclient",
+								},
+							}
+
+							projectUrls := c.Args().Slice()
+							if len(projectUrls) == 0 {
+								return cli.Exit(
+									errorColor("No project URLs supplied"),
+									1,
+								)
+							}
+
+							fileFilter := c.String("file-filter")
+							if !strings.Contains(fileFilter, "<resource_slug>") ||
+								!strings.Contains(fileFilter, "<lang>") {
+								return cli.Exit(
+									errorColor(
+										"File filter should contain at least the "+
+											"<resource_slug> and <lang> parameters",
+									),
+									1,
+								)
+							}
+
+							for _, projectUrl := range projectUrls {
+								err = txlib.AddRemoteCommand(
+									&cfg,
+									&api,
+									projectUrl,
+									fileFilter,
+									c.Int("minimum-perc"),
+								)
+								if err != nil {
+									return cli.Exit(errorColor(err.Error()), 1)
+								}
+							}
+							err = cfg.Local.Save()
+							if err != nil {
+								return cli.Exit(errorColor(err.Error()), 1)
+							}
+
+							return nil
+						},
+					},
+				},
 			},
 			{
 				Name:  "init",
