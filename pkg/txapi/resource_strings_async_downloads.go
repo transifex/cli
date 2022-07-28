@@ -52,12 +52,10 @@ func PollResourceStringsDownload(
 				return err
 			}
 
-			dir, _ := filepath.Split(filePath)
-			if dir != "" {
-				if _, statErr := os.Stat(dir); os.IsNotExist(statErr) {
-					err := fmt.Errorf("directory '%s' does not exist", dir)
-					return err
-				}
+			dir := filepath.Dir(filePath)
+			err = os.MkdirAll(dir, os.ModePerm)
+			if err != nil {
+				return err
 			}
 
 			err = ioutil.WriteFile(filePath, bodyBytes, 0644)

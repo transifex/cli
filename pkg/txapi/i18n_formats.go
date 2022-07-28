@@ -13,7 +13,7 @@ type I18nFormatsAttributes struct {
 
 func GetI18nFormats(
 	api *jsonapi.Connection, organization *jsonapi.Resource,
-) ([]*jsonapi.Resource, error) {
+) (map[string]*jsonapi.Resource, error) {
 	query := jsonapi.Query{Filters: map[string]string{
 		"organization": organization.Id,
 	}}.Encode()
@@ -22,7 +22,7 @@ func GetI18nFormats(
 		return nil, err
 	}
 
-	var result []*jsonapi.Resource
+	result := make(map[string]*jsonapi.Resource)
 
 	for i := range i18nFormats.Data {
 		var i18nFormatsAttributes I18nFormatsAttributes
@@ -32,7 +32,7 @@ func GetI18nFormats(
 			return nil, err
 		}
 		i18nFormat.SetRelated("organization", organization)
-		result = append(result, i18nFormat)
+		result[i18nFormat.Id] = i18nFormat
 	}
 
 	return result, nil

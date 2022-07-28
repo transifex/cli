@@ -67,9 +67,16 @@ func TestGetI18nTypes(t *testing.T) {
 		t.Error(err)
 	}
 	formats, err := GetI18nFormats(&api, organization)
-
 	if err != nil {
 		t.Errorf("Got error while getting project: %s", err)
+	}
+	ymlFormat, exists := formats["YML_KEY"]
+	if !exists {
+		t.Error("Format YML_KEY not found")
+	}
+	androidFormat, exists := formats["ANDROID"]
+	if !exists {
+		t.Error("Format ANDROID not found")
 	}
 
 	testCases := []struct {
@@ -78,68 +85,68 @@ func TestGetI18nTypes(t *testing.T) {
 		Expected interface{}
 	}{
 		{"description",
-			func() interface{} { return formats[0].Attributes["description"] },
+			func() interface{} { return ymlFormat.Attributes["description"] },
 			"YAML Files based on the content"},
 		{"type",
-			func() interface{} { return formats[0].Type },
+			func() interface{} { return ymlFormat.Type },
 			"i18n_formats"},
 		{"id",
-			func() interface{} { return formats[0].Id },
+			func() interface{} { return ymlFormat.Id },
 			"YML_KEY"},
 		{"name",
-			func() interface{} { return formats[0].Attributes["name"] },
+			func() interface{} { return ymlFormat.Attributes["name"] },
 			"YML_KEY"},
 		{"description",
-			func() interface{} { return formats[1].Attributes["description"] },
+			func() interface{} { return androidFormat.Attributes["description"] },
 			"Android String Resources"},
 		{"type",
-			func() interface{} { return formats[1].Type },
+			func() interface{} { return androidFormat.Type },
 			"i18n_formats"},
 		{"id",
-			func() interface{} { return formats[1].Id },
+			func() interface{} { return androidFormat.Id },
 			"ANDROID"},
 		{"name",
-			func() interface{} { return formats[1].Attributes["name"] },
+			func() interface{} { return androidFormat.Attributes["name"] },
 			"ANDROID"},
 
 		{"organization relationship exists",
 			func() interface{} {
-				_, ok := formats[0].Relationships["organization"]
+				_, ok := ymlFormat.Relationships["organization"]
 				return ok
 			},
 			true},
 		{
 			"organization relationship plurality",
 			func() interface{} {
-				return formats[0].Relationships["organization"].Type
+				return ymlFormat.Relationships["organization"].Type
 			},
 			jsonapi.SINGULAR,
 		},
 		{
 			"organization relationship type",
 			func() interface{} {
-				return formats[0].Relationships["organization"].DataSingular.Type
+				return ymlFormat.Relationships["organization"].DataSingular.Type
 			},
 			"organizations",
 		},
 		{
 			"organization relationship id",
 			func() interface{} {
-				return formats[0].Relationships["organization"].DataSingular.Id
+				return ymlFormat.Relationships["organization"].DataSingular.Id
 			},
 			"o:orgslug",
 		},
 		{
 			"organization relationship fetched",
 			func() interface{} {
-				return formats[0].Relationships["organization"].Fetched
+				return ymlFormat.Relationships["organization"].Fetched
 			},
 			true,
 		},
 		{
 			"organization relationship name",
 			func() interface{} {
-				organizationRelationship := formats[0].Relationships["organization"]
+				organizationRelationship := ymlFormat.Relationships["organization"]
 				organization := organizationRelationship.DataSingular
 				return organization.Attributes["name"]
 			},
