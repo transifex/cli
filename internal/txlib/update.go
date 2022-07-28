@@ -35,7 +35,7 @@ func UpdateCommand(arguments UpdateCommandArguments) error {
 	}
 	if arguments.Check {
 		if current.GE(latest.Version) {
-			fmt.Println("Congratulations, you are up to date with v", version)
+			fmt.Println("Congratulations, you are up to date with", version)
 		} else {
 			fmt.Printf(
 				"There is a new latest release for you"+
@@ -51,12 +51,13 @@ func UpdateCommand(arguments UpdateCommandArguments) error {
 		}
 	} else {
 		if current.GE(latest.Version) {
-			fmt.Println("Congratulations, you are up to date with v", version)
+			fmt.Println("Congratulations, you are up to date with ", version)
 		} else {
 			fmt.Printf(
-				"There is a new latest release for you v"+
+				"There is a new latest release for you"+
 					" v%s -> v%s", current, latest.Version.String(),
 			)
+			fmt.Println()
 			// Show prompt if there is no no-interactive flag
 			if !arguments.NoInteractive {
 				prompt := promptui.Prompt{
@@ -87,7 +88,7 @@ func UpdateCommand(arguments UpdateCommandArguments) error {
 			if err := selfupdate.UpdateTo(latest.AssetURL, exe); err != nil {
 				return err
 			}
-			color.Green("Successfully updated to version v%s", latest.Version)
+			color.Green("Successfully updated to v%s", latest.Version)
 
 		}
 
