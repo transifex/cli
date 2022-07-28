@@ -305,6 +305,65 @@ add multiple resources with a relatively simple shell script. For example:
    done
    ```
 
+#### Adding remote resources in bulk
+
+If you have content already setup in Transifex, you may want to setup local
+resources in order to pull the language files on your system. In order to do
+that, you can run:
+
+```sh
+tx add remote \
+    --file-filter 'translations/<project_slug>.<resource_slug>/<lang>.<ext>'
+    https://www.transifex.com/myorganization/myproject/dashboard/
+```
+
+This will create entries in your configuration file for each resource in your
+remote project. ie the configuration file may look like this:
+
+```ini
+[main]
+host = https://www.transifex.com
+
+[o:myorganization:p:myproject:r:resource1]
+file_filter = translations/myproject.resource1/<lang>.po
+source_file = translations/myproject.resource1/en.po
+type = PO
+minimum_perc = 0
+
+[o:myorganization:p:myproject:r:resource2]
+file_filter = translations/myproject.resource2/<lang>.json
+source_file = translations/myproject.resource2/en.json
+type = KEYVALUEJSON
+minimum_perc = 0
+
+[o:myorganization:p:myproject:r:resource3]
+file_filter = translations/myproject.resource3/<lang>.html
+source_file = translations/myproject.resource3/en.html
+type = HTML
+minimum_perc = 0
+```
+
+The options for this command are:
+
+- `--file-filter`: What to use as the file_filter and source_file options in
+  the resulting configuration. This is a pattern that accepts the following
+  parameters:
+
+  - `<project_slug>`
+  - `<resource_slug>` _(required)_
+  - `<lang>` _(required)_
+  - `<ext>`
+
+  The default value for this option is
+  `translations/<project_slug>.<resource_slug>/<lang>.<ext>` (the one we showed
+  in our example)
+
+- `--minimum-perc`: What to use as the minimum_perc option in the resulting configuration
+
+- One or more project URLs.
+
+After setting things up, you can pull the source files with `tx pull --source`.
+
 ### Pushing Files to Transifex
 
 `tx push` is used to push language files (usually source language files) from
