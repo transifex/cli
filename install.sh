@@ -52,11 +52,6 @@
         exit 1
     fi
 
-    # Get the latest version as string from Github API
-    LATEST_URL="https://api.github.com/repos/transifex/cli/releases/latest"
-    LATEST_VERSION="$(curl -s "$LATEST_URL" | grep "tag_name" |
-        cut -d : -f 2 | tr -d \"\,\ )"
-
     # Try to figure out the version needed to download for the specific system
 
     if [ "$(uname)" == "Darwin" ]; then
@@ -80,8 +75,8 @@
         exit 1
     fi
 
-    # Try to download the version from github releases
-    URL="https://github.com/transifex/cli/releases/download/$LATEST_VERSION/tx-$OS-$ARCH.tar.gz"
+    # Try to download the latest version from github releases
+    URL="https://github.com/transifex/cli/releases/latest/download/tx-$OS-$ARCH.tar.gz"
 
     echo -e "** Installing CLI from $URL\n"
     if tar --version | grep -q 'gnu'
