@@ -1,6 +1,7 @@
 package txapi
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -50,6 +51,9 @@ func PollTranslationDownload(download *jsonapi.Resource, filePath string) error 
 	resp, err := http.Get(download.Redirect)
 	if err != nil {
 		return err
+	}
+	if resp.StatusCode != 200 {
+		return errors.New("File download error")
 	}
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	defer resp.Body.Close()
