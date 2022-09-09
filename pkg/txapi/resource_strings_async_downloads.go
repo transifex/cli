@@ -1,6 +1,7 @@
 package txapi
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -46,6 +47,9 @@ func PollResourceStringsDownload(
 			resp, err := http.Get(download.Redirect)
 			if err != nil {
 				return err
+			}
+			if resp.StatusCode != 200 {
+				return errors.New("file download error")
 			}
 			bodyBytes, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
