@@ -53,7 +53,7 @@ func PollTranslationDownload(download *jsonapi.Resource, filePath string) error 
 		return err
 	}
 	if resp.StatusCode != 200 {
-		return errors.New("File download error")
+		return errors.New("file download error")
 	}
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	defer resp.Body.Close()
