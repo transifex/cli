@@ -114,7 +114,6 @@ func (task *ResourcePullTask) Run(send func(string), abort func()) {
 	filePullTaskChannel := task.filePullTaskChannel
 	cfg := task.cfg
 
-
 	sendMessage := func(body string) {
 		send(fmt.Sprintf(
 			"%s.%s - %s",

@@ -46,12 +46,16 @@ type AddCommandArguments struct {
 }
 
 func validateFileFilter(input string) error {
-	res := strings.Count(input, "<lang>")
-	if res != 1 {
-		return errors.New("you need one <lang> in your File Filter")
-	}
 	if len(filepath.Ext(input)) <= 1 {
 		return errors.New("you need to add an extension to your file")
+	}
+	input = normaliseFileFilter(input)
+	for _, part := range strings.Split(input, string(os.PathSeparator)) {
+		if strings.Count(part, "<lang>") > 1 {
+			return errors.New(
+				"<lang> cannot appear more than once in the same part of the path",
+			)
+		}
 	}
 	return nil
 }
