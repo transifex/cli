@@ -1,3 +1,5 @@
+---
+
 builds:
   - main: ./main.go
     env:
@@ -14,18 +16,81 @@ builds:
         goarch: arm64
       - goos: darwin
         goarch: 386
+
 archives:
   - format_overrides:
       - goos: windows
         format: zip
     name_template: "tx-{{ .Os }}-{{ .Arch }}"
+
 checksum:
   name_template: 'checksums.txt'
+
 snapshot:
   name_template: "{{ .Tag }}-next"
+
 changelog:
   sort: asc
   filters:
     exclude:
       - '^docs:'
       - '^test:'
+
+dockers:
+  - goarch: amd64
+    goos: linux
+    image_templates:
+      - "transifex/txcli:latest-amd64"
+      - "transifex/txcli:v{{ .Major }}-amd64"
+      - "transifex/txcli:v{{ .Major }}.{{ .Minor }}-amd64"
+      - "transifex/txcli:v{{ .Major }}.{{ .Minor }}.{{ .Patch }}-amd64"
+    build_flag_templates:
+      - "--platform=linux/amd64"
+    dockerfile: 'build/Dockerfile-goreleaser'
+
+  - goarch: '386'
+    goos: linux
+    image_templates:
+      - "transifex/txcli:latest-386"
+      - "transifex/txcli:v{{ .Major }}-386"
+      - "transifex/txcli:v{{ .Major }}.{{ .Minor }}-386"
+      - "transifex/txcli:v{{ .Major }}.{{ .Minor }}.{{ .Patch }}-amd64"
+    build_flag_templates:
+      - "--platform=linux/386"
+    dockerfile: 'build/Dockerfile-goreleaser'
+
+  - goarch: arm64
+    goos: linux
+    image_templates:
+      - "transifex/txcli:latest-arm64"
+      - "transifex/txcli:v{{ .Major }}-arm64"
+      - "transifex/txcli:v{{ .Major }}.{{ .Minor }}-arm64"
+      - "transifex/txcli:v{{ .Major }}.{{ .Minor }}.{{ .Patch }}-amd64"
+    build_flag_templates:
+      - "--platform=linux/arm64/v8"
+    dockerfile: 'build/Dockerfile-goreleaser'
+
+docker_manifests:
+  - name_template: "transifex/txcli:latest"
+    image_templates:
+      - "transifex/txcli:latest-386"
+      - "transifex/txcli:latest-amd64"
+      - "transifex/txcli:latest-arm64"
+
+  - name_template: "transifex/txcli:v{{ .Major }}"
+    image_templates:
+      - "transifex/txcli:v{{ .Major }}-386"
+      - "transifex/txcli:v{{ .Major }}-amd64"
+      - "transifex/txcli:v{{ .Major }}-arm64"
+
+  - name_template: "transifex/txcli:v{{ .Major }}.{{ .Minor }}"
+    image_templates:
+      - "transifex/txcli:v{{ .Major }}.{{ .Minor }}-386"
+      - "transifex/txcli:v{{ .Major }}.{{ .Minor }}-amd64"
+      - "transifex/txcli:v{{ .Major }}.{{ .Minor }}-arm64"
+
+  - name_template: "transifex/txcli:v{{ .Major }}.{{ .Minor }}.{{ .Patch }}"
+    image_templates:
+      - "transifex/txcli:v{{ .Major }}.{{ .Minor }}.{{ .Patch }}-386"
+      - "transifex/txcli:v{{ .Major }}.{{ .Minor }}.{{ .Patch }}-amd64"
+      - "transifex/txcli:v{{ .Major }}.{{ .Minor }}.{{ .Patch }}-arm64"

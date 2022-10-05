@@ -17,6 +17,7 @@ This script will:
 **Note:** You need to restart your terminal for the `PATH` changes to be applied.
 
 ### Download from Github Releases (Linux/Mac/Windows)
+
 Another way to install the Transifex CLI is to download
 the latest version of the binary from GitHub
 [here](https://github.com/transifex/cli/releases).
@@ -33,6 +34,7 @@ Clone the [repository](https://github.com/transifex/cli) and go into the directo
 cd /path/to/transifex/cli
 ```
 ### Building from source
+
 The default way to build the binary is
 
   ```shell
@@ -49,6 +51,18 @@ the following command:
   ```
 
 This will build the binary and it will copy it at `./bin/` in the repository.
+
+### Running from Docker (beta)
+
+You can skip the installation and run the Transifex client from Docker if it is
+available in your system. All you have to do is put this line:
+
+```sh
+alias tx='touch ~/.transifexrc; docker run --rm -i -t -v `pwd`:/app -v ~/.transifexrc:/.transifexrc -v /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt transifex/txcli --root-config /.transifexrc'
+```
+
+to your `~/.bashrc` / `~/.zshrc`. (The first time you use it you will have to
+wait for a ~5MB download)
 
 ## Migrating from older versions of the client
 
