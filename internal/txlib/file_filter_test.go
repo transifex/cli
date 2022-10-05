@@ -11,27 +11,12 @@ import (
 )
 
 func beforeFileFilterTest(t *testing.T) func() {
-	curDir, err := os.Getwd()
-	if err != nil {
-		t.Error(err)
-	}
-	tempDir, err := os.MkdirTemp("", "")
-	if err != nil {
-		t.Error(err)
-	}
-	err = os.Chdir(tempDir)
-	if err != nil {
-		t.Error(err)
-	}
+	curDir, _ := os.Getwd()
+	tempDir, _ := os.MkdirTemp("", "")
+	_ = os.Chdir(tempDir)
 	return func() {
-		err = os.Chdir(curDir)
-		if err != nil {
-			t.Error(err)
-		}
-		err := os.RemoveAll(tempDir)
-		if err != nil {
-			t.Error(err)
-		}
+		_ = os.Chdir(curDir)
+		_ = os.RemoveAll(tempDir)
 	}
 }
 
@@ -120,6 +105,53 @@ func TestSearchFileFilterDirs(t *testing.T) {
 		"fr": filepath.Join(curDir, "fr", "text.txt"),
 		"de": filepath.Join(curDir, "de", "text.txt"),
 	}
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("Got '%+v', expected '%+v'", actual, expected)
+	}
+}
+
+func TestSearchFileWithTwoLangs(t *testing.T) {
+	afterTest := beforeFileFilterTest(t)
+	defer afterTest()
+
+	// <curDir>/
+	//   + en/
+	//   | + foo/
+	//   |   + en.txt
+	//   |   + fr.txt
+	err := os.Mkdir("en", os.ModeDir|0755)
+	if err != nil {
+		t.Error(err)
+	}
+	err = os.Mkdir(filepath.Join("en", "foo"), os.ModeDir|0755)
+	if err != nil {
+		t.Error(err)
+	}
+	file1, err := os.OpenFile(
+		filepath.Join("en", "foo", "en.txt"),
+		os.O_RDWR|os.O_CREATE|os.O_TRUNC,
+		0755,
+	)
+	if err != nil {
+		t.Error(err)
+	}
+	defer file1.Close()
+	file2, err := os.OpenFile(
+		filepath.Join("en", "foo", "fr.txt"),
+		os.O_RDWR|os.O_CREATE|os.O_TRUNC,
+		0755,
+	)
+	if err != nil {
+		t.Error(err)
+	}
+	defer file2.Close()
+
+	curDir, err := os.Getwd()
+	if err != nil {
+		t.Error(err)
+	}
+	actual := searchFileFilter(curDir, filepath.Join("<lang>", "foo", "<lang>.txt"))
+	expected := map[string]string{"en": filepath.Join(curDir, "en", "foo", "en.txt")}
 	if !reflect.DeepEqual(actual, expected) {
 		t.Errorf("Got '%+v', expected '%+v'", actual, expected)
 	}
