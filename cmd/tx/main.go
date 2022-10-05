@@ -461,6 +461,15 @@ func Main() {
 						), 1)
 					}
 
+					if !arguments.Translations &&
+						(arguments.All || len(arguments.Languages) > 0) {
+						return cli.Exit(errorColor(
+							"It doesn't make sense to use the '--all' or "+
+								"'--language' flag without the "+
+								"'--translation' flag",
+						), 1)
+					}
+
 					err = txlib.PullCommand(&cfg, &api, &arguments)
 					if err != nil {
 						return cli.Exit(err, 1)
