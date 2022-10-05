@@ -1,7 +1,9 @@
 package txlib
 
 import (
+	"errors"
 	"fmt"
+
 	"github.com/transifex/cli/internal/txlib/config"
 )
 
@@ -134,6 +136,12 @@ func GetHostAndToken(
 				return "", "", err
 			}
 		}
+	}
+	if restHostname == "" || token == "" {
+		return "", "", errors.New(
+			"could not find a Transifex API host and/or TOKEN, please inspect your " +
+				".transifexrc and .tx/config files",
+		)
 	}
 	return restHostname, token, nil
 }
