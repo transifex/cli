@@ -8,3 +8,4 @@ cli
 .vscode
 .DS_Store
 local_example/
+.envrc
