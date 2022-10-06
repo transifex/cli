@@ -499,7 +499,7 @@ func Main() {
 						)
 					}
 
-					flagList := []string{
+					requiredFlagList := []string{
 						"organization",
 						"project",
 						"resource",
@@ -507,7 +507,7 @@ func Main() {
 						"type",
 					}
 					var missingFlags []string
-					for _, value := range flagList {
+					for _, value := range requiredFlagList {
 						if c.String(value) == "" {
 							missingFlags = append(missingFlags, value)
 						}
@@ -522,6 +522,7 @@ func Main() {
 						FileFilter:       c.String("file-filter"),
 						RType:            c.String("type"),
 						SourceFile:       sourceFile,
+						ResourceName:     c.String("resource-name"),
 					}
 					if missingFlagsCount == 0 {
 						return txlib.AddCommand(
@@ -530,7 +531,7 @@ func Main() {
 						)
 					}
 
-					if missingFlagsCount == len(flagList) {
+					if missingFlagsCount == len(requiredFlagList) {
 						hostname, token, err := txlib.GetHostAndToken(
 							&cfg, c.String("hostname"), c.String("token"),
 						)
@@ -558,7 +559,7 @@ func Main() {
 					}
 
 					if missingFlagsCount >= 1 &&
-						missingFlagsCount < len(flagList) {
+						missingFlagsCount < len(requiredFlagList) {
 						err := cli.ShowCommandHelp(c, "add")
 						if err != nil {
 							return cli.Exit(err, 1)
@@ -595,6 +596,11 @@ func Main() {
 					&cli.StringFlag{
 						Name:  "type",
 						Usage: "The file format type of your resource",
+					},
+					&cli.StringFlag{
+						Name: "resource-name",
+						Usage: "The name that will be used if the client needs to create the " +
+							"resource on Transifex",
 					},
 				},
 				Subcommands: []*cli.Command{

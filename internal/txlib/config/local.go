@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -32,6 +31,7 @@ type Resource struct {
 	LanguageMappings  map[string]string
 	Overrides         map[string]string
 	MinimumPercentage int
+	ResourceName      string
 }
 
 func loadLocalConfig() (*LocalConfig, error) {
@@ -43,7 +43,7 @@ func loadLocalConfig() (*LocalConfig, error) {
 }
 
 func loadLocalConfigFromPath(path string) (*LocalConfig, error) {
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, fmt.Errorf(
@@ -132,6 +132,7 @@ func loadLocalConfigFromBytes(data []byte) (*LocalConfig, error) {
 			LanguageMappings:  make(map[string]string),
 			Overrides:         make(map[string]string),
 			MinimumPercentage: -1,
+			ResourceName:      section.Key("resource_name").String(),
 		}
 
 		// Get first the perc in string to check if exists because .Key returns
@@ -274,6 +275,13 @@ func (localCfg LocalConfig) saveToWriter(file io.Writer) error {
 				}
 			}
 		}
+
+		if resource.ResourceName != "" {
+			_, err := section.NewKey("resource_name", resource.ResourceName)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	_, err = cfg.WriteTo(file)
@@ -410,8 +418,11 @@ func (localCfg *Resource) Name() string {
 	return result
 }
 
-func (localCfg *Resource) ResourceName() string {
-	parts := strings.Split(localCfg.SourceFile, string(os.PathSeparator))
+func (resource *Resource) GetName() string {
+	if resource.ResourceName != "" {
+		return resource.ResourceName
+	}
+	parts := strings.Split(resource.SourceFile, string(os.PathSeparator))
 	return parts[len(parts)-1]
 }
 
