@@ -262,7 +262,7 @@ func (task *ResourcePullTask) Run(send func(string), abort func()) {
 		}
 
 		for languageId, info := range languageInfo {
-			if languageId == sourceLanguage.Id {
+			if languageId == sourceLanguage.Id || info.stats == nil {
 				continue
 			}
 			parts := strings.Split(languageId, ":")
@@ -399,13 +399,13 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 			return
 		}
 	} else {
-		if stats == nil {
-			sendMessage(fmt.Sprintf(
-				"User defined language '%s' does not belong to project, skipping",
-				languageCode,
-			))
-			return
-		} else if filePath == "" {
+		if filePath != "" {
+			// Remote language file exists and so does local
+			if args.DisableOverwrite {
+				sendMessage("Disable overwrite enabled, skipping")
+				return
+			}
+		} else {
 			// Remote language file exists but local does not
 			remoteLanguageCode := languageCode
 			localLanguageCode, exists := remoteToLocalLanguageMapping[remoteLanguageCode]
@@ -425,12 +425,6 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 				1,
 			)
 			filePath = setFileTypeExtensions(args.FileType, filePath)
-		} else {
-			// Remote langauge file exists and so does local
-			if args.DisableOverwrite {
-				sendMessage("Disable overwrite enabled, skipping")
-				return
-			}
 		}
 		minimumPerc := args.MinimumPercentage
 		if minimumPerc == -1 {
