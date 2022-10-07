@@ -294,6 +294,10 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 			"Invalid API response, project does not have a 'source_language' " +
 				"relationship",
 		)
+		if !args.Skip {
+			abort()
+		}
+		return
 	}
 	sourceLanguage := sourceLanguageRelationship.DataSingular
 	var remoteStats map[string]*jsonapi.Resource
