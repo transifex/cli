@@ -233,6 +233,7 @@ host = https://www.transifex.com
 source_file = locale/en.php
 file_filter = locale/<lang>.php
 type = PHP
+resource_name = Web Application
 ```
 
 You can skip steps from the interactive session by adding flags to the `tx add`
@@ -246,12 +247,13 @@ all the flags:
     --organization=organization-1 \
     --project=project-1 \
     --resource=en_php \
+    --resource-name='Web Application' \
     locale/en.php
 ```
 
 #### Adding resources in bulk
 
-> With the old client I could add multiple resource at the same time with `tx
+> With the old client I could add multiple resources at the same time with `tx
 > config mapping-bulk`. What should I do now?
 
 We decided not to implement this functionality in the new client because its
@@ -343,18 +345,21 @@ file_filter = translations/myproject.resource1/<lang>.po
 source_file = translations/myproject.resource1/en.po
 type = PO
 minimum_perc = 0
+resource_name = Resource 1
 
 [o:myorganization:p:myproject:r:resource2]
 file_filter = translations/myproject.resource2/<lang>.json
 source_file = translations/myproject.resource2/en.json
 type = KEYVALUEJSON
 minimum_perc = 0
+resource_name = Resource 2
 
 [o:myorganization:p:myproject:r:resource3]
 file_filter = translations/myproject.resource3/<lang>.html
 source_file = translations/myproject.resource3/en.html
 type = HTML
 minimum_perc = 0
+resource_name = Resource 3
 ```
 
 The options for this command are:

@@ -251,11 +251,11 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 		}
 		var resourceName string
 		if args.Branch == "" {
-			resourceName = cfgResource.ResourceName()
+			resourceName = cfgResource.GetName()
 		} else {
 			resourceName = fmt.Sprintf(
 				"%s (branch %s)",
-				cfgResource.ResourceName(),
+				cfgResource.GetName(),
 				args.Branch,
 			)
 		}

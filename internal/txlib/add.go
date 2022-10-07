@@ -43,6 +43,7 @@ type AddCommandArguments struct {
 	FileFilter       string
 	RType            string
 	SourceFile       string
+	ResourceName     string
 }
 
 func validateFileFilter(input string) error {
@@ -85,7 +86,7 @@ func validateSourceFile(input string) error {
 	return nil
 }
 
-func validateResourceSlug(input string) error {
+func validateNotEmpty(input string) error {
 	if len(input) < 1 {
 		return errors.New("you need to add a Resource Slug")
 	}
@@ -308,7 +309,7 @@ func AddCommandInteractive(cfg *config.Config, api jsonapi.Connection) error {
 		inputPrompt = promptui.Prompt{
 			Label:     "What is the slug of your resource?",
 			Templates: getInputTemplate("New Resource Slug"),
-			Validate:  validateResourceSlug,
+			Validate:  validateNotEmpty,
 		}
 
 		res, err = inputPrompt.Run()
@@ -323,11 +324,33 @@ func AddCommandInteractive(cfg *config.Config, api jsonapi.Connection) error {
 
 		// Add the slug to the answers
 		answers.ResourceSlug = slug.Make(res)
+
+		inputPrompt = promptui.Prompt{
+			Label:     "What is the name of your resource?",
+			Templates: getInputTemplate("New Resource Name"),
+			Validate:  validateNotEmpty,
+		}
+
+		res, err = inputPrompt.Run()
+
+		if err != nil {
+			if err == promptui.ErrInterrupt {
+				return err
+			} else {
+				return fmt.Errorf("something went wrong: %v", err)
+			}
+		}
+
+		// Add the name to the answers
+		answers.ResourceName = res
 	} else {
 		// In case it's a preexisting resource add it to answers and
 		// selected resource
 		answers.ResourceSlug = selectItems[idx].Value
 		selectedResource = resources[idx]
+		var selectedResourceAttributes txapi.ResourceAttributes
+		selectedResource.MapAttributes(&selectedResourceAttributes)
+		answers.ResourceName = selectedResourceAttributes.Name
 	}
 
 	// If we have a selected resource get the file format from the
@@ -413,6 +436,7 @@ func AddCommand(
 		FileFilter:       args.FileFilter,
 		SourceFile:       args.SourceFile,
 		Type:             args.RType,
+		ResourceName:     args.ResourceName,
 	})
 
 	err = cfg.Save()
