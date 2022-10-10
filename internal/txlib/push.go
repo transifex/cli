@@ -28,6 +28,7 @@ type PushCommandArguments struct {
 	Branch           string
 	All              bool
 	Workers          int
+	Silent           bool
 }
 
 func PushCommand(
@@ -52,7 +53,7 @@ func PushCommand(
 
 	fmt.Print("# Getting info about resources\n\n")
 
-	pool := worker_pool.New(args.Workers, len(cfgResources))
+	pool := worker_pool.New(args.Workers, len(cfgResources), args.Silent)
 	sourceTaskChannel := make(chan *SourceFilePushTask)
 	translationTaskChannel := make(chan *TranslationFileTask)
 	targetLanguagesChannel := make(chan TargetLanguageMessage)
@@ -113,38 +114,67 @@ func PushCommand(
 	}
 
 	if pool.IsAborted {
-		fmt.Println("Aborted")
 		return errors.New("Aborted")
+	}
+	if args.Silent {
+		var names []string
+		for _, cfgResource := range cfgResources {
+			names = append(names, fmt.Sprintf(
+				"%s.%s",
+				cfgResource.ProjectSlug,
+				cfgResource.ResourceSlug,
+			))
+		}
+		fmt.Printf("Got info about resources: %s", strings.Join(names, ", "))
 	}
 
 	// Step 2: Create missing remote target languages
-	if len(targetLanguages) > 0 {
-		fmt.Print("\n# Create missing remote target languages\n\n")
 
-		pool = worker_pool.New(args.Workers, len(targetLanguages))
+	if len(targetLanguages) > 0 {
+		fmt.Print("\n\n# Create missing remote target languages\n\n")
+
+		pool = worker_pool.New(args.Workers, len(targetLanguages), args.Silent)
 		for projectId, languages := range targetLanguages {
 			sort.Slice(languages, func(i, j int) bool {
 				return languages[i] < languages[j]
 			})
-			pool.Add(&LanguagePushTask{projects[projectId], languages})
+			pool.Add(&LanguagePushTask{projects[projectId], languages, args})
 		}
 		pool.Start()
 		<-pool.Wait()
 		if pool.IsAborted {
-			fmt.Println("Aborted")
 			return errors.New("Aborted")
+		}
+		if args.Silent {
+			var names []string
+			for projectId, languages := range targetLanguages {
+				parts := strings.Split(projectId, ":")
+				projectSlug := parts[1]
+
+				var languageCodes []string
+				languageCodes = append(languageCodes, languages...)
+				names = append(names, fmt.Sprintf(
+					"%s: %s",
+					projectSlug,
+					strings.Join(languageCodes, ", "),
+				))
+			}
+			fmt.Printf(
+				"\n\nCreated missing remote target languages: %s",
+				strings.Join(names, ", "),
+			)
 		}
 	}
 
 	// Step 3: SourceFiles
 
 	if len(sourceFileTasks) > 0 {
-		fmt.Print("\n# Pushing source files\n\n")
+		fmt.Print("\n\n# Pushing source files\n\n")
 
 		sort.Slice(sourceFileTasks, func(i, j int) bool {
 			return sourceFileTasks[i].resource.Id < sourceFileTasks[j].resource.Id
 		})
-		pool = worker_pool.New(args.Workers, len(sourceFileTasks))
+		pool = worker_pool.New(args.Workers, len(sourceFileTasks), args.Silent)
 		for _, sourceFileTask := range sourceFileTasks {
 			pool.Add(sourceFileTask)
 		}
@@ -152,8 +182,19 @@ func PushCommand(
 		<-pool.Wait()
 
 		if pool.IsAborted {
-			fmt.Println("Aborted")
 			return errors.New("Aborted")
+		}
+		if args.Silent {
+			var names []string
+			for _, sourceFileTask := range sourceFileTasks {
+				parts := strings.Split(sourceFileTask.resource.Id, ":")
+				resourceSlug := parts[5]
+				names = append(names, resourceSlug)
+			}
+			fmt.Printf(
+				"Pushed source files for: %s",
+				strings.Join(names, ", "),
+			)
 		}
 	}
 
@@ -169,9 +210,9 @@ func PushCommand(
 				return left.languageCode < right.languageCode
 			}
 		})
-		fmt.Print("\n# Pushing translations\n\n")
+		fmt.Print("\n\n# Pushing translations\n\n")
 
-		pool = worker_pool.New(args.Workers, len(translationFileTasks))
+		pool = worker_pool.New(args.Workers, len(translationFileTasks), args.Silent)
 		for _, translationFileTask := range translationFileTasks {
 			pool.Add(translationFileTask)
 		}
@@ -179,11 +220,24 @@ func PushCommand(
 		<-pool.Wait()
 
 		if pool.IsAborted {
-			fmt.Println("Aborted")
 			return errors.New("Aborted")
+		}
+		if args.Silent {
+			var names []string
+			for _, translationFileTask := range translationFileTasks {
+				parts := strings.Split(translationFileTask.resource.Id, ":")
+				resourceSlug := parts[5]
+				names = append(names, fmt.Sprintf(
+					"%s: %s",
+					resourceSlug,
+					translationFileTask.languageCode,
+				))
+			}
+			fmt.Printf("Pushed translations: %s", strings.Join(names, ", "))
 		}
 	}
 
+	fmt.Println()
 	return nil
 }
 
@@ -211,7 +265,10 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 	args := task.args
 	targetLanguagesChannel := task.targetLanguagesChannel
 
-	sendMessage := func(body string) {
+	sendMessage := func(body string, force bool) {
+		if args.Silent && !force {
+			return
+		}
 		send(fmt.Sprintf(
 			"%s.%s - %s",
 			cfgResource.ProjectSlug,
@@ -219,10 +276,10 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 			body,
 		))
 	}
-	sendMessage("Getting info")
+	sendMessage("Getting info", false)
 	resource, err := txapi.GetResourceById(api, cfgResource.GetAPv3Id())
 	if err != nil {
-		sendMessage(fmt.Sprintf("Error while fetching resource: %s", err))
+		sendMessage(fmt.Sprintf("Error while fetching resource: %s", err), true)
 		if !args.Skip {
 			abort()
 		}
@@ -233,17 +290,18 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 	if resourceIsNew {
 		if args.Translation && !args.Source {
 			sendMessage(
-				"You are attempting to push translations for a resource that doesn't " +
+				"You are attempting to push translations for a resource that doesn't "+
 					"exist yet",
+				true,
 			)
 			if !args.Skip {
 				abort()
 			}
 			return
 		}
-		sendMessage("Resource does not exist; creating")
+		sendMessage("Resource does not exist; creating", false)
 		if cfgResource.Type == "" {
-			sendMessage("Error: Cannot create resource, i18n type is unknown")
+			sendMessage("Error: Cannot create resource, i18n type is unknown", true)
 			if !args.Skip {
 				abort()
 			}
@@ -270,7 +328,7 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 			cfgResource.ResourceSlug,
 			cfgResource.Type)
 		if err != nil {
-			sendMessage(fmt.Sprintf("Error while creating resource, %s", err))
+			sendMessage(fmt.Sprintf("Error while creating resource, %s", err), true)
 			if !args.Skip {
 				abort()
 			}
@@ -278,10 +336,10 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 		}
 	}
 
-	sendMessage("Getting stats")
+	sendMessage("Getting stats", false)
 	projectRelationship, err := resource.Fetch("project")
 	if err != nil {
-		sendMessage(err.Error())
+		sendMessage(err.Error(), true)
 		if !args.Skip {
 			abort()
 		}
@@ -291,8 +349,9 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 	sourceLanguageRelationship, exists := project.Relationships["source_language"]
 	if !exists {
 		sendMessage(
-			"Invalid API response, project does not have a 'source_language' " +
+			"Invalid API response, project does not have a 'source_language' "+
 				"relationship",
+			true,
 		)
 		if !args.Skip {
 			abort()
@@ -307,7 +366,7 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 		remoteStats, err = txapi.GetResourceStats(api, resource, sourceLanguage)
 	}
 	if err != nil {
-		sendMessage(fmt.Sprintf("Error while fetching stats, %s", err))
+		sendMessage(fmt.Sprintf("Error while fetching stats, %s", err), true)
 		if !args.Skip {
 			abort()
 		}
@@ -330,10 +389,10 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 		)
 		overrides := cfgResource.Overrides
 
-		sendMessage("Fetching remote languages")
+		sendMessage("Fetching remote languages", false)
 		curDir, err := os.Getwd()
 		if err != nil {
-			sendMessage(err.Error())
+			sendMessage(err.Error(), true)
 			if !args.Skip {
 				abort()
 			}
@@ -342,7 +401,7 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 		fileFilter := cfgResource.FileFilter
 		err = checkFileFilter(fileFilter)
 		if err != nil {
-			sendMessage(err.Error())
+			sendMessage(err.Error(), true)
 			if !args.Skip {
 				abort()
 			}
@@ -357,7 +416,7 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 			remoteStats, overrides, args, resourceIsNew,
 		)
 		if err != nil {
-			sendMessage(err.Error())
+			sendMessage(err.Error(), true)
 			if !args.Skip {
 				abort()
 			}
@@ -366,7 +425,7 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 
 		allLanguages, err := txapi.GetLanguages(api)
 		if err != nil {
-			sendMessage(err.Error())
+			sendMessage(err.Error(), true)
 			abort()
 			return
 		}
@@ -394,21 +453,26 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 			}
 		}
 	}
-	sendMessage("Done")
+	sendMessage("Done", false)
 }
 
 type LanguagePushTask struct {
 	project   *jsonapi.Resource
 	languages []string
+	args      PushCommandArguments
 }
 
 func (task *LanguagePushTask) Run(send func(string), abort func()) {
 	project := task.project
 	languages := task.languages
+	args := task.args
 
 	parts := strings.Split(project.Id, ":")
 
-	sendMessage := func(body string) {
+	sendMessage := func(body string, force bool) {
+		if args.Silent && !force {
+			return
+		}
 		send(fmt.Sprintf(
 			"%s (%s) - %s",
 			parts[3],
@@ -416,7 +480,7 @@ func (task *LanguagePushTask) Run(send func(string), abort func()) {
 			body,
 		))
 	}
-	sendMessage("Pushing")
+	sendMessage("Pushing", false)
 
 	var payload []*jsonapi.Resource
 	for _, language := range languages {
@@ -427,12 +491,12 @@ func (task *LanguagePushTask) Run(send func(string), abort func()) {
 	}
 	err := project.Add("languages", payload)
 	if err != nil {
-		sendMessage(err.Error())
+		sendMessage(err.Error(), true)
 		abort()
 		return
 	}
 
-	sendMessage("Done")
+	sendMessage("Done", false)
 }
 
 type SourceFilePushTask struct {
@@ -453,13 +517,16 @@ func (task *SourceFilePushTask) Run(send func(string), abort func()) {
 	resourceIsNew := task.resourceIsNew
 
 	parts := strings.Split(resource.Id, ":")
-	sendMessage := func(body string) {
+	sendMessage := func(body string, force bool) {
+		if args.Silent && !force {
+			return
+		}
 		send(fmt.Sprintf("%s.%s - %s", parts[3], parts[5], body))
 	}
 
 	file, err := os.Open(sourceFile)
 	if err != nil {
-		sendMessage(err.Error())
+		sendMessage(err.Error(), true)
 		if !args.Skip {
 			abort()
 		}
@@ -474,11 +541,11 @@ func (task *SourceFilePushTask) Run(send func(string), abort func()) {
 			sourceFile, remoteStats, args.UseGitTimestamps,
 		)
 		if skip {
-			sendMessage("Skipping")
+			sendMessage("Skipping", false)
 			return
 		}
 		if err != nil {
-			sendMessage(err.Error())
+			sendMessage(err.Error(), true)
 			if !args.Skip {
 				abort()
 			}
@@ -496,10 +563,10 @@ func (task *SourceFilePushTask) Run(send func(string), abort func()) {
 			return err
 		},
 		"Uploading file",
-		sendMessage,
+		func(msg string) { sendMessage(msg, false) },
 	)
 	if err != nil {
-		sendMessage(err.Error())
+		sendMessage(err.Error(), true)
 		if !args.Skip {
 			abort()
 		}
@@ -513,17 +580,17 @@ func (task *SourceFilePushTask) Run(send func(string), abort func()) {
 			return txapi.PollSourceUpload(sourceUpload, time.Second)
 		},
 		"",
-		sendMessage,
+		func(msg string) { sendMessage(msg, false) },
 	)
 	if err != nil {
-		sendMessage(err.Error())
+		sendMessage(err.Error(), true)
 		if !args.Skip {
 			abort()
 		}
 		return
 	}
 
-	sendMessage("Done")
+	sendMessage("Done", false)
 }
 
 type TranslationFileTask struct {
@@ -547,7 +614,10 @@ func (task *TranslationFileTask) Run(send func(string), abort func()) {
 
 	parts := strings.Split(resource.Id, ":")
 	cyan := color.New(color.FgCyan).SprintFunc()
-	sendMessage := func(body string) {
+	sendMessage := func(body string, force bool) {
+		if args.Silent && !force {
+			return
+		}
 		send(fmt.Sprintf(
 			"%s.%s %s - %s", parts[3], parts[5],
 			cyan("["+languageCode+"]"), body,
@@ -561,14 +631,14 @@ func (task *TranslationFileTask) Run(send func(string), abort func()) {
 		if exists {
 			skip, err := shouldSkipPush(path, remoteStat, args.UseGitTimestamps)
 			if err != nil {
-				sendMessage(err.Error())
+				sendMessage(err.Error(), true)
 				if !args.Skip {
 					abort()
 				}
 				return
 			}
 			if skip {
-				sendMessage("Skipping because remote file is newer than local")
+				sendMessage("Skipping because remote file is newer than local", false)
 				return
 			}
 		}
@@ -586,10 +656,10 @@ func (task *TranslationFileTask) Run(send func(string), abort func()) {
 			return err
 		},
 		"Uploading file",
-		sendMessage,
+		func(msg string) { sendMessage(msg, false) },
 	)
 	if err != nil {
-		sendMessage(err.Error())
+		sendMessage(err.Error(), true)
 		if !args.Skip {
 			abort()
 		}
@@ -602,16 +672,16 @@ func (task *TranslationFileTask) Run(send func(string), abort func()) {
 			return txapi.PollTranslationUpload(upload, time.Second)
 		},
 		"",
-		sendMessage,
+		func(msg string) { sendMessage(msg, false) },
 	)
 	if err != nil {
-		sendMessage(err.Error())
+		sendMessage(err.Error(), true)
 		if !args.Skip {
 			abort()
 		}
 		return
 	}
-	sendMessage("Done")
+	sendMessage("Done", false)
 }
 
 func getFilesToPush(

@@ -52,7 +52,7 @@ func PullCommand(
 
 	filePullTaskChannel := make(chan *FilePullTask)
 	var filePullTasks []*FilePullTask
-	pool := worker_pool.New(args.Workers, len(cfgResources))
+	pool := worker_pool.New(args.Workers, len(cfgResources), false)
 	for _, cfgResource := range cfgResources {
 		pool.Add(&ResourcePullTask{cfgResource, api, args, filePullTaskChannel, cfg})
 	}
@@ -84,7 +84,7 @@ func PullCommand(
 		})
 
 		fmt.Print("\n# Pulling files\n\n")
-		pool = worker_pool.New(args.Workers, len(filePullTasks))
+		pool = worker_pool.New(args.Workers, len(filePullTasks), false)
 		for _, task := range filePullTasks {
 			pool.Add(task)
 		}

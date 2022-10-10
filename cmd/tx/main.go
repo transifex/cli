@@ -152,6 +152,10 @@ func Main() {
 						Aliases: []string{"w"},
 						Value:   5,
 					},
+					&cli.BoolFlag{
+						Name:  "silent",
+						Usage: "Whether to reduce verbosity of the output",
+					},
 				},
 				Action: func(c *cli.Context) error {
 					cfg, err := config.LoadFromPaths(
@@ -225,6 +229,7 @@ func Main() {
 						Branch:           c.String("branch"),
 						All:              c.Bool("all"),
 						Workers:          c.Int("workers"),
+						Silent:           c.Bool("silent"),
 					}
 
 					if args.All && len(args.Languages) > 0 {
