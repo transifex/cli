@@ -31,6 +31,7 @@ type PullCommandArguments struct {
 	Branch            string
 	MinimumPercentage int
 	Workers           int
+	Silent            bool
 }
 
 func PullCommand(
@@ -52,7 +53,7 @@ func PullCommand(
 
 	filePullTaskChannel := make(chan *FilePullTask)
 	var filePullTasks []*FilePullTask
-	pool := worker_pool.New(args.Workers, len(cfgResources), false)
+	pool := worker_pool.New(args.Workers, len(cfgResources), args.Silent)
 	for _, cfgResource := range cfgResources {
 		pool.Add(&ResourcePullTask{cfgResource, api, args, filePullTaskChannel, cfg})
 	}
@@ -71,6 +72,17 @@ func PullCommand(
 	if pool.IsAborted {
 		return errors.New("Aborted")
 	}
+	if args.Silent {
+		var names []string
+		for _, cfgResource := range cfgResources {
+			names = append(names, fmt.Sprintf(
+				"%s.%s",
+				cfgResource.ProjectSlug,
+				cfgResource.ResourceSlug,
+			))
+		}
+		fmt.Printf("Got info about resources: %s", strings.Join(names, ", "))
+	}
 
 	if len(filePullTasks) > 0 {
 		sort.Slice(filePullTasks, func(i, j int) bool {
@@ -83,8 +95,8 @@ func PullCommand(
 			}
 		})
 
-		fmt.Print("\n# Pulling files\n\n")
-		pool = worker_pool.New(args.Workers, len(filePullTasks), false)
+		fmt.Print("\n\n# Pulling files\n\n")
+		pool = worker_pool.New(args.Workers, len(filePullTasks), args.Silent)
 		for _, task := range filePullTasks {
 			pool.Add(task)
 		}
@@ -93,6 +105,17 @@ func PullCommand(
 
 		if pool.IsAborted {
 			return errors.New("Aborted")
+		}
+		if args.Silent {
+			var names []string
+			for _, filePullTask := range filePullTasks {
+				names = append(names, fmt.Sprintf(
+					"%s: %s",
+					filePullTask.cfgResource.ResourceSlug,
+					filePullTask.languageCode,
+				))
+			}
+			fmt.Printf("Pulled files: %s", strings.Join(names, ", "))
 		}
 	}
 
@@ -114,7 +137,10 @@ func (task *ResourcePullTask) Run(send func(string), abort func()) {
 	filePullTaskChannel := task.filePullTaskChannel
 	cfg := task.cfg
 
-	sendMessage := func(body string) {
+	sendMessage := func(body string, force bool) {
+		if args.Silent && !force {
+			return
+		}
 		send(fmt.Sprintf(
 			"%s.%s - %s",
 			cfgResource.ProjectSlug,
@@ -122,7 +148,7 @@ func (task *ResourcePullTask) Run(send func(string), abort func()) {
 			body,
 		))
 	}
-	sendMessage("Getting info")
+	sendMessage("Getting info", false)
 
 	localToRemoteLanguageMappings := makeLocalToRemoteLanguageMappings(
 		*cfg,
@@ -135,24 +161,27 @@ func (task *ResourcePullTask) Run(send func(string), abort func()) {
 	var err error
 	resource, err := txapi.GetResourceById(api, cfgResource.GetAPv3Id())
 	if err != nil {
-		sendMessage(err.Error())
+		sendMessage(err.Error(), true)
 		if !args.Skip {
 			abort()
 		}
 		return
 	}
 	if resource == nil {
-		sendMessage(fmt.Sprintf(
-			"Resource %s.%s does not exist",
-			cfgResource.ProjectSlug,
-			cfgResource.ResourceSlug,
-		))
+		sendMessage(
+			fmt.Sprintf(
+				"Resource %s.%s does not exist",
+				cfgResource.ProjectSlug,
+				cfgResource.ResourceSlug,
+			),
+			true,
+		)
 		return
 	}
 
 	projectRelationship, err := resource.Fetch("project")
 	if err != nil {
-		sendMessage(err.Error())
+		sendMessage(err.Error(), true)
 		if !args.Skip {
 			abort()
 		}
@@ -168,7 +197,7 @@ func (task *ResourcePullTask) Run(send func(string), abort func()) {
 		stats, err = txapi.GetResourceStats(api, resource, nil)
 	}
 	if err != nil {
-		sendMessage(err.Error())
+		sendMessage(err.Error(), true)
 		if !args.Skip {
 			abort()
 		}
@@ -197,7 +226,7 @@ func (task *ResourcePullTask) Run(send func(string), abort func()) {
 		// Local stuff
 		err = checkFileFilter(cfgResource.FileFilter)
 		if err != nil {
-			sendMessage(err.Error())
+			sendMessage(err.Error(), true)
 			if !args.Skip {
 				abort()
 			}
@@ -279,7 +308,7 @@ func (task *ResourcePullTask) Run(send func(string), abort func()) {
 			}
 		}
 	}
-	sendMessage("Done")
+	sendMessage("Done", false)
 }
 
 type FilePullTask struct {
@@ -303,7 +332,10 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 	filePath := task.filePath
 	remoteToLocalLanguageMapping := task.remoteToLocalLanguageMappings
 
-	sendMessage := func(body string) {
+	sendMessage := func(body string, force bool) {
+		if args.Silent && !force {
+			return
+		}
 		var code string
 		if languageCode == "" {
 			code = "source"
@@ -320,17 +352,14 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 			body,
 		))
 	}
-	sendMessage("Pulling file")
+	sendMessage("Pulling file", false)
 
 	if languageCode == "" {
 		sourceFile := setFileTypeExtensions(args.FileType, cfgResource.SourceFile)
 
 		_, err := os.Stat(sourceFile)
 		if err == nil && args.DisableOverwrite {
-			sendMessage("Disable Overwrite is enabled, skipping")
-			if !args.Skip {
-				abort()
-			}
+			sendMessage("Disable Overwrite is enabled, skipping", false)
 			return
 		}
 
@@ -341,14 +370,14 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 				args.UseGitTimestamps,
 			)
 			if err != nil {
-				sendMessage(err.Error())
+				sendMessage(err.Error(), true)
 				if !args.Skip {
 					abort()
 				}
 				return
 			}
 			if shouldSkip {
-				sendMessage("Local file is newer than remote, skipping")
+				sendMessage("Local file is newer than remote, skipping", false)
 				return
 			}
 		}
@@ -368,10 +397,10 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 				return err
 			},
 			"Creating download job",
-			sendMessage,
+			func(msg string) { sendMessage(msg, false) },
 		)
 		if err != nil {
-			sendMessage(err.Error())
+			sendMessage(err.Error(), true)
 			if !args.Skip {
 				abort()
 			}
@@ -389,10 +418,10 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 				)
 			},
 			"",
-			sendMessage,
+			func(msg string) { sendMessage(msg, false) },
 		)
 		if err != nil {
-			sendMessage(err.Error())
+			sendMessage(err.Error(), true)
 			if !args.Skip {
 				abort()
 			}
@@ -402,7 +431,7 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 		if filePath != "" {
 			// Remote language file exists and so does local
 			if args.DisableOverwrite {
-				sendMessage("Disable overwrite enabled, skipping")
+				sendMessage("Disable overwrite enabled, skipping", false)
 				return
 			}
 		} else {
@@ -415,7 +444,7 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 			if !args.All &&
 				(!stringSliceContains(args.Languages, remoteLanguageCode) &&
 					!stringSliceContains(args.Languages, localLanguageCode)) {
-				sendMessage("File was not found locally, skipping")
+				sendMessage("File was not found locally, skipping", false)
 				return
 			}
 			filePath = strings.Replace(
@@ -441,14 +470,14 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 			args.Force,
 		)
 		if err != nil {
-			sendMessage(err.Error())
+			sendMessage(err.Error(), true)
 			if !args.Skip {
 				abort()
 			}
 			return
 		}
 		if shouldSkip {
-			sendMessage("Local file is newer than remote, skipping")
+			sendMessage("Local file is newer than remote, skipping", false)
 			return
 		}
 
@@ -469,10 +498,10 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 				return err
 			},
 			"Creating download job",
-			sendMessage,
+			func(msg string) { sendMessage(msg, false) },
 		)
 		if err != nil {
-			sendMessage(err.Error())
+			sendMessage(err.Error(), true)
 			if !args.Skip {
 				abort()
 			}
@@ -486,17 +515,17 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 				return txapi.PollTranslationDownload(download, filePath)
 			},
 			"",
-			sendMessage,
+			func(msg string) { sendMessage(msg, false) },
 		)
 		if err != nil {
-			sendMessage(err.Error())
+			sendMessage(err.Error(), true)
 			if !args.Skip {
 				abort()
 			}
 			return
 		}
 	}
-	sendMessage("Done")
+	sendMessage("Done", false)
 }
 
 func shouldSkipDownload(

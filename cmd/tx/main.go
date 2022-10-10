@@ -374,6 +374,10 @@ func Main() {
 						Aliases: []string{"w"},
 						Value:   5,
 					},
+					&cli.BoolFlag{
+						Name:  "silent",
+						Usage: "Whether to reduce verbosity of the output",
+					},
 				},
 				Action: func(c *cli.Context) error {
 					cfg, err := config.LoadFromPaths(c.String("root-config"),
@@ -425,6 +429,7 @@ func Main() {
 						Branch:            c.String("branch"),
 						MinimumPercentage: c.Int("minimum-perc"),
 						Workers:           c.Int("workers"),
+						Silent:            c.Bool("silent"),
 					}
 
 					if c.Bool("xliff") && c.Bool("json") {
