@@ -23,7 +23,7 @@ type PullCommandArguments struct {
 	Skip              bool
 	Languages         []string
 	Source            bool
-	Translations      bool
+	Translation       bool
 	All               bool
 	DisableOverwrite  bool
 	ResourceIds       []string
@@ -201,7 +201,7 @@ func (task *ResourcePullTask) Run(send func(string), abort func()) {
 	sourceLanguage := project.Relationships["source_language"].DataSingular
 
 	var stats map[string]*jsonapi.Resource
-	if args.Source && !args.Translations {
+	if args.Source && !args.Translation {
 		stats, err = txapi.GetResourceStats(api, resource, sourceLanguage)
 	} else {
 		stats, err = txapi.GetResourceStats(api, resource, nil)
@@ -227,7 +227,7 @@ func (task *ResourcePullTask) Run(send func(string), abort func()) {
 		}
 	}
 
-	if args.Translations || !args.Source {
+	if args.Translation || !args.Source {
 		languageInfo := make(map[string]*struct {
 			filePath string
 			stats    *jsonapi.Resource

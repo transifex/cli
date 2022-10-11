@@ -324,7 +324,7 @@ func Main() {
 						Usage:   "Download source file only",
 					},
 					&cli.BoolFlag{
-						Name:    "translations",
+						Name:    "translation",
 						Aliases: []string{"t"},
 						Usage:   "Downloads translations files (default)",
 					},
@@ -421,7 +421,7 @@ func Main() {
 						Force:             c.Bool("force"),
 						Skip:              c.Bool("skip"),
 						Source:            c.Bool("source"),
-						Translations:      c.Bool("translations"),
+						Translation:       c.Bool("translation"),
 						DisableOverwrite:  c.Bool("disable-overwrite"),
 						All:               c.Bool("all"),
 						ResourceIds:       resourceIds,
@@ -471,7 +471,7 @@ func Main() {
 						), 1)
 					}
 
-					if !arguments.Translations &&
+					if !arguments.Translation &&
 						(arguments.All || len(arguments.Languages) > 0) {
 						return cli.Exit(errorColor(
 							"It doesn't make sense to use the '--all' or "+
