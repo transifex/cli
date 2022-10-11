@@ -51,7 +51,9 @@ func PushCommand(
 
 	// Step 1: Resources
 
-	fmt.Print("# Getting info about resources\n\n")
+	if !args.Silent {
+		fmt.Print("# Getting info about resources\n\n")
+	}
 
 	pool := worker_pool.New(args.Workers, len(cfgResources), args.Silent)
 	sourceTaskChannel := make(chan *SourceFilePushTask)
@@ -125,13 +127,15 @@ func PushCommand(
 				cfgResource.ResourceSlug,
 			))
 		}
-		fmt.Printf("Got info about resources: %s", strings.Join(names, ", "))
+		fmt.Printf("Got info about resources: %s\n", strings.Join(names, ", "))
 	}
 
 	// Step 2: Create missing remote target languages
 
 	if len(targetLanguages) > 0 {
-		fmt.Print("\n\n# Create missing remote target languages\n\n")
+		if !args.Silent {
+			fmt.Print("\n# Create missing remote target languages\n\n")
+		}
 
 		pool = worker_pool.New(args.Workers, len(targetLanguages), args.Silent)
 		for projectId, languages := range targetLanguages {
@@ -160,7 +164,7 @@ func PushCommand(
 				))
 			}
 			fmt.Printf(
-				"\n\nCreated missing remote target languages: %s",
+				"Created missing remote target languages: %s\n",
 				strings.Join(names, ", "),
 			)
 		}
@@ -169,7 +173,9 @@ func PushCommand(
 	// Step 3: SourceFiles
 
 	if len(sourceFileTasks) > 0 {
-		fmt.Print("\n\n# Pushing source files\n\n")
+		if !args.Silent {
+			fmt.Print("\n# Pushing source files\n\n")
+		}
 
 		sort.Slice(sourceFileTasks, func(i, j int) bool {
 			return sourceFileTasks[i].resource.Id < sourceFileTasks[j].resource.Id
@@ -192,7 +198,7 @@ func PushCommand(
 				names = append(names, resourceSlug)
 			}
 			fmt.Printf(
-				"Pushed source files for: %s",
+				"Pushed source files for: %s\n",
 				strings.Join(names, ", "),
 			)
 		}
@@ -210,7 +216,9 @@ func PushCommand(
 				return left.languageCode < right.languageCode
 			}
 		})
-		fmt.Print("\n\n# Pushing translations\n\n")
+		if !args.Silent {
+			fmt.Print("\n# Pushing translations\n\n")
+		}
 
 		pool = worker_pool.New(args.Workers, len(translationFileTasks), args.Silent)
 		for _, translationFileTask := range translationFileTasks {
@@ -233,11 +241,10 @@ func PushCommand(
 					translationFileTask.languageCode,
 				))
 			}
-			fmt.Printf("Pushed translations: %s", strings.Join(names, ", "))
+			fmt.Printf("Pushed translations: %s\n", strings.Join(names, ", "))
 		}
 	}
 
-	fmt.Println()
 	return nil
 }
 

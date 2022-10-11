@@ -49,7 +49,9 @@ func PullCommand(
 		return cfgResources[i].GetAPv3Id() < cfgResources[j].GetAPv3Id()
 	})
 
-	fmt.Print("# Getting info about resources\n\n")
+	if !args.Silent {
+		fmt.Print("# Getting info about resources\n\n")
+	}
 
 	filePullTaskChannel := make(chan *FilePullTask)
 	var filePullTasks []*FilePullTask
@@ -81,7 +83,7 @@ func PullCommand(
 				cfgResource.ResourceSlug,
 			))
 		}
-		fmt.Printf("Got info about resources: %s", strings.Join(names, ", "))
+		fmt.Printf("Got info about resources: %s\n", strings.Join(names, ", "))
 	}
 
 	if len(filePullTasks) > 0 {
@@ -95,7 +97,9 @@ func PullCommand(
 			}
 		})
 
-		fmt.Print("\n\n# Pulling files\n\n")
+		if !args.Silent {
+			fmt.Print("\n# Pulling files\n\n")
+		}
 		pool = worker_pool.New(args.Workers, len(filePullTasks), args.Silent)
 		for _, task := range filePullTasks {
 			pool.Add(task)
@@ -109,13 +113,19 @@ func PullCommand(
 		if args.Silent {
 			var names []string
 			for _, filePullTask := range filePullTasks {
+				var languageCode string
+				if filePullTask.languageCode == "" {
+					languageCode = "source"
+				} else {
+					languageCode = filePullTask.languageCode
+				}
 				names = append(names, fmt.Sprintf(
 					"%s: %s",
 					filePullTask.cfgResource.ResourceSlug,
-					filePullTask.languageCode,
+					languageCode,
 				))
 			}
-			fmt.Printf("Pulled files: %s", strings.Join(names, ", "))
+			fmt.Printf("Pulled files: %s\n", strings.Join(names, ", "))
 		}
 	}
 
