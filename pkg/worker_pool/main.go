@@ -125,21 +125,23 @@ type message_t struct {
 }
 
 type Pool struct {
-	numWorkers     int
-	numTasks       int
-	taskChannel    chan taskContainer_t
-	innerWaitGroup sync.WaitGroup
-	outerWaitGroup sync.WaitGroup
-	counter        int
+	numWorkers       int
+	numTasks         int
+	taskChannel      chan taskContainer_t
+	innerWaitGroup   sync.WaitGroup
+	outerWaitGroup   sync.WaitGroup
+	counter          int
+	forceNotTerminal bool
 
 	IsAborted bool
 }
 
-func New(numWorkers, numTasks int) *Pool {
+func New(numWorkers, numTasks int, forceNotTerminal bool) *Pool {
 	var pool Pool
 	pool.numWorkers = numWorkers
 	pool.numTasks = numTasks
 	pool.taskChannel = make(chan taskContainer_t, numTasks)
+	pool.forceNotTerminal = forceNotTerminal
 	return &pool
 }
 
@@ -153,7 +155,7 @@ func (pool *Pool) Start() {
 	messages := make([]string, pool.numTasks+1)
 	messageChannel := make(chan message_t)
 	writer := uilive.New()
-	if isatty.IsTerminal(os.Stdout.Fd()) {
+	if !pool.forceNotTerminal && isatty.IsTerminal(os.Stdout.Fd()) {
 		writer.Start()
 	}
 	pool.outerWaitGroup.Add(1)
@@ -169,7 +171,7 @@ func (pool *Pool) Start() {
 					}
 					taskContainer.task.Run(send, pool.abort)
 				}
-				if isatty.IsTerminal(os.Stdout.Fd()) {
+				if !pool.forceNotTerminal && isatty.IsTerminal(os.Stdout.Fd()) {
 					atomic.AddInt32(&finishedTasks, 1)
 					messageChannel <- message_t{
 						pool.numTasks,
@@ -203,7 +205,7 @@ func (pool *Pool) Start() {
 		for !exitfor {
 			select {
 			case msg := <-messageChannel:
-				if isatty.IsTerminal(os.Stdout.Fd()) {
+				if !pool.forceNotTerminal && isatty.IsTerminal(os.Stdout.Fd()) {
 					messages[msg.i] = msg.body
 					printMessages()
 				} else {
@@ -211,7 +213,7 @@ func (pool *Pool) Start() {
 				}
 			case <-waitChannel:
 				exitfor = true
-				if isatty.IsTerminal(os.Stdout.Fd()) {
+				if !pool.forceNotTerminal && isatty.IsTerminal(os.Stdout.Fd()) {
 					writer.Stop()
 				}
 				close(messageChannel)
@@ -220,7 +222,7 @@ func (pool *Pool) Start() {
 		}
 	}()
 
-	if isatty.IsTerminal(os.Stdout.Fd()) {
+	if !pool.forceNotTerminal && isatty.IsTerminal(os.Stdout.Fd()) {
 		messageChannel <- message_t{
 			pool.numTasks,
 			makeProgressBar(finishedTasks, pool.numTasks),

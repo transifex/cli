@@ -119,7 +119,7 @@ func AddRemoteCommand(
 		}
 
 		// Add to local config (in RAM, will save to disk later)
-		cfg.Local.Resources = append(cfg.Local.Resources, config.Resource{
+		cfg.AddResource(config.Resource{
 			OrganizationSlug:  organizationSlug,
 			ProjectSlug:       projectSlug,
 			ResourceSlug:      resourceAttributes.Slug,
@@ -128,6 +128,7 @@ func AddRemoteCommand(
 			SourceLanguage:    sourceLanguageCode,
 			Type:              i18nFormat.Id,
 			MinimumPercentage: minimumPerc,
+			ResourceName:      resourceAttributes.Name,
 		})
 		fmt.Printf(
 			"Added '%s.%s' to configuration\n",

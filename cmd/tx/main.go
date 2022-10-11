@@ -152,6 +152,10 @@ func Main() {
 						Aliases: []string{"w"},
 						Value:   5,
 					},
+					&cli.BoolFlag{
+						Name:  "silent",
+						Usage: "Whether to reduce verbosity of the output",
+					},
 				},
 				Action: func(c *cli.Context) error {
 					cfg, err := config.LoadFromPaths(
@@ -225,6 +229,7 @@ func Main() {
 						Branch:           c.String("branch"),
 						All:              c.Bool("all"),
 						Workers:          c.Int("workers"),
+						Silent:           c.Bool("silent"),
 					}
 
 					if args.All && len(args.Languages) > 0 {
@@ -369,6 +374,10 @@ func Main() {
 						Aliases: []string{"w"},
 						Value:   5,
 					},
+					&cli.BoolFlag{
+						Name:  "silent",
+						Usage: "Whether to reduce verbosity of the output",
+					},
 				},
 				Action: func(c *cli.Context) error {
 					cfg, err := config.LoadFromPaths(c.String("root-config"),
@@ -420,6 +429,7 @@ func Main() {
 						Branch:            c.String("branch"),
 						MinimumPercentage: c.Int("minimum-perc"),
 						Workers:           c.Int("workers"),
+						Silent:            c.Bool("silent"),
 					}
 
 					if c.Bool("xliff") && c.Bool("json") {
@@ -461,6 +471,15 @@ func Main() {
 						), 1)
 					}
 
+					if !arguments.Translations &&
+						(arguments.All || len(arguments.Languages) > 0) {
+						return cli.Exit(errorColor(
+							"It doesn't make sense to use the '--all' or "+
+								"'--language' flag without the "+
+								"'--translation' flag",
+						), 1)
+					}
+
 					err = txlib.PullCommand(&cfg, &api, &arguments)
 					if err != nil {
 						return cli.Exit(err, 1)
@@ -490,7 +509,7 @@ func Main() {
 						)
 					}
 
-					flagList := []string{
+					requiredFlagList := []string{
 						"organization",
 						"project",
 						"resource",
@@ -498,7 +517,7 @@ func Main() {
 						"type",
 					}
 					var missingFlags []string
-					for _, value := range flagList {
+					for _, value := range requiredFlagList {
 						if c.String(value) == "" {
 							missingFlags = append(missingFlags, value)
 						}
@@ -513,6 +532,7 @@ func Main() {
 						FileFilter:       c.String("file-filter"),
 						RType:            c.String("type"),
 						SourceFile:       sourceFile,
+						ResourceName:     c.String("resource-name"),
 					}
 					if missingFlagsCount == 0 {
 						return txlib.AddCommand(
@@ -521,7 +541,7 @@ func Main() {
 						)
 					}
 
-					if missingFlagsCount == len(flagList) {
+					if missingFlagsCount == len(requiredFlagList) {
 						hostname, token, err := txlib.GetHostAndToken(
 							&cfg, c.String("hostname"), c.String("token"),
 						)
@@ -549,7 +569,7 @@ func Main() {
 					}
 
 					if missingFlagsCount >= 1 &&
-						missingFlagsCount < len(flagList) {
+						missingFlagsCount < len(requiredFlagList) {
 						err := cli.ShowCommandHelp(c, "add")
 						if err != nil {
 							return cli.Exit(err, 1)
@@ -586,6 +606,11 @@ func Main() {
 					&cli.StringFlag{
 						Name:  "type",
 						Usage: "The file format type of your resource",
+					},
+					&cli.StringFlag{
+						Name: "resource-name",
+						Usage: "The name that will be used if the client needs to create the " +
+							"resource on Transifex",
 					},
 				},
 				Subcommands: []*cli.Command{

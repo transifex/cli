@@ -17,6 +17,7 @@ This script will:
 **Note:** You need to restart your terminal for the `PATH` changes to be applied.
 
 ### Download from Github Releases (Linux/Mac/Windows)
+
 Another way to install the Transifex CLI is to download
 the latest version of the binary from GitHub
 [here](https://github.com/transifex/cli/releases).
@@ -33,6 +34,7 @@ Clone the [repository](https://github.com/transifex/cli) and go into the directo
 cd /path/to/transifex/cli
 ```
 ### Building from source
+
 The default way to build the binary is
 
   ```shell
@@ -49,6 +51,18 @@ the following command:
   ```
 
 This will build the binary and it will copy it at `./bin/` in the repository.
+
+### Running from Docker (beta)
+
+You can skip the installation and run the Transifex client from Docker if it is
+available in your system. All you have to do is put this line:
+
+```sh
+alias tx='touch ~/.transifexrc; docker run --rm -i -t -v `pwd`:/app -v ~/.transifexrc:/.transifexrc -v /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt transifex/txcli --root-config /.transifexrc'
+```
+
+to your `~/.bashrc` / `~/.zshrc`. (The first time you use it you will have to
+wait for a ~5MB download)
 
 ## Migrating from older versions of the client
 
@@ -219,6 +233,7 @@ host = https://www.transifex.com
 source_file = locale/en.php
 file_filter = locale/<lang>.php
 type = PHP
+resource_name = Web Application
 ```
 
 You can skip steps from the interactive session by adding flags to the `tx add`
@@ -232,12 +247,13 @@ all the flags:
     --organization=organization-1 \
     --project=project-1 \
     --resource=en_php \
+    --resource-name='Web Application' \
     locale/en.php
 ```
 
 #### Adding resources in bulk
 
-> With the old client I could add multiple resource at the same time with `tx
+> With the old client I could add multiple resources at the same time with `tx
 > config mapping-bulk`. What should I do now?
 
 We decided not to implement this functionality in the new client because its
@@ -329,18 +345,21 @@ file_filter = translations/myproject.resource1/<lang>.po
 source_file = translations/myproject.resource1/en.po
 type = PO
 minimum_perc = 0
+resource_name = Resource 1
 
 [o:myorganization:p:myproject:r:resource2]
 file_filter = translations/myproject.resource2/<lang>.json
 source_file = translations/myproject.resource2/en.json
 type = KEYVALUEJSON
 minimum_perc = 0
+resource_name = Resource 2
 
 [o:myorganization:p:myproject:r:resource3]
 file_filter = translations/myproject.resource3/<lang>.html
 source_file = translations/myproject.resource3/en.html
 type = HTML
 minimum_perc = 0
+resource_name = Resource 3
 ```
 
 The options for this command are:
