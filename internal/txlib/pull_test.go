@@ -50,15 +50,7 @@ func TestPullCommandResourceExists(t *testing.T) {
 	testSimpleTranslationDownload(t, mockData)
 	testSimpleGet(t, mockData, translationDownloadUrl)
 
-	data, err := os.ReadFile("aaa-el.json")
-	if err != nil {
-		t.Error(err)
-	}
-	actual := strings.Trim(string(data), " \n")
-	expected := "This is the content"
-	if actual != expected {
-		t.Errorf("Wrong file saved; expected: '%s', got '%s'", expected, actual)
-	}
+	assertFileContent(t, "aaa-el.json", "This is the content")
 }
 
 func TestPullCommandFileExists(t *testing.T) {
@@ -101,15 +93,7 @@ func TestPullCommandFileExists(t *testing.T) {
 	testSimpleTranslationDownload(t, mockData)
 	testSimpleGet(t, mockData, translationDownloadUrl)
 
-	data, err := os.ReadFile("aaa-el.json")
-	if err != nil {
-		t.Error(err)
-	}
-	actual := strings.Trim(string(data), " \n")
-	expected := "This is the content"
-	if actual != expected {
-		t.Errorf("Wrong file saved; expected: '%s', got '%s'", expected, actual)
-	}
+	assertFileContent(t, "aaa-el.json", "This is the content")
 }
 
 func TestPullCommandDownloadSource(t *testing.T) {
@@ -153,15 +137,7 @@ func TestPullCommandDownloadSource(t *testing.T) {
 	testSimpleSourceDownload(t, mockData)
 	testSimpleGet(t, mockData, sourceDownloadUrl)
 
-	data, err := os.ReadFile("aaa.json")
-	if err != nil {
-		t.Errorf("%s", err)
-	}
-	actual := strings.Trim(string(data), " \n")
-	expected := "New source"
-	if actual != expected {
-		t.Errorf("Wrong file saved; expected: '%s', got '%s'", expected, actual)
-	}
+	assertFileContent(t, "aaa.json", "New source")
 }
 
 func TestPullCommandSkipOnTranslatedMinPerc(t *testing.T) {
@@ -261,15 +237,7 @@ func TestPullCommandProceedOnEqualTranslatedMinPerc(t *testing.T) {
 	testSimpleTranslationDownload(t, mockData)
 	testSimpleGet(t, mockData, translationDownloadUrl)
 
-	data, err := os.ReadFile("aaa-el.json")
-	if err != nil {
-		t.Error(err)
-	}
-	actual := strings.Trim(string(data), " \n")
-	expected := "This is the content"
-	if actual != expected {
-		t.Errorf("Wrong file saved; expected: '%s', got '%s'", expected, actual)
-	}
+	assertFileContent(t, "aaa-el.json", "This is the content")
 }
 
 func TestPullCommandOverrides(t *testing.T) {
@@ -313,15 +281,51 @@ func TestPullCommandOverrides(t *testing.T) {
 	testSimpleTranslationDownload(t, mockData)
 	testSimpleGet(t, mockData, translationDownloadUrl)
 
-	data, err := os.ReadFile("custom_path.json")
+	assertFileContent(t, "aaa-el.json", "This is the content")
+}
+
+func TestPullCommandMultipleLangParameters(t *testing.T) {
+	afterTest := beforeTest(t, []string{"el"}, nil)
+	defer afterTest()
+
+	cfg := getStandardConfig()
+	cfg.Local.Resources[0].FileFilter = "locale/<lang>/aaa-<lang>.json"
+
+	ts := getNewTestServer("This is the content")
+	defer ts.Close()
+
+	mockData := jsonapi.MockData{
+		resourceUrl:             getResourceEndpoint(),
+		projectUrl:              getProjectEndpoint(),
+		statsUrlAllLanguages:    getStatsEndpointAllLanguages(),
+		translationDownloadsUrl: getTranslationDownloadsEndpoint(),
+		translationDownloadUrl:  getDownloadEndpoint(ts.URL),
+	}
+
+	api := jsonapi.GetTestConnection(mockData)
+
+	arguments := PullCommandArguments{
+		FileType:          "default",
+		Mode:              "default",
+		Force:             true,
+		All:               true,
+		ResourceIds:       nil,
+		MinimumPercentage: -1,
+		Workers:           1,
+	}
+
+	err := PullCommand(cfg, &api, &arguments)
 	if err != nil {
-		t.Error(err)
+		t.Errorf("%s", err)
 	}
-	actual := strings.Trim(string(data), " \n")
-	expected := "This is the content"
-	if actual != expected {
-		t.Errorf("Wrong file saved; expected: '%s', got '%s'", expected, actual)
-	}
+
+	testSimpleGet(t, mockData, resourceUrl)
+	testSimpleGet(t, mockData, projectUrl)
+	testSimpleGet(t, mockData, statsUrlAllLanguages)
+	testSimpleTranslationDownload(t, mockData)
+	testSimpleGet(t, mockData, translationDownloadUrl)
+
+	assertFileContent(t, "locale/el/aaa-el.json", "This is the content")
 }
 
 func TestPullCommandSkipOnReviewedMinPerc(t *testing.T) {
@@ -541,6 +545,17 @@ func TestShouldSkipDueToStringPercentage(t *testing.T) {
 
 	result = shouldSkipDueToStringPercentage(99, 989, 1000)
 	assert.Equal(t, result, true)
+}
+
+func assertFileContent(t *testing.T, expectedPath, expectedContent string) {
+	data, err := os.ReadFile(expectedPath)
+	if err != nil {
+		t.Error(err)
+	}
+	actual := strings.Trim(string(data), " \n")
+	if actual != expectedContent {
+		t.Errorf("Wrong file saved; expected: '%s', got '%s'", expectedContent, actual)
+	}
 }
 
 func getTranslationDownloadsEndpoint() *jsonapi.MockEndpoint {
