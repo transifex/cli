@@ -370,7 +370,7 @@ The options for this command are:
 
   - `<project_slug>`
   - `<resource_slug>` _(required)_
-  - `<lang>` _(required)_
+  - `<lang>` _(required)_ - can be used multiple times in the filter path
   - `<ext>`
 
   The default value for this option is
