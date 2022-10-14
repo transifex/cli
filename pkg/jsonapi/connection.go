@@ -82,22 +82,35 @@ func (c *Connection) request(
 Get
 Returns a Resource instance from the server based on its 'type' and 'id'
 */
+func (c *Connection) GetBody(Type, Id string) ([]byte, error) {
+	url := fmt.Sprintf("/%s/%s", Type, Id)
+	body, err := c.request("GET", url, nil, "")
+	if err != nil {
+		return nil, err
+	}
+	return body, nil
+}
+
 func (c *Connection) Get(Type, Id string) (Resource, error) {
 	url := fmt.Sprintf("/%s/%s", Type, Id)
 	return c.getFromPath(url)
 }
 
 func (c *Connection) getFromPath(path string) (Resource, error) {
-	var response PayloadSingular
 	var result Resource
 
 	body, err := c.request("GET", path, nil, "")
 	if err != nil {
 		return result, err
 	}
-	err = json.Unmarshal(body, &response)
+	return postProcessGetResponse(c, body)
+}
+
+func postProcessGetResponse(c *Connection, body []byte) (Resource, error) {
+	var response PayloadSingular
+	err := json.Unmarshal(body, &response)
 	if err != nil {
-		return result, err
+		return Resource{}, err
 	}
 	return payloadToResource(response.Data, nil, c)
 }
@@ -108,23 +121,39 @@ Returns a Collection instance from the server. Query is a URL encoded set of GET
 variables that can be easily generated from the Query type and Query.Encode
 method.
 */
-func (c *Connection) List(Type, Query string) (Collection, error) {
+func (c *Connection) ListBody(Type, Query string) ([]byte, error) {
 	Url := fmt.Sprintf("/%s", Type)
 	if Query != "" {
 		Url = Url + "?" + Query
 	}
-	return c.listFromPath(Url)
+	body, err := c.request("GET", Url, nil, "")
+	if err != nil {
+		return nil, err
+	}
+	return body, nil
+}
+
+func (c *Connection) List(Type, Query string) (Collection, error) {
+	body, err := c.ListBody(Type, Query)
+	if err != nil {
+		return Collection{}, err
+	}
+	return postProcessListResponse(c, body)
 }
 
 func (c *Connection) listFromPath(Url string) (Collection, error) {
-	var result Collection
 	body, err := c.request("GET", Url, nil, "")
 	if err != nil {
-		return result, err
+		return Collection{}, err
 	}
+	return postProcessListResponse(c, body)
+}
+
+func postProcessListResponse(c *Connection, body []byte) (Collection, error) {
+	var result Collection
 
 	var response PayloadPluralRead
-	err = json.Unmarshal(body, &response)
+	err := json.Unmarshal(body, &response)
 	if err != nil {
 		return result, err
 	}
