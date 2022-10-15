@@ -8,6 +8,7 @@ import (
 
 // TODOs:
 //   - Add more stuff
+//     - Team managers
 //   - Downloads/uploads
 //   - Figure out how to generate most of the code from a configuration
 
@@ -151,12 +152,14 @@ var Cmd = &cli.Command{
 			Name: "create",
 			Subcommands: []*cli.Command{
 				{Name: "project", Action: cliCmdCreateProject},
+				{Name: "team", Action: cliCmdCreateTeam},
 			},
 		},
 		{
 			Name: "delete",
 			Subcommands: []*cli.Command{
 				{Name: "project", Action: cliCmdDeleteProject},
+				{Name: "team", Action: cliCmdDeleteTeam},
 			},
 		},
 		{

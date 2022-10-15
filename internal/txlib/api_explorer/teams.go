@@ -1,18 +1,36 @@
 package api_explorer
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/mattn/go-isatty"
 	"github.com/transifex/cli/pkg/jsonapi"
 	"github.com/urfave/cli/v2"
 )
 
+const CREATE_TEAM_STRING = `{
+  "// Required fields": "",
+
+  "name": "The team's name",
+
+  "// Optional fields (remember to remove the leading '//' from the keys)": "",
+
+  "//auto_join": false,
+  "//cla": "",
+  "//cla_required": false
+}`
+
 func selectTeamId(
-	api *jsonapi.Connection, organizationId string, allowEmpty bool,
+	api *jsonapi.Connection, organizationId string, allowEmpty bool, header string,
 ) (string, error) {
+	if header == "" {
+		header = "Select team"
+	}
+
 	query := jsonapi.Query{Filters: map[string]string{"organization": organizationId}}
 
 	body, err := api.ListBody("teams", query.Encode())
@@ -23,7 +41,7 @@ func selectTeamId(
 	teamId, err := fuzzy(
 		api,
 		body,
-		"Select team",
+		header,
 		func(team *jsonapi.Resource) string {
 			return fmt.Sprintf(
 				"%s (%s)",
@@ -53,7 +71,7 @@ func getTeamId(
 				return "", err
 			}
 		}
-		teamId, err = selectTeamId(api, organizationId, allowEmpty)
+		teamId, err = selectTeamId(api, organizationId, allowEmpty, "")
 		if err != nil {
 			return "", err
 		}
@@ -171,5 +189,81 @@ func cliCmdEditTeam(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func cliCmdDeleteTeam(c *cli.Context) error {
+	api, err := getApi(c)
+	if err != nil {
+		return err
+	}
+	organizationId, err := getOrganizationId(api)
+	if err != nil {
+		return err
+	}
+	teamId, err := selectTeamId(api, organizationId, false, "Select team to delete")
+	if err != nil {
+		return err
+	}
+	fmt.Printf("About to delete team: %s, are you sure (y/N)? ", teamId)
+	reader := bufio.NewReader(os.Stdin)
+	answer, err := reader.ReadString('\n')
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(strings.ToLower(answer)) == "y" {
+		team := jsonapi.Resource{API: api, Type: "teams", Id: teamId}
+		err = team.Delete()
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Deleted team: %s\n", teamId)
+	}
+	return nil
+}
+
+func cliCmdCreateTeam(c *cli.Context) error {
+	api, err := getApi(c)
+	if err != nil {
+		return err
+	}
+
+	if !isatty.IsTerminal(os.Stdin.Fd()) {
+		body, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return err
+		}
+		_, err = api.Request("POST", "/teams", body, "")
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	organizationId, err := getOrganizationId(api)
+	if err != nil {
+		return err
+	}
+	attributes, err := create(
+		CREATE_TEAM_STRING,
+		c.String("editor"),
+		[]string{"name", "auto_join", "cla", "cla_required"},
+	)
+	if err != nil {
+		return err
+	}
+	team := jsonapi.Resource{
+		API:        api,
+		Type:       "teams",
+		Attributes: attributes,
+	}
+	team.SetRelated("organization", &jsonapi.Resource{
+		Type: "organizations",
+		Id:   organizationId,
+	})
+	err = team.Save(nil)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Created team: %s\n", team.Id)
 	return nil
 }
