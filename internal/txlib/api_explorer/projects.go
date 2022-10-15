@@ -2,7 +2,6 @@ package api_explorer
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -317,7 +316,6 @@ func cliCmdCreateProject(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-
 	if !isatty.IsTerminal(os.Stdin.Fd()) {
 		body, err := io.ReadAll(os.Stdin)
 		if err != nil {
@@ -329,12 +327,7 @@ func cliCmdCreateProject(c *cli.Context) error {
 		}
 		return nil
 	}
-
 	organizationId, err := getOrganizationId(api)
-	if err != nil {
-		return err
-	}
-	teamId, err := getTeamId(api, organizationId, true)
 	if err != nil {
 		return err
 	}
@@ -345,27 +338,22 @@ func cliCmdCreateProject(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	body, err := invokeEditor(
-		[]byte(CREATE_PROJECT_STRING),
+	teamId, err := getTeamId(api, organizationId, true)
+	if err != nil {
+		return err
+	}
+	attributes, err := create(
+		CREATE_PROJECT_STRING,
 		c.String("editor"),
+		[]string{
+			"name", "slug", "private", "description", "homepage_url",
+			"instructions_url", "license", "long_description",
+			"machine_tranlation_fillup", "repository_url", "tags",
+			"translation_memory_fillup", "type",
+		},
 	)
 	if err != nil {
 		return err
-	}
-	var attributes map[string]interface{}
-	err = json.Unmarshal(body, &attributes)
-	if err != nil {
-		return err
-	}
-	FIELDS := []string{
-		"name", "slug", "private", "description", "homepage_url", "instructions_url",
-		"license", "long_description", "machine_tranlation_fillup", "repository_url",
-		"tags", "translation_memory_fillup", "type",
-	}
-	for field := range attributes {
-		if !stringSliceContains(FIELDS, field) {
-			delete(attributes, field)
-		}
 	}
 	project := jsonapi.Resource{
 		API:        api,
@@ -434,7 +422,7 @@ func cliCmdChangeProjectTeam(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	teamId, err := selectTeamId(api, organizationId, false)
+	teamId, err := selectTeamId(api, organizationId, false, "")
 	if err != nil {
 		return err
 	}
