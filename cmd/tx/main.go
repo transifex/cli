@@ -244,7 +244,7 @@ func Main() {
 						return cli.Exit(errorColor(
 							"It doesn't make sense to use the '--all' or "+
 								"'--language' flag without the "+
-								"'--translation' flag",
+								"'--translation' or '--translations' flag",
 						), 1)
 					}
 
