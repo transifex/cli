@@ -317,7 +317,7 @@ func (r *Resource) modifyPluralRelationship(
 		// Make an extra effort
 		url = fmt.Sprintf("/%s/%s/relationships/%s", r.Type, r.Id, field)
 	}
-	payload := PayloadPluralWrite{}
+	payload := PayloadPluralWrite{Data: make([]PayloadResource, 0)}
 	for i := range items {
 		item := items[i]
 		payload.Data = append(payload.Data, PayloadResource{

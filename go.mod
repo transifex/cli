@@ -8,6 +8,7 @@ require (
 	github.com/go-git/go-git/v5 v5.3.0
 	github.com/gosimple/slug v1.11.2
 	github.com/gosuri/uilive v0.0.4
+	github.com/ktr0731/go-fuzzyfinder v0.6.0
 	github.com/manifoldco/promptui v0.8.0
 	github.com/mattn/go-isatty v0.0.14
 	github.com/rhysd/go-github-selfupdate v1.2.3
