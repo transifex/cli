@@ -143,7 +143,7 @@ func (r *Resource) Save(fields []string) error {
 		return err
 	}
 
-	body, err = r.API.request(method, url, body, "")
+	body, err = r.API.Request(method, url, body, "")
 	if err != nil {
 		return err
 	}
@@ -223,7 +223,7 @@ func (r *Resource) SaveAsMultipart(fields []string) error {
 		return err
 	}
 
-	body, err := r.API.request(
+	body, err := r.API.Request(
 		method, url, payload.Bytes(),
 		fmt.Sprintf("multipart/form-data;boundary=%s", writer.Boundary()),
 	)
@@ -249,7 +249,7 @@ func (r *Resource) Delete() error {
 		// Make an extra effort
 		url = fmt.Sprintf("/%s/%s", r.Type, r.Id)
 	}
-	_, err := r.API.request("DELETE", url, nil, "")
+	_, err := r.API.Request("DELETE", url, nil, "")
 
 	if err != nil {
 		return err
@@ -264,7 +264,7 @@ func (r *Resource) Reload() error {
 		// Make an extra effort
 		url = fmt.Sprintf("/%s/%s", r.Type, r.Id)
 	}
-	body, err := r.API.request("GET", url, nil, "")
+	body, err := r.API.Request("GET", url, nil, "")
 	if err != nil {
 		var e *RedirectError
 		if errors.As(err, &e) {
@@ -323,7 +323,7 @@ func (r *Resource) modifyPluralRelationship(
 	if err != nil {
 		return err
 	}
-	_, err = r.API.request(method, url, payloadBytes, "")
+	_, err = r.API.Request(method, url, payloadBytes, "")
 	if err != nil {
 		return err
 	}

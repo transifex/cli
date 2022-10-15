@@ -7,22 +7,15 @@ import (
 )
 
 // TODOs:
-//   - pagination
-//   - create with stdin for attributes
-//   - add more stuff
-//   - figure out how to generate most of the code from a configuration
+//   - Add more stuff
+//   - Downloads/uploads
+//   - Figure out how to generate most of the code from a configuration
 
 var Cmd = &cli.Command{
 	Name: "api",
 	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "pager",
-			Value: os.Getenv("PAGER"),
-		},
-		&cli.StringFlag{
-			Name:  "editor",
-			Value: os.Getenv("EDITOR"),
-		},
+		&cli.StringFlag{Name: "pager", Value: os.Getenv("PAGER")},
+		&cli.StringFlag{Name: "editor", Value: os.Getenv("EDITOR")},
 	},
 	Subcommands: []*cli.Command{
 		{
@@ -121,6 +114,12 @@ var Cmd = &cli.Command{
 					},
 					Action: cliCmdGetLanguages,
 				},
+				{Name: "language", Action: cliCmdGetLanguage},
+				{
+					Name:   "i18n_formats",
+					Flags:  []cli.Flag{&cli.StringFlag{Name: "name"}},
+					Action: cliCmdGetI18nFormats,
+				},
 			},
 		},
 		{
@@ -137,7 +136,7 @@ var Cmd = &cli.Command{
 				if c.Args().Present() {
 					return clear(c.Args().First())
 				} else {
-					return os.Remove(".tx/api_explorer_data.json")
+					return os.Remove(".tx/api_explorer_session.json")
 				}
 			},
 		},
@@ -178,6 +177,7 @@ var Cmd = &cli.Command{
 					Name: "project",
 					Subcommands: []*cli.Command{
 						{Name: "languages", Action: cliCmdAddProjectLanguages},
+						{Name: "maintainers", Action: cliCmdAddProjectMaintainers},
 					},
 				},
 			},
@@ -189,6 +189,7 @@ var Cmd = &cli.Command{
 					Name: "project",
 					Subcommands: []*cli.Command{
 						{Name: "languages", Action: cliCmdRemoveProjectLanguages},
+						{Name: "maintainers", Action: cliCmdRemoveProjectMaintainers},
 					},
 				},
 			},
@@ -200,6 +201,7 @@ var Cmd = &cli.Command{
 					Name: "project",
 					Subcommands: []*cli.Command{
 						{Name: "languages", Action: cliCmdResetProjectLanguages},
+						{Name: "maintainers", Action: cliCmdResetProjectMaintainers},
 					},
 				},
 			},

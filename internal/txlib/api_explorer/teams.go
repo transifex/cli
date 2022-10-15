@@ -2,7 +2,10 @@ package api_explorer
 
 import (
 	"fmt"
+	"io"
+	"os"
 
+	"github.com/mattn/go-isatty"
 	"github.com/transifex/cli/pkg/jsonapi"
 	"github.com/urfave/cli/v2"
 )
@@ -116,7 +119,15 @@ func cliCmdSelectTeam(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	teamId, err := getTeamId(api, "", false)
+	organizationId, err := getOrganizationId(api)
+	if err != nil {
+		return err
+	}
+	err = save("organization", organizationId)
+	if err != nil {
+		return err
+	}
+	teamId, err := getTeamId(api, organizationId, false)
 	if err != nil {
 		return err
 	}
@@ -136,6 +147,17 @@ func cliCmdEditTeam(c *cli.Context) error {
 	teamId, err := getTeamId(api, "", false)
 	if err != nil {
 		return err
+	}
+	if !isatty.IsTerminal(os.Stdin.Fd()) {
+		body, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return err
+		}
+		_, err = api.Request("PATCH", fmt.Sprintf("/teams/%s", teamId), body, "")
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 	team, err := api.Get("teams", teamId)
 	if err != nil {

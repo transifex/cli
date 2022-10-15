@@ -80,3 +80,26 @@ func cliCmdGetLanguages(c *cli.Context) error {
 	}
 	return nil
 }
+
+func cliCmdGetLanguage(c *cli.Context) error {
+	api, err := getApi(c)
+	if err != nil {
+		return err
+	}
+	languageId, err := selectLanguageId(
+		api,
+		"Select language",
+	)
+	if err != nil {
+		return err
+	}
+	body, err := api.GetBody("languages", languageId)
+	if err != nil {
+		return err
+	}
+	err = page(c.String("pager"), body)
+	if err != nil {
+		return err
+	}
+	return nil
+}
