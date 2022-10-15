@@ -7,7 +7,10 @@ import (
 )
 
 // TODOs:
-//   - reset project languages requires fuzzyMulti with empty
+//   - pagination
+//   - create with stdin for attributes
+//   - add more stuff
+//   - figure out how to generate most of the code from a configuration
 
 var Cmd = &cli.Command{
 	Name: "api",
@@ -25,9 +28,20 @@ var Cmd = &cli.Command{
 		{
 			Name: "get",
 			Subcommands: []*cli.Command{
-				{Name: "organizations", Action: cliCmdGetOrganization},
-				{Name: "organization", Action: cliCmdGetOrganizations},
-				{Name: "projects", Action: cliCmdGetProjects},
+				{
+					Name:   "organizations",
+					Flags:  []cli.Flag{&cli.StringFlag{Name: "slug"}},
+					Action: cliCmdGetOrganizations,
+				},
+				{Name: "organization", Action: cliCmdGetOrganization},
+				{
+					Name: "projects",
+					Flags: []cli.Flag{
+						&cli.StringFlag{Name: "name"},
+						&cli.StringFlag{Name: "slug"},
+					},
+					Action: cliCmdGetProjects,
+				},
 				{
 					Name:   "project",
 					Action: cliCmdGetProject,
@@ -37,9 +51,23 @@ var Cmd = &cli.Command{
 						{Name: "organization", Action: cliCmdGetProjectOrganization},
 					},
 				},
-				{Name: "teams", Action: cliCmdGetTeams},
+				{
+					Name: "teams",
+					Flags: []cli.Flag{
+						&cli.StringFlag{Name: "name"},
+						&cli.StringFlag{Name: "slug"},
+					},
+					Action: cliCmdGetTeams,
+				},
 				{Name: "team", Action: cliCmdGetTeam},
-				{Name: "languages", Action: cliCmdGetLanguages},
+				{
+					Name: "languages",
+					Flags: []cli.Flag{
+						&cli.StringFlag{Name: "code"},
+						&cli.StringFlag{Name: "code-any"},
+					},
+					Action: cliCmdGetLanguages,
+				},
 			},
 		},
 		{

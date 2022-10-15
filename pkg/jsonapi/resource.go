@@ -498,14 +498,14 @@ For "pre-fetching":
     child.SetRelated("parent", parent)
 */
 func (r *Resource) SetRelated(field string, related *Resource) {
+	if r.Relationships == nil {
+		r.Relationships = make(map[string]*Relationship)
+	}
+
 	var links Links
 	existing, exists := r.Relationships[field]
 	if exists {
 		links = existing.Links
-	}
-
-	if r.Relationships == nil {
-		r.Relationships = make(map[string]*Relationship)
 	}
 
 	r.Relationships[field] = &Relationship{

@@ -47,12 +47,16 @@ func getOrganizationId(api *jsonapi.Connection) (string, error) {
 	return organizationId, nil
 }
 
-func cliCmdGetOrganization(c *cli.Context) error {
+func cliCmdGetOrganizations(c *cli.Context) error {
 	api, err := getApi(c)
 	if err != nil {
 		return err
 	}
-	body, err := api.ListBody("organizations", "")
+	query := jsonapi.Query{Filters: make(map[string]string)}
+	if c.String("slug") != "" {
+		query.Filters["slug"] = c.String("slug")
+	}
+	body, err := api.ListBody("organizations", query.Encode())
 	if err != nil {
 		return err
 	}
@@ -63,7 +67,7 @@ func cliCmdGetOrganization(c *cli.Context) error {
 	return nil
 }
 
-func cliCmdGetOrganizations(c *cli.Context) error {
+func cliCmdGetOrganization(c *cli.Context) error {
 	api, err := getApi(c)
 	if err != nil {
 		return err

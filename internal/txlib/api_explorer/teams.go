@@ -70,6 +70,12 @@ func cliCmdGetTeams(c *cli.Context) error {
 	query := jsonapi.Query{
 		Filters: map[string]string{"organization": organizationId},
 	}
+	if c.String("name") != "" {
+		query.Filters["name"] = c.String("name")
+	}
+	if c.String("slug") != "" {
+		query.Filters["slug"] = c.String("slug")
+	}
 	body, err := api.ListBody("teams", query.Encode())
 	if err != nil {
 		return err
