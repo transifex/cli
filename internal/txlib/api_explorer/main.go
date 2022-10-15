@@ -29,6 +29,58 @@ var Cmd = &cli.Command{
 			Name: "get",
 			Subcommands: []*cli.Command{
 				{
+					Name: "next",
+					Action: func(c *cli.Context) error {
+						api, err := getApi(c)
+						if err != nil {
+							return err
+						}
+						url, err := load("next")
+						if err != nil {
+							return err
+						}
+						body, err := api.ListBodyFromPath(url)
+						if err != nil {
+							return err
+						}
+						err = handlePagination(body)
+						if err != nil {
+							return err
+						}
+						err = page(c.String("pager"), body)
+						if err != nil {
+							return err
+						}
+						return nil
+					},
+				},
+				{
+					Name: "previous",
+					Action: func(c *cli.Context) error {
+						api, err := getApi(c)
+						if err != nil {
+							return err
+						}
+						url, err := load("previous")
+						if err != nil {
+							return err
+						}
+						body, err := api.ListBodyFromPath(url)
+						if err != nil {
+							return err
+						}
+						err = handlePagination(body)
+						if err != nil {
+							return err
+						}
+						err = page(c.String("pager"), body)
+						if err != nil {
+							return err
+						}
+						return nil
+					},
+				},
+				{
 					Name:   "organizations",
 					Flags:  []cli.Flag{&cli.StringFlag{Name: "slug"}},
 					Action: cliCmdGetOrganizations,
@@ -47,6 +99,7 @@ var Cmd = &cli.Command{
 					Action: cliCmdGetProject,
 					Subcommands: []*cli.Command{
 						{Name: "languages", Action: cliCmdGetProjectLanguages},
+						{Name: "maintainers", Action: cliCmdGetProjectMaintainers},
 						{Name: "team", Action: cliCmdGetProjectTeam},
 						{Name: "organization", Action: cliCmdGetProjectOrganization},
 					},

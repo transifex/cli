@@ -111,6 +111,10 @@ func cliCmdGetProjects(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	err = handlePagination(body)
+	if err != nil {
+		return err
+	}
 	err = page(c.String("pager"), body)
 	if err != nil {
 		return err
@@ -153,6 +157,35 @@ func cliCmdGetProjectLanguages(c *cli.Context) error {
 	}
 	url := project.Relationships["languages"].Links.Related
 	body, err := api.ListBodyFromPath(url)
+	if err != nil {
+		return err
+	}
+	err = page(c.String("pager"), body)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func cliCmdGetProjectMaintainers(c *cli.Context) error {
+	api, err := getApi(c)
+	if err != nil {
+		return err
+	}
+	projectId, err := getProjectId(api, "")
+	if err != nil {
+		return err
+	}
+	project, err := api.Get("projects", projectId)
+	if err != nil {
+		return err
+	}
+	url := project.Relationships["maintainers"].Links.Related
+	body, err := api.ListBodyFromPath(url)
+	if err != nil {
+		return err
+	}
+	err = handlePagination(body)
 	if err != nil {
 		return err
 	}

@@ -80,6 +80,10 @@ func cliCmdGetTeams(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	err = handlePagination(body)
+	if err != nil {
+		return err
+	}
 	err = page(c.String("pager"), body)
 	if err != nil {
 		return err
