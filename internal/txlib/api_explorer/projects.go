@@ -12,7 +12,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var createProjectString = `{
+const CREATE_PROJECT_STRING = `{
   "// Required fields": "",
 
   "name": "The name of the project",
@@ -100,6 +100,12 @@ func cliCmdGetProjects(c *cli.Context) error {
 	}
 	query := jsonapi.Query{
 		Filters: map[string]string{"organization": organizationId},
+	}
+	if c.String("name") != "" {
+		query.Filters["name"] = c.String("name")
+	}
+	if c.String("slug") != "" {
+		query.Filters["slug"] = c.String("slug")
 	}
 	body, err := api.ListBody("projects", query.Encode())
 	if err != nil {
@@ -277,7 +283,7 @@ func cliCmdCreateProject(c *cli.Context) error {
 		return err
 	}
 	body, err := invokeEditor(
-		[]byte(createProjectString),
+		[]byte(CREATE_PROJECT_STRING),
 		c.String("editor"),
 	)
 	if err != nil {
@@ -302,28 +308,17 @@ func cliCmdCreateProject(c *cli.Context) error {
 		API:        api,
 		Type:       "projects",
 		Attributes: attributes,
-		Relationships: map[string]*jsonapi.Relationship{
-			"organization": {
-				Type: jsonapi.SINGULAR,
-				DataSingular: &jsonapi.Resource{
-					Type: "organizations",
-					Id:   organizationId,
-				},
-			},
-			"source_language": {
-				Type: jsonapi.SINGULAR,
-				DataSingular: &jsonapi.Resource{
-					Type: "languages",
-					Id:   sourceLanguageId,
-				},
-			},
-		},
 	}
+	project.SetRelated("organization", &jsonapi.Resource{
+		Type: "organizations",
+		Id:   organizationId,
+	})
+	project.SetRelated("source_language", &jsonapi.Resource{
+		Type: "languages",
+		Id:   sourceLanguageId,
+	})
 	if teamId != "<empty>" {
-		project.Relationships["team"] = &jsonapi.Relationship{
-			Type:         jsonapi.SINGULAR,
-			DataSingular: &jsonapi.Resource{Type: "teams", Id: teamId},
-		}
+		project.SetRelated("team", &jsonapi.Resource{Type: "teams", Id: teamId})
 	}
 	err = project.Save(nil)
 	if err != nil {

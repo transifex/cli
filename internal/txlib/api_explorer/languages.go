@@ -8,6 +8,15 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+func pprintLanguage(language *jsonapi.Resource) string {
+	var attributes txapi.LanguageAttributes
+	err := language.MapAttributes(&attributes)
+	if err != nil {
+		return language.Id
+	}
+	return fmt.Sprintf("%s (%s)", attributes.Name, attributes.Code)
+}
+
 func selectLanguageId(api *jsonapi.Connection, header string) (string, error) {
 	if header == "" {
 		header = "Select language"
@@ -16,20 +25,7 @@ func selectLanguageId(api *jsonapi.Connection, header string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	languageId, err := fuzzy(
-		api,
-		body,
-		header,
-		func(language *jsonapi.Resource) string {
-			var attributes txapi.LanguageAttributes
-			err := language.MapAttributes(&attributes)
-			if err != nil {
-				return language.Id
-			}
-			return fmt.Sprintf("%s (%s)", attributes.Name, attributes.Code)
-		},
-		false,
-	)
+	languageId, err := fuzzy(api, body, header, pprintLanguage, false)
 	if err != nil {
 		return "", err
 	}
@@ -53,11 +49,7 @@ func selectLanguageIds(api *jsonapi.Connection, projectId string, allowEmpty boo
 		api,
 		body,
 		"Select languages (TAB for multiple selection)",
-		func(language *jsonapi.Resource) string {
-			var attributes txapi.LanguageAttributes
-			language.MapAttributes(&attributes)
-			return fmt.Sprintf("%s (%s)", attributes.Name, attributes.Code)
-		},
+		pprintLanguage,
 		allowEmpty,
 	)
 	if err != nil {
@@ -71,7 +63,14 @@ func cliCmdGetLanguages(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	body, err := api.ListBody("languages", "")
+	query := jsonapi.Query{Filters: make(map[string]string)}
+	if c.String("code") != "" {
+		query.Filters["code"] = c.String("code")
+	}
+	if c.String("code-any") != "" {
+		query.Filters["code__any"] = c.String("code-any")
+	}
+	body, err := api.ListBody("languages", query.Encode())
 	if err != nil {
 		return err
 	}

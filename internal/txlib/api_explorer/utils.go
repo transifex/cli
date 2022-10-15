@@ -367,6 +367,9 @@ func edit(editor string, item *jsonapi.Resource, editable_fields []string) error
 			finalFields = append(finalFields, field)
 		}
 	}
+	if len(finalFields) == 0 {
+		return errors.New("Nothing changed")
+	}
 	item.Attributes = postAttributes
 	err = item.Save(finalFields)
 	if err != nil {
