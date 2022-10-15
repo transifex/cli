@@ -267,3 +267,165 @@ func cliCmdCreateTeam(c *cli.Context) error {
 	fmt.Printf("Created team: %s\n", team.Id)
 	return nil
 }
+
+func cliCmdGetTeamManagers(c *cli.Context) error {
+	api, err := getApi(c)
+	if err != nil {
+		return err
+	}
+	teamId, err := getTeamId(api, "", false)
+	if err != nil {
+		return err
+	}
+	team, err := api.Get("teams", teamId)
+	if err != nil {
+		return err
+	}
+	url := team.Relationships["managers"].Links.Related
+	body, err := api.ListBodyFromPath(url)
+	if err != nil {
+		return err
+	}
+	err = handlePagination(body)
+	if err != nil {
+		return err
+	}
+	err = page(c.String("pager"), body)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func cliCmdAddTeamManagers(c *cli.Context) error {
+	api, err := getApi(c)
+	if err != nil {
+		return err
+	}
+	teamId, err := getTeamId(api, "", false)
+	if err != nil {
+		return err
+	}
+	fmt.Printf(
+		"Write usernames of managers to be added to the team " +
+			"(separated by comma):\n> ",
+	)
+	reader := bufio.NewReader(os.Stdin)
+	answer, err := reader.ReadString('\n')
+	if err != nil {
+		return err
+	}
+	usernames := strings.Split(answer, ",")
+	var payload []*jsonapi.Resource
+	for _, username := range usernames {
+		username = strings.TrimSpace(username)
+		payload = append(payload, &jsonapi.Resource{
+			Type: "users",
+			Id:   fmt.Sprintf("u:%s", username),
+		})
+	}
+	team := &jsonapi.Resource{
+		API:  api,
+		Type: "teams",
+		Id:   teamId,
+		Relationships: map[string]*jsonapi.Relationship{
+			"managers": {Type: jsonapi.PLURAL},
+		},
+	}
+	err = team.Add("managers", payload)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func cliCmdResetTeamManagers(c *cli.Context) error {
+	api, err := getApi(c)
+	if err != nil {
+		return err
+	}
+	teamId, err := getTeamId(api, "", false)
+	if err != nil {
+		return err
+	}
+	fmt.Printf(
+		"Write usernames of users that will replace the managers of the team " +
+			"(separated by comma):\n> ",
+	)
+	reader := bufio.NewReader(os.Stdin)
+	answer, err := reader.ReadString('\n')
+	if err != nil {
+		return err
+	}
+	usernames := strings.Split(answer, ",")
+	var payload []*jsonapi.Resource
+	for _, username := range usernames {
+		username = strings.TrimSpace(username)
+		if username == "" {
+			continue
+		}
+		payload = append(payload, &jsonapi.Resource{
+			Type: "users",
+			Id:   fmt.Sprintf("u:%s", username),
+		})
+	}
+	team := &jsonapi.Resource{
+		API:  api,
+		Type: "teams",
+		Id:   teamId,
+		Relationships: map[string]*jsonapi.Relationship{
+			"managers": {Type: jsonapi.PLURAL},
+		},
+	}
+	err = team.Reset("managers", payload)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func cliCmdRemoveTeamManagers(c *cli.Context) error {
+	api, err := getApi(c)
+	if err != nil {
+		return err
+	}
+	teamId, err := getTeamId(api, "", false)
+	if err != nil {
+		return err
+	}
+	team, err := api.Get("teams", teamId)
+	if err != nil {
+		return err
+	}
+	body, err := api.ListBodyFromPath(
+		fmt.Sprintf("/teams/%s/managers", teamId),
+	)
+	if err != nil {
+		return err
+	}
+	userIds, err := fuzzyMulti(
+		api,
+		body,
+		"Select managers to remove (TAB for multiple selection)",
+		func(user *jsonapi.Resource) string {
+			return user.Attributes["username"].(string)
+		},
+		false,
+	)
+	if err != nil {
+		return err
+	}
+
+	var payload []*jsonapi.Resource
+	for _, userId := range userIds {
+		payload = append(payload, &jsonapi.Resource{
+			Type: "users",
+			Id:   userId,
+		})
+	}
+	err = team.Remove("managers", payload)
+	if err != nil {
+		return err
+	}
+	return nil
+}

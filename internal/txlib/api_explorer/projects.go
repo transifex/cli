@@ -541,7 +541,7 @@ func cliCmdAddProjectMaintainers(c *cli.Context) error {
 		return err
 	}
 	fmt.Printf(
-		"Write usernames of maintainers to be added to project " +
+		"Write usernames of maintainers to be added to the project " +
 			"(separated by comma):\n> ",
 	)
 	reader := bufio.NewReader(os.Stdin)
@@ -595,6 +595,9 @@ func cliCmdResetProjectMaintainers(c *cli.Context) error {
 	var payload []*jsonapi.Resource
 	for _, username := range usernames {
 		username = strings.TrimSpace(username)
+		if username == "" {
+			continue
+		}
 		payload = append(payload, &jsonapi.Resource{
 			Type: "users",
 			Id:   fmt.Sprintf("u:%s", username),

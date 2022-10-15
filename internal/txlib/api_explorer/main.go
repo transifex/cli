@@ -8,7 +8,6 @@ import (
 
 // TODOs:
 //   - Add more stuff
-//     - Team managers
 //   - Downloads/uploads
 //   - Figure out how to generate most of the code from a configuration
 
@@ -106,7 +105,13 @@ var Cmd = &cli.Command{
 					},
 					Action: cliCmdGetTeams,
 				},
-				{Name: "team", Action: cliCmdGetTeam},
+				{
+					Name:   "team",
+					Action: cliCmdGetTeam,
+					Subcommands: []*cli.Command{
+						{Name: "managers", Action: cliCmdGetTeamManagers},
+					},
+				},
 				{
 					Name: "languages",
 					Flags: []cli.Flag{
@@ -183,6 +188,12 @@ var Cmd = &cli.Command{
 						{Name: "maintainers", Action: cliCmdAddProjectMaintainers},
 					},
 				},
+				{
+					Name: "team",
+					Subcommands: []*cli.Command{
+						{Name: "managers", Action: cliCmdAddTeamManagers},
+					},
+				},
 			},
 		},
 		{
@@ -195,6 +206,12 @@ var Cmd = &cli.Command{
 						{Name: "maintainers", Action: cliCmdRemoveProjectMaintainers},
 					},
 				},
+				{
+					Name: "team",
+					Subcommands: []*cli.Command{
+						{Name: "managers", Action: cliCmdRemoveTeamManagers},
+					},
+				},
 			},
 		},
 		{
@@ -205,6 +222,12 @@ var Cmd = &cli.Command{
 					Subcommands: []*cli.Command{
 						{Name: "languages", Action: cliCmdResetProjectLanguages},
 						{Name: "maintainers", Action: cliCmdResetProjectMaintainers},
+					},
+				},
+				{
+					Name: "team",
+					Subcommands: []*cli.Command{
+						{Name: "managers", Action: cliCmdResetTeamManagers},
 					},
 				},
 			},
