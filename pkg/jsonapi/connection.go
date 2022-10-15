@@ -138,7 +138,11 @@ func (c *Connection) List(Type, Query string) (Collection, error) {
 	if err != nil {
 		return Collection{}, err
 	}
-	return postProcessListResponse(c, body)
+	return PostProcessListResponse(c, body)
+}
+
+func (c *Connection) ListBodyFromPath(url string) ([]byte, error) {
+	return c.request("GET", url, nil, "")
 }
 
 func (c *Connection) listFromPath(Url string) (Collection, error) {
@@ -146,10 +150,10 @@ func (c *Connection) listFromPath(Url string) (Collection, error) {
 	if err != nil {
 		return Collection{}, err
 	}
-	return postProcessListResponse(c, body)
+	return PostProcessListResponse(c, body)
 }
 
-func postProcessListResponse(c *Connection, body []byte) (Collection, error) {
+func PostProcessListResponse(c *Connection, body []byte) (Collection, error) {
 	var result Collection
 
 	var response PayloadPluralRead
