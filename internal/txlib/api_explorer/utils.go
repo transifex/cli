@@ -55,8 +55,8 @@ func save(key, value string) error {
 		}
 	}
 	var body []byte
-	if _, err := os.Stat(".tx/api_explorer_data.json"); err == nil {
-		body, err = os.ReadFile(".tx/api_explorer_data.json")
+	if _, err := os.Stat(".tx/api_explorer_session.json"); err == nil {
+		body, err = os.ReadFile(".tx/api_explorer_session.json")
 		if err != nil {
 			return err
 		}
@@ -76,7 +76,7 @@ func save(key, value string) error {
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(".tx/api_explorer_data.json", body, 0644)
+	err = os.WriteFile(".tx/api_explorer_session.json", body, 0644)
 	if err != nil {
 		return err
 	}
@@ -84,13 +84,13 @@ func save(key, value string) error {
 }
 
 func load(key string) (string, error) {
-	_, err := os.Stat(".tx/api_explorer_data.json")
+	_, err := os.Stat(".tx/api_explorer_session.json")
 	if errors.Is(err, os.ErrNotExist) {
 		return "", nil
 	} else if err != nil {
 		return "", err
 	}
-	body, err := os.ReadFile(".tx/api_explorer_data.json")
+	body, err := os.ReadFile(".tx/api_explorer_session.json")
 	if err != nil {
 		return "", err
 	}
@@ -107,13 +107,13 @@ func load(key string) (string, error) {
 }
 
 func clear(key string) error {
-	_, err := os.Stat(".tx/api_explorer_data.json")
+	_, err := os.Stat(".tx/api_explorer_session.json")
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
 	} else if err != nil {
 		return err
 	}
-	body, err := os.ReadFile(".tx/api_explorer_data.json")
+	body, err := os.ReadFile(".tx/api_explorer_session.json")
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func clear(key string) error {
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(".tx/api_explorer_data.json", body, 0644)
+	err = os.WriteFile(".tx/api_explorer_session.json", body, 0644)
 	if err != nil {
 		return err
 	}

@@ -20,7 +20,7 @@ type Connection struct {
 		payload []byte, contentType string) ([]byte, error)
 }
 
-func (c *Connection) request(
+func (c *Connection) Request(
 	method,
 	path string,
 	payload []byte,
@@ -84,7 +84,7 @@ Returns a Resource instance from the server based on its 'type' and 'id'
 */
 func (c *Connection) GetBody(Type, Id string) ([]byte, error) {
 	url := fmt.Sprintf("/%s/%s", Type, Id)
-	body, err := c.request("GET", url, nil, "")
+	body, err := c.Request("GET", url, nil, "")
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func (c *Connection) Get(Type, Id string) (Resource, error) {
 func (c *Connection) getFromPath(path string) (Resource, error) {
 	var result Resource
 
-	body, err := c.request("GET", path, nil, "")
+	body, err := c.Request("GET", path, nil, "")
 	if err != nil {
 		return result, err
 	}
@@ -126,7 +126,7 @@ func (c *Connection) ListBody(Type, Query string) ([]byte, error) {
 	if Query != "" {
 		Url = Url + "?" + Query
 	}
-	body, err := c.request("GET", Url, nil, "")
+	body, err := c.Request("GET", Url, nil, "")
 	if err != nil {
 		return nil, err
 	}
@@ -142,11 +142,11 @@ func (c *Connection) List(Type, Query string) (Collection, error) {
 }
 
 func (c *Connection) ListBodyFromPath(url string) ([]byte, error) {
-	return c.request("GET", url, nil, "")
+	return c.Request("GET", url, nil, "")
 }
 
 func (c *Connection) listFromPath(Url string) (Collection, error) {
-	body, err := c.request("GET", Url, nil, "")
+	body, err := c.Request("GET", Url, nil, "")
 	if err != nil {
 		return Collection{}, err
 	}

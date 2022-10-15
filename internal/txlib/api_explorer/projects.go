@@ -4,9 +4,11 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
+	"github.com/mattn/go-isatty"
 	"github.com/transifex/cli/pkg/jsonapi"
 	"github.com/transifex/cli/pkg/txapi"
 	"github.com/urfave/cli/v2"
@@ -255,6 +257,10 @@ func cliCmdSelectProject(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	err = save("organization", organizationId)
+	if err != nil {
+		return err
+	}
 	projectId, err := selectProjectId(api, organizationId, "")
 	if err != nil {
 		return err
@@ -275,6 +281,17 @@ func cliCmdEditProject(c *cli.Context) error {
 	projectId, err := getProjectId(api, "")
 	if err != nil {
 		return err
+	}
+	if !isatty.IsTerminal(os.Stdin.Fd()) {
+		body, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return err
+		}
+		_, err = api.Request("PATCH", fmt.Sprintf("/projects/%s", projectId), body, "")
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 	project, err := api.Get("projects", projectId)
 	if err != nil {
@@ -300,6 +317,19 @@ func cliCmdCreateProject(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
+	if !isatty.IsTerminal(os.Stdin.Fd()) {
+		body, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return err
+		}
+		_, err = api.Request("POST", "/projects", body, "")
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
 	organizationId, err := getOrganizationId(api)
 	if err != nil {
 		return err
@@ -507,6 +537,136 @@ func cliCmdResetProjectLanguages(c *cli.Context) error {
 		})
 	}
 	err = project.Reset("languages", languages)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func cliCmdAddProjectMaintainers(c *cli.Context) error {
+	api, err := getApi(c)
+	if err != nil {
+		return err
+	}
+	projectId, err := getProjectId(api, "")
+	if err != nil {
+		return err
+	}
+	fmt.Printf(
+		"Write usernames of maintainers to be added to project " +
+			"(separated by comma):\n> ",
+	)
+	reader := bufio.NewReader(os.Stdin)
+	answer, err := reader.ReadString('\n')
+	if err != nil {
+		return err
+	}
+	usernames := strings.Split(answer, ",")
+	var payload []*jsonapi.Resource
+	for _, username := range usernames {
+		username = strings.TrimSpace(username)
+		payload = append(payload, &jsonapi.Resource{
+			Type: "users",
+			Id:   fmt.Sprintf("u:%s", username),
+		})
+	}
+	project := &jsonapi.Resource{
+		API:  api,
+		Type: "projects",
+		Id:   projectId,
+		Relationships: map[string]*jsonapi.Relationship{
+			"maintainers": {Type: jsonapi.PLURAL},
+		},
+	}
+	err = project.Add("maintainers", payload)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func cliCmdResetProjectMaintainers(c *cli.Context) error {
+	api, err := getApi(c)
+	if err != nil {
+		return err
+	}
+	projectId, err := getProjectId(api, "")
+	if err != nil {
+		return err
+	}
+	fmt.Printf(
+		"Write usernames of users that will replace the maintainers of the project " +
+			"(separated by comma):\n> ",
+	)
+	reader := bufio.NewReader(os.Stdin)
+	answer, err := reader.ReadString('\n')
+	if err != nil {
+		return err
+	}
+	usernames := strings.Split(answer, ",")
+	var payload []*jsonapi.Resource
+	for _, username := range usernames {
+		username = strings.TrimSpace(username)
+		payload = append(payload, &jsonapi.Resource{
+			Type: "users",
+			Id:   fmt.Sprintf("u:%s", username),
+		})
+	}
+	project := &jsonapi.Resource{
+		API:  api,
+		Type: "projects",
+		Id:   projectId,
+		Relationships: map[string]*jsonapi.Relationship{
+			"maintainers": {Type: jsonapi.PLURAL},
+		},
+	}
+	err = project.Reset("maintainers", payload)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func cliCmdRemoveProjectMaintainers(c *cli.Context) error {
+	api, err := getApi(c)
+	if err != nil {
+		return err
+	}
+	projectId, err := getProjectId(api, "")
+	if err != nil {
+		return err
+	}
+	project, err := api.Get("projects", projectId)
+	if err != nil {
+		return err
+	}
+	body, err := api.ListBodyFromPath(
+		fmt.Sprintf("/projects/%s/maintainers", projectId),
+	)
+	if err != nil {
+		return err
+	}
+	userIds, err := fuzzyMulti(
+		api,
+		body,
+		"Select maintainers to remove (TAB for multiple selection)",
+		func(user *jsonapi.Resource) string {
+			return user.Attributes["username"].(string)
+		},
+		false,
+	)
+	if err != nil {
+		return err
+	}
+
+	var payload []*jsonapi.Resource
+	for _, userId := range userIds {
+		payload = append(payload, &jsonapi.Resource{
+			Type: "users",
+			Id:   userId,
+		})
+	}
+	err = project.Remove("maintainers", payload)
 	if err != nil {
 		return err
 	}
