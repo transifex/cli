@@ -134,6 +134,32 @@ func clear(key string) error {
 	return nil
 }
 
+func handlePagination(body []byte) error {
+	var payload struct {
+		Links struct {
+			Next     string
+			Previous string
+		}
+	}
+	err := json.Unmarshal(body, &payload)
+	if err != nil {
+		return err
+	}
+	if payload.Links.Next != "" {
+		err = save("next", payload.Links.Next)
+		if err != nil {
+			return err
+		}
+	}
+	if payload.Links.Previous != "" {
+		err = save("previous", payload.Links.Previous)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func page(pager string, body []byte) error {
 	var unmarshalled map[string]interface{}
 	err := json.Unmarshal(body, &unmarshalled)
@@ -368,7 +394,7 @@ func edit(editor string, item *jsonapi.Resource, editable_fields []string) error
 		}
 	}
 	if len(finalFields) == 0 {
-		return errors.New("Nothing changed")
+		return errors.New("nothing changed")
 	}
 	item.Attributes = postAttributes
 	err = item.Save(finalFields)
