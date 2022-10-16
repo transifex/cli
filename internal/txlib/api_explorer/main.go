@@ -126,6 +126,21 @@ var Cmd = &cli.Command{
 					Flags:  []cli.Flag{&cli.StringFlag{Name: "name"}},
 					Action: cliCmdGetI18nFormats,
 				},
+				{
+					Name: "resources",
+					Flags: []cli.Flag{
+						&cli.StringFlag{Name: "slug"},
+						&cli.StringFlag{Name: "name"},
+					},
+					Action: cliCmdGetResources,
+				},
+				{
+					Name:   "resource",
+					Action: cliCmdGetResource,
+					Subcommands: []*cli.Command{
+						{Name: "project", Action: cliCmdGetResourceProject},
+					},
+				},
 			},
 		},
 		{
@@ -134,6 +149,7 @@ var Cmd = &cli.Command{
 				{Name: "organization", Action: cliCmdSelectOrganization},
 				{Name: "project", Action: cliCmdSelectProject},
 				{Name: "team", Action: cliCmdSelectTeam},
+				{Name: "resource", Action: cliCmdSelectResource},
 			},
 		},
 		{
@@ -151,6 +167,7 @@ var Cmd = &cli.Command{
 			Subcommands: []*cli.Command{
 				{Name: "project", Action: cliCmdEditProject},
 				{Name: "team", Action: cliCmdEditTeam},
+				{Name: "resource", Action: cliCmdEditResource},
 			},
 		},
 		{
@@ -158,6 +175,7 @@ var Cmd = &cli.Command{
 			Subcommands: []*cli.Command{
 				{Name: "project", Action: cliCmdCreateProject},
 				{Name: "team", Action: cliCmdCreateTeam},
+				{Name: "resource", Action: cliCmdCreateResource},
 			},
 		},
 		{
@@ -165,6 +183,7 @@ var Cmd = &cli.Command{
 			Subcommands: []*cli.Command{
 				{Name: "project", Action: cliCmdDeleteProject},
 				{Name: "team", Action: cliCmdDeleteTeam},
+				{Name: "resource", Action: cliCmdDeleteResource},
 			},
 		},
 		{

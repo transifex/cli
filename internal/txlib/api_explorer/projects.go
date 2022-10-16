@@ -331,10 +331,7 @@ func cliCmdCreateProject(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	sourceLanguageId, err := selectLanguageId(
-		api,
-		"Select source language",
-	)
+	sourceLanguageId, err := selectLanguageId(api, "Select source language")
 	if err != nil {
 		return err
 	}

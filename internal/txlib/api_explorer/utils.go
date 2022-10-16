@@ -150,12 +150,16 @@ func handlePagination(body []byte) error {
 		if err != nil {
 			return err
 		}
+	} else {
+		clear("next")
 	}
 	if payload.Links.Previous != "" {
 		err = save("previous", payload.Links.Previous)
 		if err != nil {
 			return err
 		}
+	} else {
+		clear("previous")
 	}
 	return nil
 }
