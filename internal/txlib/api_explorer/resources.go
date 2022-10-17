@@ -14,12 +14,12 @@ import (
 )
 
 const CREATE_RESOURCE_STRING = `{
-  "// Required fields": "",
+  "Required fields": "",
 
   "name": "The name of the resource",
   "slug": "the_slug_of_the_resource",
 
-  "// Optional fields (remember to remove the leading '//' from the keys)": "",
+  "Optional fields (remember to remove the leading '//' from the keys)": "",
 
   "//priority": "",
   "//accept_translations": true,
