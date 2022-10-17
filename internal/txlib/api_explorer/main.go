@@ -251,5 +251,43 @@ var Cmd = &cli.Command{
 				},
 			},
 		},
+		{
+			Name: "download",
+			Subcommands: []*cli.Command{
+				{
+					Name: "resource_strings_async_download",
+					Flags: []cli.Flag{
+						&cli.StringFlag{Name: "output", Aliases: []string{"o"}},
+						&cli.IntFlag{
+							Name:    "interval",
+							Aliases: []string{"t"},
+							Value:   2,
+						},
+					},
+					Action: cliCmdDownloadResourceStringsAsyncDownload,
+				},
+			},
+		},
+		{
+			Name: "upload",
+			Subcommands: []*cli.Command{
+				{
+					Name: "resource_strings_async_upload",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:     "input",
+							Aliases:  []string{"i"},
+							Required: true,
+						},
+						&cli.IntFlag{
+							Name:    "interval",
+							Aliases: []string{"t"},
+							Value:   2,
+						},
+					},
+					Action: cliCmdUploadResourceStringsAsyncUpload,
+				},
+			},
+		},
 	},
 }

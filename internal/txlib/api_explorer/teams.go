@@ -13,11 +13,11 @@ import (
 )
 
 const CREATE_TEAM_STRING = `{
-  "// Required fields": "",
+  "Required fields": "",
 
   "name": "The team's name",
 
-  "// Optional fields (remember to remove the leading '//' from the keys)": "",
+  "Optional fields (remember to remove the leading '//' from the keys)": "",
 
   "//auto_join": false,
   "//cla": "",

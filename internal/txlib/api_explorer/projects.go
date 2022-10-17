@@ -14,13 +14,13 @@ import (
 )
 
 const CREATE_PROJECT_STRING = `{
-  "// Required fields": "",
+  "Required fields": "",
 
   "name": "The name of the project",
   "slug": "the_slug_of_the_project",
   "private": true,
 
-  "// Optional fields (remember to remove the leading '//' from the keys)": "",
+  "Optional fields (remember to remove the leading '//' from the keys)": "",
 
   "//description": "",
   "//homepage_url": "",
