@@ -196,9 +196,13 @@ func rootConfigsEqual(left, right *RootConfig) bool {
 }
 
 func GetRootPath() (string, error) {
-	usr, err := user.Current()
-	if err != nil {
-		return "", err
+	homeDir := os.Getenv("HOME")
+	if homeDir == "" {
+		usr, err := user.Current()
+		if err != nil {
+			return "", err
+		}
+		homeDir = usr.HomeDir
 	}
-	return filepath.Join(usr.HomeDir, ".transifexrc"), nil
+	return filepath.Join(homeDir, ".transifexrc"), nil
 }
