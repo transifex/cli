@@ -14,8 +14,8 @@ import (
 var Cmd = &cli.Command{
 	Name: "api",
 	Flags: []cli.Flag{
-		&cli.StringFlag{Name: "pager", Value: os.Getenv("PAGER")},
-		&cli.StringFlag{Name: "editor", Value: os.Getenv("EDITOR")},
+		&cli.StringFlag{Name: "pager", EnvVars: []string{"PAGER"}},
+		&cli.StringFlag{Name: "editor", EnvVars: []string{"EDITOR"}},
 	},
 	Subcommands: []*cli.Command{
 		{
