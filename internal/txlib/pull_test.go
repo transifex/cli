@@ -281,7 +281,7 @@ func TestPullCommandOverrides(t *testing.T) {
 	testSimpleTranslationDownload(t, mockData)
 	testSimpleGet(t, mockData, translationDownloadUrl)
 
-	assertFileContent(t, "aaa-el.json", "This is the content")
+	assertFileContent(t, "custom_path.json", "This is the content")
 }
 
 func TestPullCommandMultipleLangParameters(t *testing.T) {
