@@ -32,6 +32,9 @@ var Cmd = &cli.Command{
 						if err != nil {
 							return err
 						}
+						if url == "" {
+							return nil
+						}
 						body, err := api.ListBodyFromPath(url)
 						if err != nil {
 							return err
@@ -57,6 +60,9 @@ var Cmd = &cli.Command{
 						url, err := load("previous")
 						if err != nil {
 							return err
+						}
+						if url == "" {
+							return nil
 						}
 						body, err := api.ListBodyFromPath(url)
 						if err != nil {

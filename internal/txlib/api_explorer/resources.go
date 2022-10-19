@@ -174,7 +174,7 @@ func cliCmdCreateResource(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	i18nFormatId, err := selectI18nFormatId(api, organizationId)
+	i18nFormatId, err := selectI18nFormatId(api, organizationId, true)
 	if err != nil {
 		return err
 	}
