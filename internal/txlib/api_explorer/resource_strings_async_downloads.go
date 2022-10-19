@@ -48,7 +48,10 @@ func cliCmdDownloadResourceStringsAsyncDownload(c *cli.Context) error {
 		Type:       "resource_strings_async_downloads",
 		Attributes: attributes,
 	}
-	download.SetRelated("resource", &jsonapi.Resource{Type: "resources", Id: resourceId})
+	download.SetRelated(
+		"resource",
+		&jsonapi.Resource{Type: "resources", Id: resourceId},
+	)
 	err = download.Save(nil)
 	if err != nil {
 		return err
