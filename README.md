@@ -414,6 +414,11 @@ resource in Transifex is
 `https://www.transifex.com/myorganization/myproject/myresource`, then the
 resource ID will be `myproject.myresource`.
 
+You can also use the `*` character to select multiple resources with the same
+pattern. So, for instance, if you have the `abc.def` resource ID in your
+configuration, you can select it with either `abc.*`, `*.def`, `ab*ef` or even
+`a*.d*f`.
+
 > Note: for backwards compatibility with previous versions of the client, you
 > can also use the `-r/--resources` flag. You can also use both at the same
 > time:
@@ -570,6 +575,11 @@ You can limit the resources you want to pull with:
 
 As stated in the `tx push` section, a resource ID must refer to a resource that has
 already been configured with `tx add` and has the form `<project>.<resource>`.
+
+You can also use the `*` character to select multiple resources with the same
+pattern. So, for instance, if you have the `abc.def` resource ID in your
+configuration, you can select it with either `abc.*`, `*.def`, `ab*ef` or even
+`a*.d*f`.
 
 > Note: for backwards compatibility with previous versions of the client, you
 > can also use the `-r/--resources` flag. You can also use both at the same
