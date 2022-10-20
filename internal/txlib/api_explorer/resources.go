@@ -44,6 +44,10 @@ func selectResourceId(
 	if err != nil {
 		return "", err
 	}
+	body, err = paginate(api, body)
+	if err != nil {
+		return "", err
+	}
 	resourceId, err := fuzzy(
 		api,
 		body,

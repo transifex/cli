@@ -13,6 +13,10 @@ func selectOrganizationId(api *jsonapi.Connection) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	body, err = paginate(api, body)
+	if err != nil {
+		return "", err
+	}
 	organizationId, err := fuzzy(
 		api,
 		body,

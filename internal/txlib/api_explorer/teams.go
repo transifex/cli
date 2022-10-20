@@ -37,7 +37,10 @@ func selectTeamId(
 	if err != nil {
 		return "", err
 	}
-
+	body, err = paginate(api, body)
+	if err != nil {
+		return "", err
+	}
 	teamId, err := fuzzy(
 		api,
 		body,
