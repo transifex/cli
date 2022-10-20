@@ -556,12 +556,12 @@ func Main() {
 						), 1)
 					}
 
-					if !arguments.Translations &&
+					if arguments.Source && !arguments.Translations &&
 						(arguments.All || len(arguments.Languages) > 0) {
 						return cli.Exit(errorColor(
-							"It doesn't make sense to use the '--all' or "+
-								"'--language' flag without the "+
-								"'--translation' flag",
+							"It doesn't make sense to use the '--all' or '--language' flag with the "+
+								"CLI in \"source pull\" mode ('--source' flag without "+
+								"'--translations' flag)",
 						), 1)
 					}
 

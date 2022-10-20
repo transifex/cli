@@ -461,7 +461,7 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 				cfgResource.FileFilter,
 				"<lang>",
 				localLanguageCode,
-				1,
+				-1,
 			)
 			filePath = setFileTypeExtensions(args.FileType, filePath)
 		}

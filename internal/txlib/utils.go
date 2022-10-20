@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/gosimple/slug"
@@ -29,18 +31,34 @@ func figureOutResources(
 	var result []*config.Resource
 
 	if len(resourceIds) != 0 {
-		result = make([]*config.Resource, 0, len(resourceIds))
+		existingResourceIds := make(map[string]*config.Resource)
+		for i := range cfg.Local.Resources {
+			resource := &cfg.Local.Resources[i]
+			resourceId := fmt.Sprintf("%s.%s", resource.ProjectSlug, resource.ResourceSlug)
+			existingResourceIds[resourceId] = resource
+		}
+
 		for _, resourceId := range resourceIds {
-			cfgResource := cfg.FindResource(resourceId)
-			if cfgResource == nil {
+			pattern, err := regexp.Compile(
+				"^" + strings.ReplaceAll(regexp.QuoteMeta(resourceId), "\\*", ".*") + "$",
+			)
+			if err != nil {
+				return nil, err
+			}
+			atLeastOne := false
+			for existingResourceId := range existingResourceIds {
+				if pattern.MatchString(existingResourceId) {
+					result = append(result, existingResourceIds[existingResourceId])
+					atLeastOne = true
+				}
+			}
+			if !atLeastOne {
 				return nil, fmt.Errorf(
 					"could not find resource '%s' in local configuration or your "+
 						"resource slug is invalid",
 					resourceId,
 				)
 			}
-
-			result = append(result, cfgResource)
 		}
 	} else {
 		for i := range cfg.Local.Resources {
