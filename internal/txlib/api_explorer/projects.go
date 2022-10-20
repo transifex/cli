@@ -47,6 +47,10 @@ func selectProjectId(
 	if err != nil {
 		return "", err
 	}
+	body, err = paginate(api, body)
+	if err != nil {
+		return "", err
+	}
 	projectId, err := fuzzy(
 		api,
 		body,

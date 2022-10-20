@@ -425,3 +425,39 @@ func create(create_string, editor string, fields []string) (map[string]interface
 	}
 	return attributes, nil
 }
+
+func paginate(api *jsonapi.Connection, bodyBytes []byte) ([]byte, error) {
+	var resultJson struct {
+		Data []interface{} `json:"data"`
+	}
+	var bodyJson struct {
+		Data  []interface{} `json:"data"`
+		Links struct {
+			Next string `json:"next"`
+		} `json:"links"`
+	}
+	err := json.Unmarshal(bodyBytes, &bodyJson)
+	if err != nil {
+		return nil, err
+	}
+	resultJson.Data = append(resultJson.Data, bodyJson.Data...)
+	if err != nil {
+		return nil, err
+	}
+	for bodyJson.Links.Next != "" {
+		bodyBytes, err = api.ListBodyFromPath(bodyJson.Links.Next)
+		if err != nil {
+			return nil, err
+		}
+		err := json.Unmarshal(bodyBytes, &bodyJson)
+		if err != nil {
+			return nil, err
+		}
+		resultJson.Data = append(resultJson.Data, bodyJson.Data...)
+	}
+	resultBody, err := json.Marshal(resultJson)
+	if err != nil {
+		return nil, err
+	}
+	return resultBody, nil
+}
