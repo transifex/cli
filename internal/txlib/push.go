@@ -26,6 +26,7 @@ type PushCommandArguments struct {
 	ResourceIds      []string
 	UseGitTimestamps bool
 	Branch           string
+	Base             string
 	All              bool
 	Workers          int
 	Silent           bool
@@ -315,6 +316,8 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 			return
 		}
 		var resourceName string
+		var baseResourceId string
+
 		if args.Branch == "" {
 			resourceName = cfgResource.GetName()
 		} else {
@@ -323,7 +326,38 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 				cfgResource.GetName(),
 				args.Branch,
 			)
+
+			baseResourceSlug := getBaseResourceSlug(cfgResource, args.Branch, args.Base)
+
+			baseResourceId = fmt.Sprintf(
+				"o:%s:p:%s:r:%s",
+				cfgResource.OrganizationSlug,
+				cfgResource.ProjectSlug,
+				baseResourceSlug,
+			)
+			baseResource, err := txapi.GetResourceById(api, baseResourceId)
+			if err != nil {
+				sendMessage(fmt.Sprintf("Error while fetching base resource: %s", err), true)
+				if !args.Skip {
+					abort()
+				}
+				return
+			}
+			if args.Base != "-1" {
+				if baseResource == nil {
+					sendMessage(fmt.Sprintf("Base Resource does not exist: %s", baseResourceId), true)
+					if !args.Skip {
+						abort()
+					}
+					return
+				}
+			} else {
+				if baseResource == nil {
+					baseResourceId = ""
+				}
+			}
 		}
+
 		resource, err = txapi.CreateResource(
 			api,
 			fmt.Sprintf(
@@ -333,13 +367,37 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 			),
 			resourceName,
 			cfgResource.ResourceSlug,
-			cfgResource.Type)
+			cfgResource.Type,
+			baseResourceId,
+		)
 		if err != nil {
 			sendMessage(fmt.Sprintf("Error while creating resource, %s", err), true)
 			if !args.Skip {
 				abort()
 			}
 			return
+		}
+	} else {
+		if args.Branch != "" && args.Base != "-1" {
+			baseResourceSlug := getBaseResourceSlug(cfgResource, args.Branch, args.Base)
+
+			baseResourceId := fmt.Sprintf(
+				"o:%s:p:%s:r:%s",
+				cfgResource.OrganizationSlug,
+				cfgResource.ProjectSlug,
+				baseResourceSlug,
+			)
+
+			applyBranchToResources([]*config.Resource{cfgResource}, args.Branch)
+			resource.SetRelated("base", &jsonapi.Resource{Type: "resources", Id: baseResourceId})
+			err = resource.Save([]string{"base"})
+			if err != nil {
+				sendMessage(err.Error(), true)
+				if !args.Skip {
+					abort()
+				}
+				return
+			}
 		}
 	}
 

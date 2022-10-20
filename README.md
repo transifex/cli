@@ -547,6 +547,17 @@ fall back to taking the filesystem timestamp into account.
   `https://www.transifex.com/myorganization/myproject/new_feature--myresource`
   resource.
 
+  > Note: Starting from version 1.4.2 resources created using the `--branch` flag,
+  will have an enhanced functionality in transifex and will be able to automatically
+  be merged into their bases. Resources created using the `--branch`  prior to this
+  version, need to be pushed again in order for the new functionality to be available..
+
+  ```sh
+  → tx push --branch 'new_feature' --base '' myproject.myresource
+  ```
+
+- `--base`: Define the base branch when pushing a branch.
+
 - `--skip`: Normally, if an upload fails, the client will abort. This may not
   be desirable if most uploads are expected to succeed. For example, the reason
   of the failed upload may be a syntax error in _one_ of the language files. If
@@ -781,7 +792,16 @@ tx delete project_slug.\*
   If you supply an empty string as the branch (`--branch ''`), then the client
   will attempt to figure out the currently active branch in the local git repository.
 
+### Merging Resource
+The tx merge command lets you merge a branch resource with its base resource (applies only to resources created with the `--branch` flag)
 
+To merge a resource to its base resource, use the following command:
+```
+tx merge --branch branch_name project_slug.resource_slug
+```
+**Other flags:**
+- `--conflict-resolution`: Set the conflict resolution strategy. Acceptable options are `USE_HEAD` (changes in the HEAD resource will be used) and `USE_BASE` (changes in the BASE resource will be used)
+- `--force`: In case you want to proceed with the merge even if the source strings are diverged, use the `-f/--force` flag.
 
 ### Getting the local status of the project
 The status command displays the existing configuration in a human readable format. It lists all resources that have been initialized under the local repo/directory and all their associated translation files:

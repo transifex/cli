@@ -398,7 +398,8 @@ func nameToSlugsForMigrate(in string) (string, string, string, error) {
 
 /*
 Name Return the name of a resource as it appears in the configuration file. The
-format is the same as the ID of the resource in APIv3 */
+format is the same as the ID of the resource in APIv3
+*/
 func (localCfg *Resource) Name() string {
 	var result string
 	if localCfg.OrganizationSlug != "" {
