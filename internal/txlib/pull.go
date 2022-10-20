@@ -44,7 +44,7 @@ func PullCommand(
 	if err != nil {
 		return err
 	}
-	applyBranchToResources(cfgResources, args.Branch)
+	applyBranchToResources(cfgResources, args.Branch, "")
 	sort.Slice(cfgResources, func(i, j int) bool {
 		return cfgResources[i].GetAPv3Id() < cfgResources[j].GetAPv3Id()
 	})

@@ -88,6 +88,85 @@ func Main() {
 				},
 			},
 			{
+				Name:  "merge",
+				Usage: "tx merge [options] [resource_id]",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name: "branch",
+						Usage: "Merge specific branch (omit " +
+							"if it can be determined)",
+						Value: "",
+					},
+					&cli.StringFlag{
+						Name: "conflict_resolution",
+						Usage: "Merge specific branch (omit " +
+							"if it can be determined)",
+						Value: "USE_BASE",
+					},
+				},
+				Action: func(c *cli.Context) error {
+					cfg, err := config.LoadFromPaths(
+						c.String("root-config"),
+						c.String("config"),
+					)
+					if err != nil {
+						return cli.Exit(
+							errorColor(
+								"Error loading configuration: %s",
+								err,
+							),
+							1,
+						)
+					}
+					hostname, token, err := txlib.GetHostAndToken(
+						&cfg, c.String("hostname"), c.String("token"),
+					)
+					if err != nil {
+						return cli.Exit(
+							errorColor(
+								"Error getting API token: %s",
+								err,
+							),
+							1,
+						)
+					}
+
+					client, err := txlib.GetClient(c.String("cacert"))
+					if err != nil {
+						return cli.Exit(
+							errorColor(
+								"Error getting HTTP client configuration: %s",
+								err,
+							),
+							1,
+						)
+					}
+
+					api := jsonapi.Connection{
+						Host:   hostname,
+						Token:  token,
+						Client: client,
+						Headers: map[string]string{
+							"Integration": "txclient",
+						},
+					}
+
+					resourceId := c.Args().Slice()[0]
+					fmt.Println(resourceId)
+					fmt.Println(c.String("branch"))
+					args := txlib.MergeCommandArguments{
+						ResourceId:         resourceId,
+						Branch:             c.String("branch"),
+						ConflictResolution: c.String("conflict_resolution"),
+					}
+					err = txlib.MergeCommand(&cfg, api, args)
+					if err != nil {
+						return cli.Exit("", 1)
+					}
+					return nil
+				},
+			},
+			{
 				Name:  "push",
 				Usage: "tx push [options] [resource_id...]",
 				Flags: []cli.Flag{
@@ -145,6 +224,11 @@ func Main() {
 							"'' to use the current branch, if it can be " +
 							"determined)",
 						Value: "-1",
+					},
+					&cli.StringFlag{
+						Name:  "base",
+						Usage: "Push current branch to specific base branch",
+						Value: "",
 					},
 					&cli.IntFlag{
 						Name:    "workers",
@@ -227,6 +311,7 @@ func Main() {
 						ResourceIds:      resourceIds,
 						UseGitTimestamps: c.Bool("use-git-timestamps"),
 						Branch:           c.String("branch"),
+						Base:             c.String("base"),
 						All:              c.Bool("all"),
 						Workers:          c.Int("workers"),
 						Silent:           c.Bool("silent"),

@@ -50,16 +50,25 @@ func figureOutResources(
 	return result, nil
 }
 
-func applyBranchToResources(cfgResources []*config.Resource, branch string) {
+func applyBranchToResources(cfgResources []*config.Resource, branch string, base string) {
 	for i := range cfgResources {
 		cfgResource := cfgResources[i]
 		if branch != "" {
-			cfgResource.ResourceSlug = fmt.Sprintf(
-				"%s--%s",
-				slug.Make(branch),
-				cfgResource.ResourceSlug,
-			)
+			cfgResource.BaseResourceSlug = getBranchResourceSlug(cfgResource, base)
+			cfgResource.ResourceSlug = getBranchResourceSlug(cfgResource, branch)
 		}
+	}
+}
+
+func getBranchResourceSlug(cfgResource *config.Resource, branch string) string {
+	if branch != "" {
+		return fmt.Sprintf(
+			"%s--%s",
+			slug.Make(branch),
+			cfgResource.ResourceSlug,
+		)
+	} else {
+		return cfgResource.ResourceSlug
 	}
 }
 

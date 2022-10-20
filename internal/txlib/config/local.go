@@ -32,6 +32,7 @@ type Resource struct {
 	Overrides         map[string]string
 	MinimumPercentage int
 	ResourceName      string
+	BaseResourceSlug  string
 }
 
 func loadLocalConfig() (*LocalConfig, error) {

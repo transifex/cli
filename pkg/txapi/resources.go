@@ -102,7 +102,7 @@ func GetResource(
 
 func CreateResource(
 	api *jsonapi.Connection, project_id string,
-	resourceName, resourceSlug, Type string,
+	resourceName, resourceSlug, Type string, Base string,
 ) (*jsonapi.Resource, error) {
 	resource := &jsonapi.Resource{
 		API:  api,
@@ -119,13 +119,36 @@ func CreateResource(
 	resource.SetRelated("i18n_format",
 		&jsonapi.Resource{Type: "i18n_formats", Id: Type})
 
-	err = resource.Save([]string{"name", "slug", "project", "i18n_format"})
+	if Base != "" {
+		resource.SetRelated("base", &jsonapi.Resource{Type: "resources", Id: Base})
+		err = resource.Save([]string{"name", "slug", "project", "i18n_format", "base"})
+	} else {
+		err = resource.Save([]string{"name", "slug", "project", "i18n_format"})
+	}
+
 	resource.Relationships["project"].Fetched = false
 	if err != nil {
 		return nil, err
 	}
 
 	return resource, nil
+}
+
+func CreateAsyncResourceMerge(
+	api *jsonapi.Connection,
+	resource *jsonapi.Resource,
+	conflictResolution string,
+) error {
+	merge := &jsonapi.Resource{
+		API:  api,
+		Type: "async_resource_merges",
+		Attributes: map[string]interface{}{
+			"conflict_resolution": conflictResolution,
+		},
+	}
+	merge.SetRelated("resource", resource)
+	err := merge.Save(nil)
+	return err
 }
 
 func DeleteResource(

@@ -26,6 +26,7 @@ type PushCommandArguments struct {
 	ResourceIds      []string
 	UseGitTimestamps bool
 	Branch           string
+	Base             string
 	All              bool
 	Workers          int
 	Silent           bool
@@ -43,7 +44,7 @@ func PushCommand(
 		return err
 	}
 
-	applyBranchToResources(cfgResources, args.Branch)
+	applyBranchToResources(cfgResources, args.Branch, args.Base)
 
 	sort.Slice(cfgResources, func(i, j int) bool {
 		return cfgResources[i].GetAPv3Id() < cfgResources[j].GetAPv3Id()
@@ -315,6 +316,7 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 			return
 		}
 		var resourceName string
+		var baseResource string
 		if args.Branch == "" {
 			resourceName = cfgResource.GetName()
 		} else {
@@ -323,7 +325,15 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 				cfgResource.GetName(),
 				args.Branch,
 			)
+
+			baseResource = fmt.Sprintf(
+				"o:%s:p:%s:r:%s",
+				cfgResource.OrganizationSlug,
+				cfgResource.ProjectSlug,
+				cfgResource.BaseResourceSlug,
+			)
 		}
+
 		resource, err = txapi.CreateResource(
 			api,
 			fmt.Sprintf(
@@ -333,7 +343,9 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 			),
 			resourceName,
 			cfgResource.ResourceSlug,
-			cfgResource.Type)
+			cfgResource.Type,
+			baseResource,
+		)
 		if err != nil {
 			sendMessage(fmt.Sprintf("Error while creating resource, %s", err), true)
 			if !args.Skip {
