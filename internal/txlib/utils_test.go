@@ -5,6 +5,8 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/transifex/cli/pkg/assert"
+
 	"github.com/transifex/cli/internal/txlib/config"
 )
 
@@ -63,4 +65,18 @@ func TestFigureOutResources(t *testing.T) {
 	if result != nil || err == nil {
 		t.Error("Did not get error with unfound pattern")
 	}
+}
+
+func TestConflictResolution(t *testing.T) {
+	ResultHead := isValidResolutionPolicy("USE_HEAD")
+	assert.Equal(t, ResultHead, true)
+
+	ResultBase := isValidResolutionPolicy("USE_BASE")
+	assert.Equal(t, ResultBase, true)
+
+	WrongResult := isValidResolutionPolicy("WRONG_BASE")
+	if WrongResult == true {
+		t.Error("Should be error")
+	}
+
 }
