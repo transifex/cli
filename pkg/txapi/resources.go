@@ -2,6 +2,7 @@ package txapi
 
 import (
 	"errors"
+	"time"
 
 	"github.com/transifex/cli/pkg/jsonapi"
 )
@@ -102,7 +103,7 @@ func GetResource(
 
 func CreateResource(
 	api *jsonapi.Connection, project_id string,
-	resourceName, resourceSlug, Type string,
+	resourceName, resourceSlug, Type string, Base string,
 ) (*jsonapi.Resource, error) {
 	resource := &jsonapi.Resource{
 		API:  api,
@@ -119,13 +120,38 @@ func CreateResource(
 	resource.SetRelated("i18n_format",
 		&jsonapi.Resource{Type: "i18n_formats", Id: Type})
 
-	err = resource.Save([]string{"name", "slug", "project", "i18n_format"})
+	if Base != "" {
+		resource.SetRelated("base", &jsonapi.Resource{Type: "resources", Id: Base})
+		err = resource.Save([]string{"name", "slug", "project", "i18n_format", "base"})
+	} else {
+		err = resource.Save([]string{"name", "slug", "project", "i18n_format"})
+	}
+
 	resource.Relationships["project"].Fetched = false
 	if err != nil {
 		return nil, err
 	}
 
 	return resource, nil
+}
+
+func CreateAsyncResourceMerge(
+	api *jsonapi.Connection,
+	resource *jsonapi.Resource,
+	conflictResolution string,
+	forceMerge bool,
+) (*jsonapi.Resource, error) {
+	merge := &jsonapi.Resource{
+		API:  api,
+		Type: "resource_async_merges",
+		Attributes: map[string]interface{}{
+			"conflict_resolution": conflictResolution,
+			"force":               forceMerge,
+		},
+	}
+	merge.SetRelated("resource", resource)
+	err := merge.Save(nil)
+	return merge, err
 }
 
 func DeleteResource(
@@ -152,4 +178,21 @@ func GetResourceById(api *jsonapi.Connection, id string) (*jsonapi.Resource, err
 		return nil, err
 	}
 	return &resource, nil
+}
+
+func PollResourceMerge(
+	merge *jsonapi.Resource,
+	duration time.Duration,
+) error {
+	for {
+		err := merge.Reload()
+		if err != nil {
+			return err
+		}
+
+		if merge.Attributes["status"] == "COMPLETED" {
+			return nil
+		}
+		time.Sleep(duration)
+	}
 }

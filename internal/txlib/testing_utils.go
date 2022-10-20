@@ -125,6 +125,35 @@ func testSimpleGet(t *testing.T, mockData jsonapi.MockData, path string) {
 	}
 }
 
+func testMultipleRequests(t *testing.T, mockData jsonapi.MockData, path string, methods []string, payloads []string) {
+	for i, method := range methods {
+		endpoint := mockData[path]
+		if endpoint.Count != len(methods) {
+			t.Errorf("Got %d requests to '%s', expected 1", endpoint.Count, path)
+		}
+		actual := endpoint.Requests[i].Request
+		if actual.Method != method {
+			t.Errorf("Got wrong request %+v", actual)
+		}
+		if actual.Method != "GET" {
+			var actualPayload interface{}
+			err := json.Unmarshal(actual.Payload, &actualPayload)
+			if err != nil {
+				t.Error(err)
+			}
+			var expectedPayload interface{}
+			err = json.Unmarshal([]byte(payloads[i]), &expectedPayload)
+			if err != nil {
+				t.Error(err)
+			}
+			if !reflect.DeepEqual(actualPayload, expectedPayload) {
+				t.Errorf("Got paylod '%+v', expected '%+v'",
+					actualPayload, expectedPayload)
+			}
+		}
+	}
+}
+
 func testSimplePost(
 	t *testing.T, mockData jsonapi.MockData, path, payload string,
 ) {

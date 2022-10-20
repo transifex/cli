@@ -114,6 +114,56 @@ func TestPushCommandResourceDoesNotExist(t *testing.T) {
 	testSimpleGet(t, mockData, "/resource_strings_async_uploads/upload_1")
 }
 
+func TestPushCommandBranchResourceDoesNotExist(t *testing.T) {
+	afterTest := beforeTest(t, nil, nil)
+	defer afterTest()
+
+	branchResourceId := "o:orgslug:p:projslug:r:branch--resslug"
+	branchResourceUrl := fmt.Sprintf("/resources/%s", branchResourceId)
+
+	mockData := jsonapi.MockData{
+		"/languages":           getLanguagesEndpoint([]string{"en", "fr", "el"}),
+		branchResourceUrl:      getEmptyEndpoint(),
+		resourceUrl:            getEmptyEndpoint(),
+		projectUrl:             getProjectEndpoint(),
+		statsUrlSourceLanguage: getStatsEndpointSourceLanguage(),
+		resourcesUrl:           getResourceCreatedEndpoint(),
+		sourceUploadsUrl:       getSourceUploadPostEndpoint(),
+		sourceUploadUrl:        getSourceUploadGetEndpoint(),
+	}
+	api := jsonapi.GetTestConnection(mockData)
+
+	err := PushCommand(getStandardConfig(), api, PushCommandArguments{
+		Force:   true,
+		Branch:  "branch",
+		Base:    "-1",
+		Workers: 1,
+	})
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+
+	testSimpleGet(t, mockData, branchResourceUrl)
+	testSimpleGet(t, mockData, resourceUrl)
+	testSimpleGet(t, mockData, projectUrl)
+	testSimpleGet(t, mockData, statsUrlSourceLanguage)
+	testSimplePost(
+		t,
+		mockData,
+		resourcesUrl,
+		`{"data": {
+			"type": "resources",
+			"attributes": {"name": "aaa.json (branch branch)", "slug": "branch--resslug"},
+			"relationships": {
+				"project": {"data": {"type": "projects", "id": "o:orgslug:p:projslug"}},
+				"i18n_format": {"data": {"type": "i18n_formats", "id": "I18N_TYPE"}}
+			}
+		}}`,
+	)
+	testSimpleUpload(t, mockData, "/resource_strings_async_uploads")
+	testSimpleGet(t, mockData, "/resource_strings_async_uploads/upload_1")
+}
+
 func TestPushTranslation(t *testing.T) {
 	afterTest := beforeTest(t, []string{"el"}, nil)
 	defer afterTest()
@@ -424,19 +474,40 @@ func TestPushCommandBranch(t *testing.T) {
 
 	mockData := jsonapi.MockData{
 		"/languages": getLanguagesEndpoint([]string{"en", "fr", "el"}),
-		resourceUrl: jsonapi.GetMockTextResponse(
-			fmt.Sprintf(
-				`{"data": {
-					"type": "resources",
-					"id": "%s",
-					"attributes": {"slug": "branch--resslug"},
-					"relationships": {"project": {"data": {"type": "projects",
-					                                       "id": "%s"}}}
-				}}`,
-				resourceId,
-				projectId,
-			),
-		),
+		resourceUrl: &jsonapi.MockEndpoint{
+			Requests: []jsonapi.MockRequest{
+				{
+					Response: jsonapi.MockResponse{
+						Text: fmt.Sprintf(
+							`{"data": {
+								"type": "resources",
+								"id": "%s",
+								"attributes": {"slug": "branch--resslug"},
+								"relationships": {"project": {"data": {"type": "projects",
+																	   "id": "%s"}}}
+							}}`,
+							resourceId,
+							projectId,
+						),
+					},
+				},
+				{
+					Response: jsonapi.MockResponse{
+						Text: fmt.Sprintf(
+							`{"data": {
+								"type": "resources",
+								"id": "%s",
+								"attributes": {"slug": "branch--resslug"},
+								"relationships": {"project": {"data": {"type": "projects",
+																	   "id": "%s"}}}
+							}}`,
+							resourceId,
+							projectId,
+						),
+					},
+				},
+			},
+		},
 		projectUrl:       getProjectEndpoint(),
 		statsUrl:         getStatsEndpointSourceLanguage(),
 		sourceUploadsUrl: getSourceUploadPostEndpoint(),
@@ -453,7 +524,99 @@ func TestPushCommandBranch(t *testing.T) {
 		t.Errorf("%s", err)
 	}
 
-	testSimpleGet(t, mockData, resourceUrl)
+	testMultipleRequests(t, mockData, resourceUrl, []string{"GET", "PATCH"}, []string{"",
+		`{"data":{"type":"resources","id":"o:orgslug:p:projslug:r:branch--resslug","relationships":{"base":{"data":{"type":"resources","id":"o:orgslug:p:projslug:r:resslug"}}}}}
+		`})
+	testSimpleGet(t, mockData, projectUrl)
+	testSimpleGet(t, mockData, statsUrl)
+	testSimpleUpload(t, mockData, sourceUploadsUrl)
+	testSimpleGet(t, mockData, sourceUploadUrl)
+}
+
+func TestPushCommandChangeBase(t *testing.T) {
+	afterTest := beforeTest(t, nil, nil)
+	defer afterTest()
+
+	resourceId := "o:orgslug:p:projslug:r:branch--resslug"
+	resourceUrl := fmt.Sprintf("/resources/%s", resourceId)
+	statsUrl := fmt.Sprintf(
+		"/resource_language_stats?%s=%s&%s=%s&%s=%s",
+		url.QueryEscape("filter[language]"),
+		url.QueryEscape("l:en"),
+		url.QueryEscape("filter[project]"),
+		url.QueryEscape(projectId),
+		url.QueryEscape("filter[resource]"),
+		url.QueryEscape(resourceId),
+	)
+
+	mockData := jsonapi.MockData{
+		"/languages": getLanguagesEndpoint([]string{"en", "fr", "el"}),
+		resourceUrl: &jsonapi.MockEndpoint{
+			Requests: []jsonapi.MockRequest{
+				{
+					Response: jsonapi.MockResponse{
+						Text: fmt.Sprintf(
+							`{"data": {
+								"type": "resources",
+								"id": "%s",
+								"attributes": {"slug": "branch--resslug"},
+								"relationships": {"project": {"data": {"type": "projects",
+																	   "id": "%s"}}}
+							}}`,
+							resourceId,
+							projectId,
+						),
+					},
+				},
+				{
+					Response: jsonapi.MockResponse{
+						Text: fmt.Sprintf(
+							`{"data": {
+								"type": "resources",
+								"id": "%s",
+								"attributes": {"slug": "branch--resslug"},
+								"relationships": {"project": {"data": {"type": "projects",
+																	   "id": "%s"}}}
+							}}`,
+							resourceId,
+							projectId,
+						),
+					},
+				},
+			},
+		},
+		projectUrl:       getProjectEndpoint(),
+		statsUrl:         getStatsEndpointSourceLanguage(),
+		sourceUploadsUrl: getSourceUploadPostEndpoint(),
+		sourceUploadUrl:  getSourceUploadGetEndpoint(),
+	}
+	api := jsonapi.GetTestConnection(mockData)
+
+	err := PushCommand(getStandardConfig(), api, PushCommandArguments{
+		Force:   true,
+		Branch:  "branch",
+		Workers: 1,
+		Base:    "foo",
+	})
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+
+	testMultipleRequests(t, mockData, resourceUrl, []string{"GET", "PATCH"}, []string{"",
+		`{
+			"data":{
+				"type":"resources",
+				"id":"o:orgslug:p:projslug:r:branch--resslug",
+				"relationships":{
+					"base":{
+						"data":{
+							"type":"resources",
+							"id":"o:orgslug:p:projslug:r:foo--resslug"
+						}
+					}
+				}
+			}
+		}`})
 	testSimpleGet(t, mockData, projectUrl)
 	testSimpleGet(t, mockData, statsUrl)
 	testSimpleUpload(t, mockData, sourceUploadsUrl)

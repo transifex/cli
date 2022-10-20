@@ -88,6 +88,103 @@ func Main() {
 				},
 			},
 			{
+				Name:  "merge",
+				Usage: "tx merge [options] [resource_id]",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name: "branch",
+						Usage: "Merge specific branch (omit " +
+							"if it can be determined)",
+						Value: "",
+					},
+					&cli.StringFlag{
+						Name:  "conflict-resolution",
+						Usage: "Conflict resolution to use for unresolved conflicts",
+						Value: "USE_BASE",
+					},
+					&cli.BoolFlag{
+						Name:    "force",
+						Usage:   "Force merge even if sources are diverged",
+						Aliases: []string{"f"},
+						Value:   false,
+					},
+					&cli.BoolFlag{
+						Name:  "skip",
+						Usage: "Whether to skip on errors",
+					},
+					&cli.BoolFlag{
+						Name:  "silent",
+						Usage: "Whether to reduce verbosity of the output",
+					},
+				},
+				Action: func(c *cli.Context) error {
+					if c.Args().Len() != 1 {
+						return cli.Exit(errorColor("Please provide one resource"), 1)
+					}
+
+					resourceId := c.Args().First()
+					cfg, err := config.LoadFromPaths(
+						c.String("root-config"),
+						c.String("config"),
+					)
+					if err != nil {
+						return cli.Exit(
+							errorColor(
+								"Error loading configuration: %s",
+								err,
+							),
+							1,
+						)
+					}
+					hostname, token, err := txlib.GetHostAndToken(
+						&cfg, c.String("hostname"), c.String("token"),
+					)
+					if err != nil {
+						return cli.Exit(
+							errorColor(
+								"Error getting API token: %s",
+								err,
+							),
+							1,
+						)
+					}
+
+					client, err := txlib.GetClient(c.String("cacert"))
+					if err != nil {
+						return cli.Exit(
+							errorColor(
+								"Error getting HTTP client configuration: %s",
+								err,
+							),
+							1,
+						)
+					}
+
+					api := jsonapi.Connection{
+						Host:   hostname,
+						Token:  token,
+						Client: client,
+						Headers: map[string]string{
+							"Integration": "txclient",
+						},
+					}
+
+					args := txlib.MergeCommandArguments{
+						ResourceId:         resourceId,
+						Branch:             c.String("branch"),
+						ConflictResolution: c.String("conflict-resolution"),
+						Force:              c.Bool("force"),
+						Skip:               c.Bool("skip"),
+						Silent:             c.Bool("silent"),
+					}
+					err = txlib.MergeCommand(&cfg, api, args)
+					if err != nil {
+						return cli.Exit(err, 1)
+					}
+					return nil
+				},
+			},
+			{
 				Name:  "push",
 				Usage: "tx push [options] [resource_id...]",
 				Flags: []cli.Flag{
@@ -144,6 +241,12 @@ func Main() {
 						Usage: "Push to specific branch (use empty argument " +
 							"'' to use the current branch, if it can be " +
 							"determined)",
+						Value: "-1",
+					},
+					&cli.StringFlag{
+						Name: "base",
+						Usage: "Push current branch with a specific base branch. " +
+							"If omitted the main resource will be used as base",
 						Value: "-1",
 					},
 					&cli.IntFlag{
@@ -227,6 +330,7 @@ func Main() {
 						ResourceIds:      resourceIds,
 						UseGitTimestamps: c.Bool("use-git-timestamps"),
 						Branch:           c.String("branch"),
+						Base:             c.String("base"),
 						All:              c.Bool("all"),
 						Workers:          c.Int("workers"),
 						Silent:           c.Bool("silent"),
