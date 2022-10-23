@@ -74,7 +74,7 @@ func cliCmdGetI18nFormats(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	organizationId, err := getOrganizationId(api)
+	organizationId, err := getOrganizationId(c, api)
 	if err != nil {
 		return err
 	}

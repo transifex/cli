@@ -25,7 +25,7 @@ func cliCmdUploadResourceStringsAsyncUpload(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	resourceId, err := getResourceId(api, "")
+	resourceId, err := getResourceId(c, api, "")
 	if err != nil {
 		return err
 	}

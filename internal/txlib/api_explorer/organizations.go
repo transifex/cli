@@ -37,7 +37,11 @@ func selectOrganizationId(api *jsonapi.Connection) (string, error) {
 	return organizationId, nil
 }
 
-func getOrganizationId(api *jsonapi.Connection) (string, error) {
+func getOrganizationId(c *cli.Context, api *jsonapi.Connection) (string, error) {
+	organizationId := c.String("organization")
+	if organizationId != "" {
+		return organizationId, nil
+	}
 	organizationId, err := load("organization")
 	if err != nil {
 		return "", err
@@ -80,7 +84,7 @@ func cliCmdGetOrganization(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	organizationId, err := getOrganizationId(api)
+	organizationId, err := getOrganizationId(c, api)
 	if err != nil {
 		return err
 	}
