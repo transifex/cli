@@ -16,10 +16,10 @@ var Cmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{Name: "pager", EnvVars: []string{"PAGER"}},
 		&cli.StringFlag{Name: "editor", EnvVars: []string{"EDITOR"}},
-		&cli.StringFlag{Name: "organization"},
-		&cli.StringFlag{Name: "project"},
-		&cli.StringFlag{Name: "team"},
-		&cli.StringFlag{Name: "resource"},
+		&cli.StringFlag{Name: "organization", Aliases: []string{"o"}},
+		&cli.StringFlag{Name: "project", Aliases: []string{"p"}},
+		&cli.StringFlag{Name: "team", Aliases: []string{"t"}},
+		&cli.StringFlag{Name: "resource", Aliases: []string{"r"}},
 	},
 	Subcommands: []*cli.Command{
 		{
@@ -151,6 +151,8 @@ var Cmd = &cli.Command{
 						{Name: "project", Action: cliCmdGetResourceProject},
 					},
 				},
+				{Name: "project_webhooks", Action: cliCmdGetProjectWebhooks},
+				{Name: "project_webhook", Action: cliCmdGetProjectWebhook},
 			},
 		},
 		{
@@ -178,6 +180,7 @@ var Cmd = &cli.Command{
 				{Name: "project", Action: cliCmdEditProject},
 				{Name: "team", Action: cliCmdEditTeam},
 				{Name: "resource", Action: cliCmdEditResource},
+				{Name: "project_webhook", Action: cliCmdEditProjectWebhook},
 			},
 		},
 		{
@@ -186,6 +189,7 @@ var Cmd = &cli.Command{
 				{Name: "project", Action: cliCmdCreateProject},
 				{Name: "team", Action: cliCmdCreateTeam},
 				{Name: "resource", Action: cliCmdCreateResource},
+				{Name: "project_webhook", Action: cliCmdCreateProjectWebhook},
 			},
 		},
 		{
@@ -194,6 +198,7 @@ var Cmd = &cli.Command{
 				{Name: "project", Action: cliCmdDeleteProject},
 				{Name: "team", Action: cliCmdDeleteTeam},
 				{Name: "resource", Action: cliCmdDeleteResource},
+				{Name: "project_webhook", Action: cliCmdDeleteProjectWebhook},
 			},
 		},
 		{

@@ -350,6 +350,7 @@ func fuzzyMulti(
 			}
 			return string(item)
 		}),
+		fuzzyfinder.WithHeader(header),
 	)
 	if err != nil {
 		return nil, err
