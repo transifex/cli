@@ -68,14 +68,22 @@ func selectResourceId(
 	return resourceId, nil
 }
 
-func getResourceId(api *jsonapi.Connection, projectId string) (string, error) {
+func getResourceId(
+	c *cli.Context,
+	api *jsonapi.Connection,
+	projectId string,
+) (string, error) {
+	resourceId := c.String("resource")
+	if resourceId != "" {
+		return resourceId, nil
+	}
 	resourceId, err := load("resource")
 	if err != nil {
 		return "", err
 	}
 	if resourceId == "" {
 		if projectId == "" {
-			projectId, err = getProjectId(api, "")
+			projectId, err = getProjectId(c, api, "")
 			if err != nil {
 				return "", err
 			}
@@ -93,7 +101,7 @@ func cliCmdSelectResource(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	organizationId, err := getOrganizationId(api)
+	organizationId, err := getOrganizationId(c, api)
 	if err != nil {
 		return err
 	}
@@ -101,7 +109,7 @@ func cliCmdSelectResource(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	projectId, err := getProjectId(api, organizationId)
+	projectId, err := getProjectId(c, api, organizationId)
 	if err != nil {
 		return err
 	}
@@ -109,7 +117,7 @@ func cliCmdSelectResource(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	resourceId, err := getResourceId(api, projectId)
+	resourceId, err := getResourceId(c, api, projectId)
 	if err != nil {
 		return err
 	}
@@ -126,7 +134,7 @@ func cliCmdGetResources(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	projectId, err := getProjectId(api, "")
+	projectId, err := getProjectId(c, api, "")
 	if err != nil {
 		return err
 	}
@@ -170,11 +178,11 @@ func cliCmdCreateResource(c *cli.Context) error {
 		}
 		return nil
 	}
-	organizationId, err := getOrganizationId(api)
+	organizationId, err := getOrganizationId(c, api)
 	if err != nil {
 		return err
 	}
-	projectId, err := getProjectId(api, organizationId)
+	projectId, err := getProjectId(c, api, organizationId)
 	if err != nil {
 		return err
 	}
@@ -219,7 +227,7 @@ func cliCmdDeleteResource(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	projectId, err := getProjectId(api, "")
+	projectId, err := getProjectId(c, api, "")
 	if err != nil {
 		return err
 	}
@@ -249,7 +257,7 @@ func cliCmdGetResource(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	resourceId, err := getResourceId(api, "")
+	resourceId, err := getResourceId(c, api, "")
 	if err != nil {
 		return err
 	}
@@ -269,7 +277,7 @@ func cliCmdEditResource(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	resourceId, err := getResourceId(api, "")
+	resourceId, err := getResourceId(c, api, "")
 	if err != nil {
 		return err
 	}
@@ -307,7 +315,7 @@ func cliCmdGetResourceProject(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	resourceId, err := getResourceId(api, "")
+	resourceId, err := getResourceId(c, api, "")
 	if err != nil {
 		return err
 	}

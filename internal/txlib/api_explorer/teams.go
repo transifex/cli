@@ -61,15 +61,19 @@ func selectTeamId(
 }
 
 func getTeamId(
-	api *jsonapi.Connection, organizationId string, allowEmpty bool,
+	c *cli.Context, api *jsonapi.Connection, organizationId string, allowEmpty bool,
 ) (string, error) {
+	teamId := c.String("team")
+	if teamId != "" {
+		return teamId, nil
+	}
 	teamId, err := load("team")
 	if err != nil {
 		return "", err
 	}
 	if teamId == "" {
 		if organizationId == "" {
-			organizationId, err = getOrganizationId(api)
+			organizationId, err = getOrganizationId(c, api)
 			if err != nil {
 				return "", err
 			}
@@ -87,7 +91,7 @@ func cliCmdGetTeams(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	organizationId, err := getOrganizationId(api)
+	organizationId, err := getOrganizationId(c, api)
 	if err != nil {
 		return err
 	}
@@ -120,7 +124,7 @@ func cliCmdGetTeam(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	teamId, err := getTeamId(api, "", false)
+	teamId, err := getTeamId(c, api, "", false)
 	if err != nil {
 		return err
 	}
@@ -140,7 +144,7 @@ func cliCmdSelectTeam(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	organizationId, err := getOrganizationId(api)
+	organizationId, err := getOrganizationId(c, api)
 	if err != nil {
 		return err
 	}
@@ -148,7 +152,7 @@ func cliCmdSelectTeam(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	teamId, err := getTeamId(api, organizationId, false)
+	teamId, err := getTeamId(c, api, organizationId, false)
 	if err != nil {
 		return err
 	}
@@ -165,7 +169,7 @@ func cliCmdEditTeam(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	teamId, err := getTeamId(api, "", false)
+	teamId, err := getTeamId(c, api, "", false)
 	if err != nil {
 		return err
 	}
@@ -200,7 +204,7 @@ func cliCmdDeleteTeam(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	organizationId, err := getOrganizationId(api)
+	organizationId, err := getOrganizationId(c, api)
 	if err != nil {
 		return err
 	}
@@ -242,7 +246,7 @@ func cliCmdCreateTeam(c *cli.Context) error {
 		}
 		return nil
 	}
-	organizationId, err := getOrganizationId(api)
+	organizationId, err := getOrganizationId(c, api)
 	if err != nil {
 		return err
 	}
@@ -276,7 +280,7 @@ func cliCmdGetTeamManagers(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	teamId, err := getTeamId(api, "", false)
+	teamId, err := getTeamId(c, api, "", false)
 	if err != nil {
 		return err
 	}
@@ -305,7 +309,7 @@ func cliCmdAddTeamManagers(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	teamId, err := getTeamId(api, "", false)
+	teamId, err := getTeamId(c, api, "", false)
 	if err != nil {
 		return err
 	}
@@ -347,7 +351,7 @@ func cliCmdResetTeamManagers(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	teamId, err := getTeamId(api, "", false)
+	teamId, err := getTeamId(c, api, "", false)
 	if err != nil {
 		return err
 	}
@@ -392,7 +396,7 @@ func cliCmdRemoveTeamManagers(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	teamId, err := getTeamId(api, "", false)
+	teamId, err := getTeamId(c, api, "", false)
 	if err != nil {
 		return err
 	}

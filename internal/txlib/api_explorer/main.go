@@ -16,6 +16,10 @@ var Cmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{Name: "pager", EnvVars: []string{"PAGER"}},
 		&cli.StringFlag{Name: "editor", EnvVars: []string{"EDITOR"}},
+		&cli.StringFlag{Name: "organization"},
+		&cli.StringFlag{Name: "project"},
+		&cli.StringFlag{Name: "team"},
+		&cli.StringFlag{Name: "resource"},
 	},
 	Subcommands: []*cli.Command{
 		{
