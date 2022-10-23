@@ -38,6 +38,7 @@ func selectProjectId(
 	api *jsonapi.Connection,
 	organizationId string,
 	header string,
+	allowEmpty bool,
 ) (string, error) {
 	if header == "" {
 		header = "Select project:"
@@ -63,7 +64,7 @@ func selectProjectId(
 			}
 			return fmt.Sprintf("%s (%s)", attributes.Name, attributes.Slug)
 		},
-		false,
+		allowEmpty,
 	)
 	if err != nil {
 		return "", err
@@ -75,6 +76,7 @@ func getProjectId(
 	c *cli.Context,
 	api *jsonapi.Connection,
 	organizationId string,
+	allowEmpty bool,
 ) (string, error) {
 	projectId := c.String("project")
 	if projectId != "" {
@@ -91,7 +93,7 @@ func getProjectId(
 				return "", err
 			}
 		}
-		projectId, err = selectProjectId(api, organizationId, "")
+		projectId, err = selectProjectId(api, organizationId, "", allowEmpty)
 		if err != nil {
 			return "", err
 		}
@@ -137,7 +139,7 @@ func cliCmdGetProject(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	projectId, err := getProjectId(c, api, "")
+	projectId, err := getProjectId(c, api, "", false)
 	if err != nil {
 		return err
 	}
@@ -157,7 +159,7 @@ func cliCmdGetProjectLanguages(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	projectId, err := getProjectId(c, api, "")
+	projectId, err := getProjectId(c, api, "", false)
 	if err != nil {
 		return err
 	}
@@ -182,7 +184,7 @@ func cliCmdGetProjectMaintainers(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	projectId, err := getProjectId(c, api, "")
+	projectId, err := getProjectId(c, api, "", false)
 	if err != nil {
 		return err
 	}
@@ -211,7 +213,7 @@ func cliCmdGetProjectTeam(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	projectId, err := getProjectId(c, api, "")
+	projectId, err := getProjectId(c, api, "", false)
 	if err != nil {
 		return err
 	}
@@ -236,7 +238,7 @@ func cliCmdGetProjectOrganization(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	projectId, err := getProjectId(c, api, "")
+	projectId, err := getProjectId(c, api, "", false)
 	if err != nil {
 		return err
 	}
@@ -269,7 +271,7 @@ func cliCmdSelectProject(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	projectId, err := selectProjectId(api, organizationId, "")
+	projectId, err := selectProjectId(api, organizationId, "", false)
 	if err != nil {
 		return err
 	}
@@ -286,7 +288,7 @@ func cliCmdEditProject(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	projectId, err := getProjectId(c, api, "")
+	projectId, err := getProjectId(c, api, "", false)
 	if err != nil {
 		return err
 	}
@@ -394,7 +396,12 @@ func cliCmdDeleteProject(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	projectId, err := selectProjectId(api, organizationId, "Select project to delete:")
+	projectId, err := selectProjectId(
+		api,
+		organizationId,
+		"Select project to delete:",
+		false,
+	)
 	if err != nil {
 		return err
 	}
@@ -424,7 +431,7 @@ func cliCmdChangeProjectTeam(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	projectId, err := getProjectId(c, api, organizationId)
+	projectId, err := getProjectId(c, api, organizationId, false)
 	if err != nil {
 		return err
 	}
@@ -449,7 +456,7 @@ func cliCmdAddProjectLanguages(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	projectId, err := getProjectId(c, api, "")
+	projectId, err := getProjectId(c, api, "", false)
 	if err != nil {
 		return err
 	}
@@ -480,7 +487,7 @@ func cliCmdRemoveProjectLanguages(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	projectId, err := getProjectId(c, api, "")
+	projectId, err := getProjectId(c, api, "", false)
 	if err != nil {
 		return err
 	}
@@ -511,7 +518,7 @@ func cliCmdResetProjectLanguages(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	projectId, err := getProjectId(c, api, "")
+	projectId, err := getProjectId(c, api, "", false)
 	if err != nil {
 		return err
 	}
@@ -542,7 +549,7 @@ func cliCmdAddProjectMaintainers(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	projectId, err := getProjectId(c, api, "")
+	projectId, err := getProjectId(c, api, "", false)
 	if err != nil {
 		return err
 	}
@@ -584,7 +591,7 @@ func cliCmdResetProjectMaintainers(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	projectId, err := getProjectId(c, api, "")
+	projectId, err := getProjectId(c, api, "", false)
 	if err != nil {
 		return err
 	}
@@ -629,7 +636,7 @@ func cliCmdRemoveProjectMaintainers(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	projectId, err := getProjectId(c, api, "")
+	projectId, err := getProjectId(c, api, "", false)
 	if err != nil {
 		return err
 	}

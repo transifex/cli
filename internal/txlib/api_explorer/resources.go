@@ -83,7 +83,7 @@ func getResourceId(
 	}
 	if resourceId == "" {
 		if projectId == "" {
-			projectId, err = getProjectId(c, api, "")
+			projectId, err = getProjectId(c, api, "", false)
 			if err != nil {
 				return "", err
 			}
@@ -109,7 +109,7 @@ func cliCmdSelectResource(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	projectId, err := getProjectId(c, api, organizationId)
+	projectId, err := getProjectId(c, api, organizationId, false)
 	if err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func cliCmdGetResources(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	projectId, err := getProjectId(c, api, "")
+	projectId, err := getProjectId(c, api, "", false)
 	if err != nil {
 		return err
 	}
@@ -182,7 +182,7 @@ func cliCmdCreateResource(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	projectId, err := getProjectId(c, api, organizationId)
+	projectId, err := getProjectId(c, api, organizationId, false)
 	if err != nil {
 		return err
 	}
@@ -227,7 +227,7 @@ func cliCmdDeleteResource(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	projectId, err := getProjectId(c, api, "")
+	projectId, err := getProjectId(c, api, "", false)
 	if err != nil {
 		return err
 	}
