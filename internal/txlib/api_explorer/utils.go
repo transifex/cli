@@ -441,15 +441,13 @@ func paginate(api *jsonapi.Connection, bodyBytes []byte) ([]byte, error) {
 		return nil, err
 	}
 	resultJson.Data = append(resultJson.Data, bodyJson.Data...)
-	if err != nil {
-		return nil, err
-	}
 	for bodyJson.Links.Next != "" {
 		bodyBytes, err = api.ListBodyFromPath(bodyJson.Links.Next)
 		if err != nil {
 			return nil, err
 		}
-		err := json.Unmarshal(bodyBytes, &bodyJson)
+		bodyJson.Links.Next = ""
+		err = json.Unmarshal(bodyBytes, &bodyJson)
 		if err != nil {
 			return nil, err
 		}
