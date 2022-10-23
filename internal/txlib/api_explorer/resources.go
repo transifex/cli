@@ -32,12 +32,20 @@ const CREATE_RESOURCE_STRING = `{
 }`
 
 func selectResourceId(
+	c *cli.Context,
 	api *jsonapi.Connection,
 	projectId string,
 	header string,
 ) (string, error) {
 	if header == "" {
 		header = "Select resource:"
+	}
+	if projectId == "" {
+		var err error
+		projectId, err = getProjectId(c, api, "", false)
+		if err != nil {
+			return "", err
+		}
 	}
 	query := jsonapi.Query{Filters: map[string]string{"project": projectId}}
 	body, err := api.ListBody("resources", query.Encode())
@@ -88,7 +96,7 @@ func getResourceId(
 				return "", err
 			}
 		}
-		resourceId, err = selectResourceId(api, projectId, "Select resource")
+		resourceId, err = selectResourceId(c, api, projectId, "Select resource")
 		if err != nil {
 			return "", err
 		}
@@ -101,23 +109,7 @@ func cliCmdSelectResource(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	organizationId, err := getOrganizationId(c, api)
-	if err != nil {
-		return err
-	}
-	err = save("organization", organizationId)
-	if err != nil {
-		return err
-	}
-	projectId, err := getProjectId(c, api, organizationId, false)
-	if err != nil {
-		return err
-	}
-	err = save("project", projectId)
-	if err != nil {
-		return err
-	}
-	resourceId, err := getResourceId(c, api, projectId)
+	resourceId, err := getResourceId(c, api, "")
 	if err != nil {
 		return err
 	}
@@ -227,11 +219,7 @@ func cliCmdDeleteResource(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	projectId, err := getProjectId(c, api, "", false)
-	if err != nil {
-		return err
-	}
-	resourceId, err := selectResourceId(api, projectId, "Select resource to delete:")
+	resourceId, err := selectResourceId(c, api, "", "Select resource to delete:")
 	if err != nil {
 		return err
 	}

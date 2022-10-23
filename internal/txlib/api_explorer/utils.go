@@ -409,7 +409,11 @@ func edit(editor string, item *jsonapi.Resource, editable_fields []string) error
 	return nil
 }
 
-func create(create_string, editor string, fields []string) (map[string]interface{}, error) {
+func create(
+	create_string,
+	editor string,
+	fields []string,
+) (map[string]interface{}, error) {
 	body, err := invokeEditor([]byte(create_string), editor)
 	if err != nil {
 		return nil, err
