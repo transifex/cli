@@ -3,11 +3,18 @@
 ## Installation
 
 ### Installing with a script (Linux/Mac)
-You can install the Transifex CLI by executing:
+You can install the latest Transifex CLI by executing:
 
 ```
 curl -o- https://raw.githubusercontent.com/transifex/cli/master/install.sh | bash
 ```
+
+Or you can isntall a specific version if you need by executing:
+
+```
+curl -o- https://raw.githubusercontent.com/transifex/cli/master/install.sh | bash -s -- yourVersion
+```
+
 
 This script will:
 * Try to find the correct version for your system.
