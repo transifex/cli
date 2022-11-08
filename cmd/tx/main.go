@@ -161,7 +161,7 @@ func Main() {
 					}
 					err = txlib.MergeCommand(&cfg, api, args)
 					if err != nil {
-						return cli.Exit("", 1)
+						return cli.Exit(err, 1)
 					}
 					return nil
 				},
