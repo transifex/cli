@@ -75,8 +75,16 @@
         exit 1
     fi
 
-    # Try to download the latest version from github releases
-    URL="https://github.com/transifex/cli/releases/latest/download/tx-$OS-$ARCH.tar.gz"
+    DEFAULT_TX_VERSION=latest
+    TX_VERSION="${1:-$DEFAULT_TX_VERSION}"
+    # Try to download the TX version from github releases
+        #  https://github.com/transifex/cli/releases/download/v1.4.0/tx-darwin-arm64.tar.gz
+
+    if [ $TX_VERSION == "latest" ]; then
+        URL="https://github.com/transifex/cli/releases/latest/download/tx-$OS-$ARCH.tar.gz"
+    else
+        URL="https://github.com/transifex/cli/releases/download/$TX_VERSION/tx-$OS-$ARCH.tar.gz"
+    fi
 
     echo -e "** Installing CLI from $URL\n"
     if tar --version | grep -q 'gnu'
