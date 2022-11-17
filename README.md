@@ -550,7 +550,7 @@ fall back to taking the filesystem timestamp into account.
   > Note: Starting from version 1.5.0 resources created using the `--branch` flag,
   will have an enhanced functionality in transifex and will be able to automatically
   be merged into their bases. Resources created using the `--branch`  prior to this
-  version, need to be pushed again in order for the new functionality to be available..
+  version, need to be pushed again in order for the new functionality to be available.
 
   ```sh
   → tx push --branch 'new_feature' --base '' myproject.myresource
