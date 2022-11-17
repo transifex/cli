@@ -757,6 +757,8 @@ default to taking the filesystem timestamp into account.
   speed. The `--workers` flag sets the number of concurrent downloads possible at
   any time.
 
+- `--pseudo`: Generate mock string translations with a ~20% default length increase in characters.
+
 ### Removing resources from Transifex
 The tx delete command lets you delete a resource that's in your `config` file and on Transifex.
 

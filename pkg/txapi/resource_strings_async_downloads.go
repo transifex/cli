@@ -17,6 +17,7 @@ func CreateResourceStringsAsyncDownload(
 	resource *jsonapi.Resource,
 	contentEncoding string,
 	fileType string,
+	pseudo bool,
 ) (*jsonapi.Resource, error) {
 	download := &jsonapi.Resource{
 		API:  api,
@@ -24,7 +25,7 @@ func CreateResourceStringsAsyncDownload(
 		Attributes: map[string]interface{}{
 			"content_encoding": contentEncoding,
 			"file_type":        fileType,
-			"pseudo":           false,
+			"pseudo":           pseudo,
 		},
 	}
 	download.SetRelated("resource", resource)

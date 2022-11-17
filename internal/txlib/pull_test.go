@@ -47,7 +47,7 @@ func TestPullCommandResourceExists(t *testing.T) {
 	testSimpleGet(t, mockData, resourceUrl)
 	testSimpleGet(t, mockData, projectUrl)
 	testSimpleGet(t, mockData, statsUrlAllLanguages)
-	testSimpleTranslationDownload(t, mockData)
+	testSimpleTranslationDownload(t, mockData, "false")
 	testSimpleGet(t, mockData, translationDownloadUrl)
 
 	assertFileContent(t, "aaa-el.json", "This is the content")
@@ -90,7 +90,7 @@ func TestPullCommandFileExists(t *testing.T) {
 	testSimpleGet(t, mockData, resourceUrl)
 	testSimpleGet(t, mockData, projectUrl)
 	testSimpleGet(t, mockData, statsUrlAllLanguages)
-	testSimpleTranslationDownload(t, mockData)
+	testSimpleTranslationDownload(t, mockData, "false")
 	testSimpleGet(t, mockData, translationDownloadUrl)
 
 	assertFileContent(t, "aaa-el.json", "This is the content")
@@ -134,7 +134,7 @@ func TestPullCommandDownloadSource(t *testing.T) {
 	testSimpleGet(t, mockData, resourceUrl)
 	testSimpleGet(t, mockData, projectUrl)
 	testSimpleGet(t, mockData, statsUrlSourceLanguage)
-	testSimpleSourceDownload(t, mockData)
+	testSimpleSourceDownload(t, mockData, "false")
 	testSimpleGet(t, mockData, sourceDownloadUrl)
 
 	assertFileContent(t, "aaa.json", "New source")
@@ -234,7 +234,7 @@ func TestPullCommandProceedOnEqualTranslatedMinPerc(t *testing.T) {
 	testSimpleGet(t, mockData, resourceUrl)
 	testSimpleGet(t, mockData, projectUrl)
 	testSimpleGet(t, mockData, statsUrlAllLanguages)
-	testSimpleTranslationDownload(t, mockData)
+	testSimpleTranslationDownload(t, mockData, "false")
 	testSimpleGet(t, mockData, translationDownloadUrl)
 
 	assertFileContent(t, "aaa-el.json", "This is the content")
@@ -278,7 +278,7 @@ func TestPullCommandOverrides(t *testing.T) {
 	testSimpleGet(t, mockData, resourceUrl)
 	testSimpleGet(t, mockData, projectUrl)
 	testSimpleGet(t, mockData, statsUrlAllLanguages)
-	testSimpleTranslationDownload(t, mockData)
+	testSimpleTranslationDownload(t, mockData, "false")
 	testSimpleGet(t, mockData, translationDownloadUrl)
 
 	assertFileContent(t, "custom_path.json", "This is the content")
@@ -322,7 +322,7 @@ func TestPullCommandMultipleLangParameters(t *testing.T) {
 	testSimpleGet(t, mockData, resourceUrl)
 	testSimpleGet(t, mockData, projectUrl)
 	testSimpleGet(t, mockData, statsUrlAllLanguages)
-	testSimpleTranslationDownload(t, mockData)
+	testSimpleTranslationDownload(t, mockData, "false")
 	testSimpleGet(t, mockData, translationDownloadUrl)
 
 	assertFileContent(t, "locale/el/aaa-el.json", "This is the content")
@@ -547,6 +547,50 @@ func TestShouldSkipDueToStringPercentage(t *testing.T) {
 	assert.Equal(t, result, true)
 }
 
+func TestDownloadPseudoTranslations(t *testing.T) {
+	afterTest := beforeTest(t, []string{"el"}, nil)
+	defer afterTest()
+
+	cfg := getStandardConfig()
+	cfg.Local.Resources[0].FileFilter = "locale/<lang>/aaa-<lang>.json"
+
+	ts := getNewTestServer("This is the content")
+	defer ts.Close()
+
+	mockData := jsonapi.MockData{
+		resourceUrl:          getResourceEndpoint(),
+		projectUrl:           getProjectEndpoint(),
+		statsUrlAllLanguages: getStatsEndpointAllLanguages(),
+		sourceDownloadsUrl:   getSourceDownloadsEndpoint(),
+		sourceDownloadUrl:    getDownloadEndpoint(ts.URL),
+	}
+
+	api := jsonapi.GetTestConnection(mockData)
+
+	arguments := PullCommandArguments{
+		FileType:          "default",
+		Mode:              "default",
+		Force:             true,
+		All:               true,
+		ResourceIds:       nil,
+		MinimumPercentage: -1,
+		Workers:           1,
+		Pseudo:            true,
+	}
+
+	err := PullCommand(cfg, &api, &arguments)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+
+	assertFileContent(t, "locale/el/aaa-el.json", "This is the content")
+	testSimpleGet(t, mockData, resourceUrl)
+	testSimpleGet(t, mockData, projectUrl)
+	testSimpleGet(t, mockData, statsUrlAllLanguages)
+	testSimpleSourceDownload(t, mockData, "true")
+	testSimpleGet(t, mockData, sourceDownloadUrl)
+}
+
 func assertFileContent(t *testing.T, expectedPath, expectedContent string) {
 	data, err := os.ReadFile(expectedPath)
 	if err != nil {
@@ -586,6 +630,7 @@ func getDownloadEndpoint(url string) *jsonapi.MockEndpoint {
 func testSimpleTranslationDownload(
 	t *testing.T,
 	mockData jsonapi.MockData,
+	pseudo string,
 ) {
 	testSimplePost(
 		t,
@@ -597,13 +642,13 @@ func testSimpleTranslationDownload(
 				"attributes": {"content_encoding": "",
 							   "file_type": "default",
 							   "mode": "default",
-							   "pseudo": false},
+							   "pseudo": %s},
 				"relationships": {
 					"language": {"data": {"type": "languages", "id": "l:el"}},
 					"resource": {"data": {"type": "resources", "id": "%s"}}
 				}
 			}}`,
-			resourceId,
+			pseudo, resourceId,
 		),
 	)
 }
@@ -611,6 +656,7 @@ func testSimpleTranslationDownload(
 func testSimpleSourceDownload(
 	t *testing.T,
 	mockData jsonapi.MockData,
+	pseudo string,
 ) {
 	testSimplePost(
 		t,
@@ -621,12 +667,12 @@ func testSimpleSourceDownload(
 				"type": "resource_strings_async_downloads",
 				"attributes": {"content_encoding": "",
 							   "file_type": "default",
-							   "pseudo": false},
+							   "pseudo": %s},
 				"relationships": {
 					"resource": {"data": {"type": "resources", "id": "%s"}}
 				}
 			}}`,
-			resourceId,
+			pseudo, resourceId,
 		),
 	)
 }
