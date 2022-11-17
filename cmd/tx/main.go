@@ -482,6 +482,11 @@ func Main() {
 						Name:  "silent",
 						Usage: "Whether to reduce verbosity of the output",
 					},
+					&cli.BoolFlag{
+						Name:  "pseudo",
+						Usage: "Generate mock string translations",
+						Value: false,
+					},
 				},
 				Action: func(c *cli.Context) error {
 					cfg, err := config.LoadFromPaths(c.String("root-config"),
@@ -534,6 +539,7 @@ func Main() {
 						MinimumPercentage: c.Int("minimum-perc"),
 						Workers:           c.Int("workers"),
 						Silent:            c.Bool("silent"),
+						Pseudo:            c.Bool("pseudo"),
 					}
 
 					if c.Bool("xliff") && c.Bool("json") {
