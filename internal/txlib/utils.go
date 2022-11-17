@@ -72,12 +72,45 @@ func applyBranchToResources(cfgResources []*config.Resource, branch string) {
 	for i := range cfgResources {
 		cfgResource := cfgResources[i]
 		if branch != "" {
-			cfgResource.ResourceSlug = fmt.Sprintf(
+			cfgResource.ResourceSlug = getBranchResourceSlug(cfgResource, branch)
+		}
+	}
+}
+
+func getBaseResourceSlug(cfgResource *config.Resource, branch string, base string) string {
+	if branch != "" {
+		branchPrefix := fmt.Sprintf(
+			"%s--",
+			slug.Make(branch),
+		)
+		mainResourceSlug := cfgResource.ResourceSlug[len(branchPrefix):]
+		baseBranch := base
+		if base == "-1" {
+			baseBranch = ""
+		}
+		if baseBranch == "" {
+			return mainResourceSlug
+		} else {
+			return fmt.Sprintf(
 				"%s--%s",
-				slug.Make(branch),
-				cfgResource.ResourceSlug,
+				slug.Make(baseBranch),
+				mainResourceSlug,
 			)
 		}
+	} else {
+		return cfgResource.ResourceSlug
+	}
+}
+
+func getBranchResourceSlug(cfgResource *config.Resource, branch string) string {
+	if branch != "" {
+		return fmt.Sprintf(
+			"%s--%s",
+			slug.Make(branch),
+			cfgResource.ResourceSlug,
+		)
+	} else {
+		return cfgResource.ResourceSlug
 	}
 }
 
@@ -165,4 +198,15 @@ func checkFileFilter(fileFilter string) error {
 	} else {
 		return validateFileFilter(fileFilter)
 	}
+}
+
+func isValidResolutionPolicy(policy string) (IsValid bool) {
+	res := [2]string{"USE_HEAD", "USE_BASE"}
+	for _, requestPolicy := range res {
+		if requestPolicy == policy {
+			return true
+		}
+	}
+	return false
+
 }
