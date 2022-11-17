@@ -32,6 +32,7 @@ type PullCommandArguments struct {
 	MinimumPercentage int
 	Workers           int
 	Silent            bool
+	Pseudo            bool
 }
 
 func PullCommand(
@@ -403,6 +404,7 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 					resource,
 					args.ContentEncoding,
 					args.FileType,
+					args.Pseudo,
 				)
 				return err
 			},
@@ -497,14 +499,24 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 		err = handleThrottling(
 			func() error {
 				var err error
-				download, err = txapi.CreateTranslationsAsyncDownload(
-					api,
-					resource,
-					languageCode,
-					args.ContentEncoding,
-					args.FileType,
-					args.Mode,
-				)
+				if args.Pseudo {
+					download, err = txapi.CreateResourceStringsAsyncDownload(
+						api,
+						resource,
+						args.ContentEncoding,
+						args.FileType,
+						args.Pseudo,
+					)
+				} else {
+					download, err = txapi.CreateTranslationsAsyncDownload(
+						api,
+						resource,
+						languageCode,
+						args.ContentEncoding,
+						args.FileType,
+						args.Mode,
+					)
+				}
 				return err
 			},
 			"Creating download job",

@@ -550,7 +550,7 @@ fall back to taking the filesystem timestamp into account.
   > Note: Starting from version 1.5.0 resources created using the `--branch` flag,
   will have an enhanced functionality in transifex and will be able to automatically
   be merged into their bases. Resources created using the `--branch`  prior to this
-  version, need to be pushed again in order for the new functionality to be available..
+  version, need to be pushed again in order for the new functionality to be available.
 
   ```sh
   → tx push --branch 'new_feature' --base '' myproject.myresource
@@ -756,6 +756,8 @@ default to taking the filesystem timestamp into account.
 - `--workers/-w` (default 5, max 30): The client will pull files in parallel to improve
   speed. The `--workers` flag sets the number of concurrent downloads possible at
   any time.
+
+- `--pseudo`: Generate mock string translations with a ~20% default length increase in characters.
 
 ### Removing resources from Transifex
 The tx delete command lets you delete a resource that's in your `config` file and on Transifex.
