@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/transifex/cli/pkg/jsonapi"
 )
@@ -38,8 +39,9 @@ func CreateTranslationsAsyncDownload(
 	return download, err
 }
 
-func PollTranslationDownload(download *jsonapi.Resource, filePath string) error {
+func PollTranslationDownload(download *jsonapi.Resource, duration time.Duration, filePath string) error {
 	for {
+		time.Sleep(duration)
 		err := download.Reload()
 		if err != nil {
 			return err
