@@ -76,6 +76,7 @@ func PollTranslationUpload(
 	upload *jsonapi.Resource, duration time.Duration,
 ) error {
 	for {
+		time.Sleep(duration)
 		err := upload.Reload()
 		if err != nil {
 			return err
@@ -95,7 +96,6 @@ func PollTranslationUpload(
 		} else if uploadAttributes.Status == "succeeded" {
 			break
 		}
-		time.Sleep(duration)
 	}
 	return nil
 }

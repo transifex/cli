@@ -39,6 +39,7 @@ func PollResourceStringsDownload(
 	filePath string,
 ) error {
 	for {
+		time.Sleep(duration)
 		err := download.Reload()
 		if err != nil {
 			return err
@@ -78,6 +79,5 @@ func PollResourceStringsDownload(
 		} else if download.Attributes["status"] == "succeeded" {
 			return nil
 		}
-		time.Sleep(duration)
 	}
 }

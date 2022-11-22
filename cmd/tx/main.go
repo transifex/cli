@@ -251,7 +251,7 @@ func Main() {
 					},
 					&cli.IntFlag{
 						Name:    "workers",
-						Usage:   "How many parallel workers to use",
+						Usage:   "How many parallel workers to use (max 20)",
 						Aliases: []string{"w"},
 						Value:   5,
 					},
@@ -320,6 +320,12 @@ func Main() {
 					if c.String("languages") != "" {
 						languages = strings.Split(c.String("languages"), ",")
 					}
+
+					workers := c.Int("workers")
+					if workers > 20 {
+						workers = 20
+					}
+
 					args := txlib.PushCommandArguments{
 						Source:           c.Bool("source"),
 						Translation:      c.Bool("translation"),
@@ -332,7 +338,7 @@ func Main() {
 						Branch:           c.String("branch"),
 						Base:             c.String("base"),
 						All:              c.Bool("all"),
-						Workers:          c.Int("workers"),
+						Workers:          workers,
 						Silent:           c.Bool("silent"),
 					}
 
@@ -363,12 +369,6 @@ func Main() {
 						return cli.Exit(errorColor(
 							"--xliff only makes sense when used with "+
 								"`-t/--translation`",
-						), 1)
-					}
-
-					if 1 > args.Workers || args.Workers > 30 {
-						return cli.Exit(errorColor(
-							"Please choose a number of workers between 1 and 30",
 						), 1)
 					}
 
@@ -474,7 +474,7 @@ func Main() {
 					},
 					&cli.IntFlag{
 						Name:    "workers",
-						Usage:   "How many parallel workers to use",
+						Usage:   "How many parallel workers to use (max 20)",
 						Aliases: []string{"w"},
 						Value:   5,
 					},
@@ -524,6 +524,11 @@ func Main() {
 						resourceIds = append(resourceIds, extraResourceIds...)
 					}
 
+					workers := c.Int("workers")
+					if workers > 20 {
+						workers = 20
+					}
+
 					arguments := txlib.PullCommandArguments{
 						ContentEncoding:   c.String("content_encoding"),
 						Mode:              c.String("mode"),
@@ -537,7 +542,7 @@ func Main() {
 						UseGitTimestamps:  c.Bool("use-git-timestamps"),
 						Branch:            c.String("branch"),
 						MinimumPercentage: c.Int("minimum-perc"),
-						Workers:           c.Int("workers"),
+						Workers:           workers,
 						Silent:            c.Bool("silent"),
 						Pseudo:            c.Bool("pseudo"),
 					}
@@ -573,12 +578,6 @@ func Main() {
 							arguments.Languages,
 							strings.Split(c.String("languages"), ",")...,
 						)
-					}
-
-					if 1 > arguments.Workers || arguments.Workers > 30 {
-						return cli.Exit(errorColor(
-							"Please choose a number of workers between 1 and 30",
-						), 1)
 					}
 
 					if arguments.Source && !arguments.Translations &&

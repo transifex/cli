@@ -534,7 +534,7 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 
 		err = handleThrottling(
 			func() error {
-				return txapi.PollTranslationDownload(download, filePath)
+				return txapi.PollTranslationDownload(download, time.Second, filePath)
 			},
 			"",
 			func(msg string) { sendMessage(msg, false) },
