@@ -72,11 +72,10 @@ func (err *ResourceTranslationsAsyncUploadAttributes) Error() string {
 	return strings.Join(parts, ", ")
 }
 
-func PollTranslationUpload(
-	upload *jsonapi.Resource, duration time.Duration,
-) error {
+func PollTranslationUpload(upload *jsonapi.Resource) error {
+	backoff := getBackoff(nil)
 	for {
-		time.Sleep(duration)
+		time.Sleep(time.Duration(backoff()) * time.Second)
 		err := upload.Reload()
 		if err != nil {
 			return err

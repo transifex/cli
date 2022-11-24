@@ -642,7 +642,7 @@ func (task *SourceFilePushTask) Run(send func(string), abort func()) {
 
 	err = handleThrottling(
 		func() error {
-			return txapi.PollSourceUpload(sourceUpload, time.Second)
+			return txapi.PollSourceUpload(sourceUpload)
 		},
 		"",
 		func(msg string) { sendMessage(msg, false) },
@@ -734,7 +734,7 @@ func (task *TranslationFileTask) Run(send func(string), abort func()) {
 	// Polling
 	err = handleThrottling(
 		func() error {
-			return txapi.PollTranslationUpload(upload, time.Second)
+			return txapi.PollTranslationUpload(upload)
 		},
 		"",
 		func(msg string) { sendMessage(msg, false) },
