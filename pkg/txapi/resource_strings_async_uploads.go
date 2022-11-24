@@ -61,9 +61,10 @@ func UploadSource(
 	return &upload, nil
 }
 
-func PollSourceUpload(upload *jsonapi.Resource, duration time.Duration) error {
+func PollSourceUpload(upload *jsonapi.Resource) error {
+	backoff := getBackoff(nil)
 	for {
-		time.Sleep(duration)
+		time.Sleep(time.Duration(backoff()) * time.Second)
 		err := upload.Reload()
 		if err != nil {
 			return err

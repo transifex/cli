@@ -3,7 +3,7 @@ package txapi
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -39,9 +39,10 @@ func CreateTranslationsAsyncDownload(
 	return download, err
 }
 
-func PollTranslationDownload(download *jsonapi.Resource, duration time.Duration, filePath string) error {
+func PollTranslationDownload(download *jsonapi.Resource, filePath string) error {
+	backoff := getBackoff(nil)
 	for {
-		time.Sleep(duration)
+		time.Sleep(time.Duration(backoff()) * time.Second)
 		err := download.Reload()
 		if err != nil {
 			return err
@@ -57,7 +58,7 @@ func PollTranslationDownload(download *jsonapi.Resource, duration time.Duration,
 	if resp.StatusCode != 200 {
 		return errors.New("file download error")
 	}
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	bodyBytes, err := io.ReadAll(resp.Body)
 	defer resp.Body.Close()
 	if err != nil {
 		return err
@@ -67,7 +68,7 @@ func PollTranslationDownload(download *jsonapi.Resource, duration time.Duration,
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(filePath, bodyBytes, 0644)
+	err = os.WriteFile(filePath, bodyBytes, 0644)
 	if err != nil {
 		return err
 	}
