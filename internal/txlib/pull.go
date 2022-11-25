@@ -455,14 +455,14 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 				sendMessage("File was not found locally, skipping", false)
 				return
 			}
-			pseudo_prefix := ""
+			pseudo_postfix := ""
 			if args.Pseudo {
-				pseudo_prefix = "pseudo_"
+				pseudo_postfix = "_pseudo"
 			}
 			filePath = strings.Replace(
 				cfgResource.FileFilter,
 				"<lang>",
-				pseudo_prefix+localLanguageCode,
+				localLanguageCode+pseudo_postfix,
 				-1,
 			)
 			filePath = setFileTypeExtensions(args.FileType, filePath)
