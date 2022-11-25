@@ -583,7 +583,7 @@ func TestDownloadPseudoTranslations(t *testing.T) {
 		t.Errorf("%s", err)
 	}
 
-	assertFileContent(t, "locale/el/aaa-el.json", "This is the content")
+	assertFileContent(t, "locale/el_pseudo/aaa-el_pseudo.json", "This is the content")
 	testSimpleGet(t, mockData, resourceUrl)
 	testSimpleGet(t, mockData, projectUrl)
 	testSimpleGet(t, mockData, statsUrlAllLanguages)
