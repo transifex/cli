@@ -580,6 +580,14 @@ func Main() {
 						)
 					}
 
+					if arguments.Pseudo && arguments.Source {
+						return cli.Exit(errorColor(
+							"It doesn't make sense to use the '--pseudo' flag with the "+
+								"CLI in \"source pull\" mode ('--source' flag). Please use with "+
+								" translation files.",
+						), 1)
+					}
+
 					if arguments.Source && !arguments.Translations &&
 						(arguments.All || len(arguments.Languages) > 0) {
 						return cli.Exit(errorColor(
