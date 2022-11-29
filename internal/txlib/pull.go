@@ -244,6 +244,14 @@ func (task *ResourcePullTask) Run(send func(string), abort func()) {
 			return
 		}
 		fileFilter := setFileTypeExtensions(args.FileType, cfgResource.FileFilter)
+		if args.Pseudo {
+			fileFilter = strings.Replace(
+				fileFilter,
+				"<lang>",
+				"<lang>_pseudo",
+				-1,
+			)
+		}
 		localFiles := searchFileFilter(".", fileFilter)
 
 		for localLanguageCode, filePath := range cfgResource.Overrides {
