@@ -477,8 +477,7 @@ equivalent to using `-l` with all the _local_ language codes.
 
 Transifex uses the _ISO/IEC 15897_ standard for language codes (for example
 `en_US`). If you use a different format for the _local_ language codes, you can
-define a mapping in your configuration file `.tx/config` (later we will offer
-the `tx config` command to make editing the configuration more convenient). You
+define a mapping in your configuration file `.tx/config`. You
 can specify these mappings for all configured resources by adding them to the
 `[main]` section or you can specify mappings per resource. The "per-resource"
 mappings take precendence. Configuring a language mapping looks like this:
