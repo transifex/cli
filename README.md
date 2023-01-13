@@ -71,6 +71,12 @@ alias tx='touch ~/.transifexrc; docker run --rm -i -t -v `pwd`:/app -v ~/.transi
 to your `~/.bashrc` / `~/.zshrc`. (The first time you use it you will have to
 wait for a ~5MB download)
 
+
+### Running from Github actions (beta)
+
+You can invoke the CLI from within a Github workflow by using our Github
+action. See the instructions [here](https://github.com/transifex/cli-action).
+
 ## Migrating from older versions of the client
 
 The current version of the client maintains backwards compatibility for the `tx push`
