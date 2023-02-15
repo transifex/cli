@@ -481,7 +481,7 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 				minimumPerc = cfgResource.MinimumPercentage
 			}
 		}
-		shouldSkip, err := shouldSkipDownload(
+		shouldSkip, feedbackMessage, err := shouldSkipDownload(
 			filePath,
 			stats,
 			args.UseGitTimestamps,
@@ -497,7 +497,7 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 			return
 		}
 		if shouldSkip {
-			sendMessage("Local file is newer than remote, skipping", false)
+			sendMessage(feedbackMessage, false)
 			return
 		}
 
@@ -561,13 +561,13 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 func shouldSkipDownload(
 	path string, remoteStat *jsonapi.Resource, useGitTimestamps bool,
 	mode string, minimum_perc int, force bool,
-) (bool, error) {
+) (bool, string, error) {
 	var localTime time.Time
-
+	var feedbackMessage = ""
 	var remoteStatAttributes txapi.ResourceLanguageStatsAttributes
 	err := remoteStat.MapAttributes(&remoteStatAttributes)
 	if err != nil {
-		return false, err
+		return false, feedbackMessage, err
 	}
 
 	if minimum_perc > 0 {
@@ -585,7 +585,8 @@ func shouldSkipDownload(
 			minimum_perc, actedOnStrings, totalStrings,
 		)
 		if skipDueToStringPercentage {
-			return true, nil
+			feedbackMessage = "Minimum translation completion threshold not satisfied, skipping"
+			return true, feedbackMessage, nil
 		}
 	}
 
@@ -601,9 +602,9 @@ func shouldSkipDownload(
 			localStat, err := os.Stat(path)
 			if err != nil {
 				if os.IsNotExist(err) {
-					return false, nil
+					return false, feedbackMessage, nil
 				}
-				return false, err
+				return false, feedbackMessage, err
 			}
 			localTime = localStat.ModTime().UTC()
 		}
@@ -611,14 +612,17 @@ func shouldSkipDownload(
 		remoteTime, err := time.Parse(time.RFC3339,
 			remoteStatAttributes.LastUpdate)
 		if err != nil {
-			return false, err
+			return false, feedbackMessage, err
 		}
 
 		// Don't pull if local file is newer than remote
 		// resource-language
-		return remoteTime.Before(localTime), nil
+		if remoteTime.Before(localTime) {
+			feedbackMessage = "Local file is newer than remote, skipping"
+		}
+		return remoteTime.Before(localTime), feedbackMessage, nil
 	}
-	return false, nil
+	return false, feedbackMessage, nil
 }
 
 func shouldSkipDueToStringPercentage(
