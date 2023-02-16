@@ -192,6 +192,15 @@ as a _Transifex project_. Your directory structure should now look like this:
     |
     + en.php
 ```
+### Using Environment Variables
+The available environment variables for the CLI:
+
+* `TX_TOKEN`: The api token to use
+* `TX_HOSTNAME`: The API hostname
+* `TX_CACERT`: Path to CA certificate bundle file
+
+You can either add these variables in your CI settings, your profile file or when executing the commands like:
+`TX_TOKEN=myapitoken tx pull`
 
 ### Adding Resources to Configuration
 
@@ -572,6 +581,7 @@ fall back to taking the filesystem timestamp into account.
 - `--workers/-w` (default 5, max 30): The client will push files in parallel to improve
   speed. The `--workers` flag sets the number of concurrent uploads possible at
   any time.
+- `--silent`: Reduce verbosity of the output.
 
 ### Pulling Files from Transifex
 
@@ -763,6 +773,8 @@ default to taking the filesystem timestamp into account.
   any time.
 
 - `--pseudo`: Generate mock string translations with a ~20% default length increase in characters.
+
+- `--silent`: Reduce verbosity of the output.
 
 ### Removing resources from Transifex
 The tx delete command lets you delete a resource that's in your `config` file and on Transifex.
