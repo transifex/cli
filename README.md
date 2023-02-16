@@ -192,6 +192,15 @@ as a _Transifex project_. Your directory structure should now look like this:
     |
     + en.php
 ```
+### Using Environment Variables
+The available environment variables for the CLI:
+
+* `TX_TOKEN`: The api token to use
+* `TX_HOSTNAME`: The API hostname
+* `TX_CACERT`: Path to CA certificate bundle file
+
+You can either add these variables in your CI settings, your profile file or when executing the commands like:
+`TX_TOKEN=myapitoken tx pull`
 
 ### Adding Resources to Configuration
 
