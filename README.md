@@ -71,6 +71,12 @@ alias tx='touch ~/.transifexrc; docker run --rm -i -t -v `pwd`:/app -v ~/.transi
 to your `~/.bashrc` / `~/.zshrc`. (The first time you use it you will have to
 wait for a ~5MB download)
 
+
+### Running from Github actions (beta)
+
+You can invoke the CLI from within a Github workflow by using our Github
+action. See the instructions [here](https://github.com/transifex/cli-action).
+
 ## Migrating from older versions of the client
 
 The current version of the client maintains backwards compatibility for the `tx push`
@@ -186,6 +192,15 @@ as a _Transifex project_. Your directory structure should now look like this:
     |
     + en.php
 ```
+### Using Environment Variables
+The available environment variables for the CLI:
+
+* `TX_TOKEN`: The api token to use
+* `TX_HOSTNAME`: The API hostname
+* `TX_CACERT`: Path to CA certificate bundle file
+
+You can either add these variables in your CI settings, your profile file or when executing the commands like:
+`TX_TOKEN=myapitoken tx pull`
 
 ### Adding Resources to Configuration
 
@@ -477,8 +492,7 @@ equivalent to using `-l` with all the _local_ language codes.
 
 Transifex uses the _ISO/IEC 15897_ standard for language codes (for example
 `en_US`). If you use a different format for the _local_ language codes, you can
-define a mapping in your configuration file `.tx/config` (later we will offer
-the `tx config` command to make editing the configuration more convenient). You
+define a mapping in your configuration file `.tx/config`. You
 can specify these mappings for all configured resources by adding them to the
 `[main]` section or you can specify mappings per resource. The "per-resource"
 mappings take precendence. Configuring a language mapping looks like this:
@@ -567,6 +581,7 @@ fall back to taking the filesystem timestamp into account.
 - `--workers/-w` (default 5, max 30): The client will push files in parallel to improve
   speed. The `--workers` flag sets the number of concurrent uploads possible at
   any time.
+- `--silent`: Reduce verbosity of the output.
 
 ### Pulling Files from Transifex
 
@@ -750,7 +765,7 @@ default to taking the filesystem timestamp into account.
   you set the `--skip` flag and an upload fails, then the client will simply
   print a warning and move on to the next language file.
 
-- `--minimum_perc=MINIMUM_PERC` Specify the minimum translation completion
+- `--minimum-perc=MINIMUM_PERC` Specify the minimum translation completion
   threshold required in order for a file to be downloaded.
 
 - `--workers/-w` (default 5, max 30): The client will pull files in parallel to improve
@@ -758,6 +773,8 @@ default to taking the filesystem timestamp into account.
   any time.
 
 - `--pseudo`: Generate mock string translations with a ~20% default length increase in characters.
+
+- `--silent`: Reduce verbosity of the output.
 
 ### Removing resources from Transifex
 The tx delete command lets you delete a resource that's in your `config` file and on Transifex.
