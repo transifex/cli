@@ -347,13 +347,15 @@ add multiple resources with a relatively simple shell script. For example:
 
 If you have content already setup in Transifex, you may want to setup local
 resources in order to pull the language files on your system. In order to do
-that, you can run:
+that, you can run the following command with Linux or Mac OS:
 
 ```sh
 tx add remote \
     --file-filter 'translations/<project_slug>.<resource_slug>/<lang>.<ext>'
     https://www.transifex.com/myorganization/myproject/dashboard/
 ```
+
+For Windows OS, please use double quotes instead of single quotes, in the previous example.
 
 This will create entries in your configuration file for each resource in your
 remote project. ie the configuration file may look like this:
