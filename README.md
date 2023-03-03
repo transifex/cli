@@ -513,6 +513,9 @@ This means that the _remote_ `pt_PT` language code maps to the _local_ `pt-pt`
 language code and the _remote_ `pt_BR` language code maps to the _local_
 `pt-br` language code.
 
+The REMOTE_CODE is the language code supported by Transifex. And the LOCAL_CODE is your
+language code.
+
 The `-l` flag works with both _local_ and _remote_ language codes.
 
 **Skipping pushing older files:**
