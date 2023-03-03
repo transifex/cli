@@ -513,6 +513,9 @@ This means that the _remote_ `pt_PT` language code maps to the _local_ `pt-pt`
 language code and the _remote_ `pt_BR` language code maps to the _local_
 `pt-br` language code.
 
+The REMOTE_CODE is the language code supported by Transifex. And the LOCAL_CODE is your
+language code.
+
 The `-l` flag works with both _local_ and _remote_ language codes.
 
 **Skipping pushing older files:**
@@ -737,6 +740,12 @@ default to taking the filesystem timestamp into account.
 - `--disable-overwrite`: If a file exists do not update it. This is useful
   when using `-a/--all` flag and you don't want to change the existing files
   but only download other language files.
+
+`--mode/-m`: The translation mode of the downloaded file. This can be one of the 
+following: `'default', 'reviewed'`, `'proofread'`, `'translator'`, `'untranslated'`,
+ `'onlytranslated'`, `'onlyreviewed'`, `'onlyproofread'`, `'sourceastranslation'` **(default 
+ mode is: **`'default'`). Use like` 'tx pull -m proofread'` to download only proofread
+ translations.   
 
 - `--branch`: Using this flag, you can access copies of the regular remote
   resource that are tied to the provided branch. So if `tx pull proj.res`
