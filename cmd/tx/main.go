@@ -739,7 +739,7 @@ func Main() {
 				Subcommands: []*cli.Command{
 					{
 						Name:  "remote",
-						Usage: "tx add remote https://www.transifex.com/myorganization/myproject/dashboard/",
+						Usage: "tx add remote https://app.transifex.com/myorganization/myproject/dashboard/",
 						Flags: []cli.Flag{
 							&cli.StringFlag{
 								Name: "file-filter",

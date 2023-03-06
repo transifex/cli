@@ -55,7 +55,7 @@ func TestAddRemote(t *testing.T) {
 	err := AddRemoteCommand(
 		cfg,
 		&api,
-		"https://www.transifex.com/orgslug/projslug/whatever/whatever/",
+		"https://app.transifex.com/orgslug/projslug/whatever/whatever/",
 		// Lets make the file filter a bit weird
 		"locale/<project_slug><project_slug>.<resource_slug>/<lang>.<ext>",
 		50,
