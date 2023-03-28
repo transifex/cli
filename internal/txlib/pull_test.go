@@ -2,6 +2,7 @@ package txlib
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -589,6 +590,149 @@ func TestDownloadPseudoTranslations(t *testing.T) {
 	testSimpleGet(t, mockData, statsUrlAllLanguages)
 	testSimpleSourceDownload(t, mockData, "true")
 	testSimpleGet(t, mockData, sourceDownloadUrl)
+}
+
+func TestKeepNewFilesSource(t *testing.T) {
+	afterTest := beforeTest(t, nil, nil)
+	defer afterTest()
+
+	cfg := getStandardConfig()
+	assertFileContent(t, "aaa.json", "")
+
+	ts := getNewTestServer("New source")
+	defer ts.Close()
+
+	mockData := jsonapi.MockData{
+		resourceUrl:            getResourceEndpoint(),
+		projectUrl:             getProjectEndpoint(),
+		statsUrlSourceLanguage: getStatsEndpointSourceLanguage(),
+		sourceDownloadsUrl:     getSourceDownloadsEndpoint(),
+		sourceDownloadUrl:      getDownloadEndpoint(ts.URL),
+	}
+
+	api := jsonapi.GetTestConnection(mockData)
+	err := PullCommand(
+		cfg,
+		&api,
+		&PullCommandArguments{
+			FileType:          "default",
+			Mode:              "default",
+			Force:             true,
+			Source:            true,
+			ResourceIds:       nil,
+			MinimumPercentage: -1,
+			Workers:           1,
+			KeepNewFiles:      true,
+			DisableOverwrite:  true,
+		},
+	)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+
+	testSimpleGet(t, mockData, resourceUrl)
+	testSimpleGet(t, mockData, projectUrl)
+	testSimpleGet(t, mockData, statsUrlSourceLanguage)
+	testSimpleSourceDownload(t, mockData, "false")
+	testSimpleGet(t, mockData, sourceDownloadUrl)
+
+	assertFileContent(t, "aaa.json.new", "New source")
+	assertFileContent(t, "aaa.json", "")
+}
+
+func TestKeepNewFilesSourceOnlyWithDisableOverride(t *testing.T) {
+	afterTest := beforeTest(t, nil, nil)
+	defer afterTest()
+
+	cfg := getStandardConfig()
+	assertFileContent(t, "aaa.json", "")
+
+	ts := getNewTestServer("New source")
+	defer ts.Close()
+
+	mockData := jsonapi.MockData{
+		resourceUrl:            getResourceEndpoint(),
+		projectUrl:             getProjectEndpoint(),
+		statsUrlSourceLanguage: getStatsEndpointSourceLanguage(),
+		sourceDownloadsUrl:     getSourceDownloadsEndpoint(),
+		sourceDownloadUrl:      getDownloadEndpoint(ts.URL),
+	}
+
+	api := jsonapi.GetTestConnection(mockData)
+	err := PullCommand(
+		cfg,
+		&api,
+		&PullCommandArguments{
+			FileType:          "default",
+			Mode:              "default",
+			Force:             true,
+			Source:            true,
+			ResourceIds:       nil,
+			MinimumPercentage: -1,
+			Workers:           1,
+			KeepNewFiles:      true,
+		},
+	)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+
+	testSimpleGet(t, mockData, resourceUrl)
+	testSimpleGet(t, mockData, projectUrl)
+	testSimpleGet(t, mockData, statsUrlSourceLanguage)
+	testSimpleSourceDownload(t, mockData, "false")
+	testSimpleGet(t, mockData, sourceDownloadUrl)
+
+	assertFileContent(t, "aaa.json", "New source")
+	_, err = ioutil.ReadFile("aaa.json.new")
+	if err == nil {
+		t.Error("File not exist because DisableOverwrite is not true")
+	}
+}
+
+func TestKeepNewFilesTranslation(t *testing.T) {
+	afterTest := beforeTest(t, []string{"el"}, nil)
+	defer afterTest()
+
+	cfg := getStandardConfig()
+
+	ts := getNewTestServer("This is the content")
+	defer ts.Close()
+
+	mockData := jsonapi.MockData{
+		resourceUrl:             getResourceEndpoint(),
+		projectUrl:              getProjectEndpoint(),
+		statsUrlAllLanguages:    getStatsEndpointAllLanguages(),
+		translationDownloadsUrl: getTranslationDownloadsEndpoint(),
+		translationDownloadUrl:  getDownloadEndpoint(ts.URL),
+	}
+
+	api := jsonapi.GetTestConnection(mockData)
+
+	arguments := PullCommandArguments{
+		FileType:          "default",
+		Mode:              "default",
+		Force:             true,
+		All:               true,
+		ResourceIds:       nil,
+		MinimumPercentage: -1,
+		Workers:           1,
+		KeepNewFiles:      true,
+		DisableOverwrite:  true,
+	}
+
+	err := PullCommand(cfg, &api, &arguments)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+
+	testSimpleGet(t, mockData, resourceUrl)
+	testSimpleGet(t, mockData, projectUrl)
+	testSimpleGet(t, mockData, statsUrlAllLanguages)
+	testSimpleTranslationDownload(t, mockData, "false")
+	testSimpleGet(t, mockData, translationDownloadUrl)
+	assertFileContent(t, "aaa-el.json", `{"hello": "world"}`)
+	assertFileContent(t, "aaa-el.json.new", "This is the content")
 }
 
 func assertFileContent(t *testing.T, expectedPath, expectedContent string) {

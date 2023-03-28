@@ -347,13 +347,17 @@ add multiple resources with a relatively simple shell script. For example:
 
 If you have content already setup in Transifex, you may want to setup local
 resources in order to pull the language files on your system. In order to do
-that, you can run:
+that, you can run the following command with Linux or Mac OS:
 
 ```sh
 tx add remote \
     --file-filter 'translations/<project_slug>.<resource_slug>/<lang>.<ext>'
     https://www.transifex.com/myorganization/myproject/dashboard/
 ```
+
+> The use of tx add remote appends the content in the .tx/config file and does not overwrite it. However, if the project and resource exist in the .tx/config file, then it will overwrite the previous information for the specific project & resource.
+
+For Windows OS, please use double quotes instead of single quotes in the following example.
 
 This will create entries in your configuration file for each resource in your
 remote project. ie the configuration file may look like this:
@@ -508,6 +512,9 @@ lang_map = pt_PT: pt-pt, pt_BR: pt-br
 This means that the _remote_ `pt_PT` language code maps to the _local_ `pt-pt`
 language code and the _remote_ `pt_BR` language code maps to the _local_
 `pt-br` language code.
+
+The REMOTE_CODE is the language code supported by Transifex. And the LOCAL_CODE is your
+language code.
 
 The `-l` flag works with both _local_ and _remote_ language codes.
 
@@ -733,6 +740,12 @@ default to taking the filesystem timestamp into account.
 - `--disable-overwrite`: If a file exists do not update it. This is useful
   when using `-a/--all` flag and you don't want to change the existing files
   but only download other language files.
+
+`--mode/-m`: The translation mode of the downloaded file. This can be one of the 
+following: `'default', 'reviewed'`, `'proofread'`, `'translator'`, `'untranslated'`,
+ `'onlytranslated'`, `'onlyreviewed'`, `'onlyproofread'`, `'sourceastranslation'` **(default 
+ mode is: **`'default'`). Use like` 'tx pull -m proofread'` to download only proofread
+ translations.   
 
 - `--branch`: Using this flag, you can access copies of the regular remote
   resource that are tied to the provided branch. So if `tx pull proj.res`
