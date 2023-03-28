@@ -26,6 +26,7 @@ type PullCommandArguments struct {
 	Translations      bool
 	All               bool
 	DisableOverwrite  bool
+	KeepNewFiles      bool
 	ResourceIds       []string
 	UseGitTimestamps  bool
 	Branch            string
@@ -378,8 +379,12 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 
 		_, err := os.Stat(sourceFile)
 		if err == nil && args.DisableOverwrite {
-			sendMessage("Disable Overwrite is enabled, skipping", false)
-			return
+			if !args.KeepNewFiles {
+				sendMessage("Disable overwrite enabled, skipping", false)
+				return
+			} else {
+				sourceFile = sourceFile + ".new"
+			}
 		}
 
 		if !args.Force {
@@ -447,8 +452,12 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 		if filePath != "" {
 			// Remote language file exists and so does local
 			if args.DisableOverwrite {
-				sendMessage("Disable overwrite enabled, skipping", false)
-				return
+				if !args.KeepNewFiles {
+					sendMessage("Disable overwrite enabled, skipping", false)
+					return
+				} else {
+					filePath = filePath + ".new"
+				}
 			}
 		} else {
 			// Remote language file exists but local does not

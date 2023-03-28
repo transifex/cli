@@ -438,6 +438,11 @@ func Main() {
 						Usage:   "Whether skip existing files",
 					},
 					&cli.BoolFlag{
+						Name: "keep-new-files",
+						Usage: "Used with --disable-ovewrite to create new files " +
+							"if file already exists with a '.new' extension.",
+					},
+					&cli.BoolFlag{
 						Name:  "skip",
 						Usage: "Whether to skip on errors",
 					},
@@ -537,6 +542,7 @@ func Main() {
 						Source:            c.Bool("source"),
 						Translations:      c.Bool("translations"),
 						DisableOverwrite:  c.Bool("disable-overwrite"),
+						KeepNewFiles:      c.Bool("keep-new-files"),
 						All:               c.Bool("all"),
 						ResourceIds:       resourceIds,
 						UseGitTimestamps:  c.Bool("use-git-timestamps"),
