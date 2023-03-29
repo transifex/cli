@@ -741,11 +741,14 @@ default to taking the filesystem timestamp into account.
   when using `-a/--all` flag and you don't want to change the existing files
   but only download other language files.
 
-`--mode/-m`: The translation mode of the downloaded file. This can be one of the 
+- `--keep-new-files`: Used with `--disable-ovewrite` to create new files
+	if file already exists locally with a '.new' extension.
+
+- `--mode/-m`: The translation mode of the downloaded file. This can be one of the
 following: `'default', 'reviewed'`, `'proofread'`, `'translator'`, `'untranslated'`,
- `'onlytranslated'`, `'onlyreviewed'`, `'onlyproofread'`, `'sourceastranslation'` **(default 
+ `'onlytranslated'`, `'onlyreviewed'`, `'onlyproofread'`, `'sourceastranslation'` **(default
  mode is: **`'default'`). Use like` 'tx pull -m proofread'` to download only proofread
- translations.   
+ translations.
 
 - `--branch`: Using this flag, you can access copies of the regular remote
   resource that are tied to the provided branch. So if `tx pull proj.res`
