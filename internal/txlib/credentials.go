@@ -95,7 +95,7 @@ func GetHostAndToken(
 			restHostname = activeHost.RestHostname
 		} else {
 			// Fall back to defaults
-			hostname = "https://www.transifex.com"
+			hostname = "https://app.transifex.com"
 			restHostname = "https://rest.api.transifex.com"
 		}
 	}
@@ -110,7 +110,7 @@ func GetHostAndToken(
 			fmt.Println("API token not found. Please provide it and it will " +
 				"be saved in '~/.transifexrc'.")
 			fmt.Println("If you don't have an API token, you can generate " +
-				"one in https://www.transifex.com/user/settings/api/")
+				"one in https://app.transifex.com/user/settings/api/")
 			fmt.Print("> ")
 			_, err := fmt.Scanln(&token)
 			if err != nil {

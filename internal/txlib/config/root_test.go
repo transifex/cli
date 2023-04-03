@@ -15,9 +15,9 @@ func TestLoadExampleRootConfig(t *testing.T) {
 	expected := RootConfig{
 		Path: path,
 		Hosts: []Host{{
-			Name:         "https://www.transifex.com",
+			Name:         "https://app.transifex.com",
 			ApiHostname:  "https://api.transifex.com",
-			Hostname:     "https://www.transifex.com",
+			Hostname:     "https://app.transifex.com",
 			Username:     "__username_or_api__",
 			Password:     "__password_or_api_token__",
 			RestHostname: "https://rest.api.transifex.com",

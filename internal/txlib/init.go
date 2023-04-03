@@ -61,7 +61,7 @@ func InitCommand() error {
 
 	cfg := config.LocalConfig{
 		Path: configName,
-		Host: "https://www.transifex.com",
+		Host: "https://app.transifex.com",
 	}
 
 	err = cfg.Save()
