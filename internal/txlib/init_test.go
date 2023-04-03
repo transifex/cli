@@ -74,7 +74,7 @@ func TestInitCreateFileContents(t *testing.T) {
 
 	res := cfg.Local.Host
 
-	assert.Equal(t, res, "https://www.transifex.com")
+	assert.Equal(t, res, "https://app.transifex.com")
 }
 
 func TestDoesNotChangeConfigWhenAbort(t *testing.T) {

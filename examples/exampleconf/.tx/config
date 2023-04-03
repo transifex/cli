@@ -1,7 +1,7 @@
 [main]
 # Points to `$HOME/.transifexrc` (RootConfig) host configuration
 # If a `.transifexrc` is found in the .tx directory it takes precedence
-host = https://www.transifex.com
+host = https://app.transifex.com
 
 # Example global language mapping (tranisfex language -> local languages)
 lang_map = de: de-Br, pt_BR: foo
