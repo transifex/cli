@@ -154,9 +154,9 @@ func TestSuccessfulMigration(t *testing.T) {
 	defer f.Close()
 
 	_, err2 := f.WriteString(`
-		[https://app.transifex.com]
+		[https://www.transifex.com]
 		api_hostname  = https://api.transifex.com
-		hostname      = https://app.transifex.com
+		hostname      = https://www.transifex.com
 		username      = api
 		password      = apassword
 	`)
@@ -175,7 +175,7 @@ func TestSuccessfulMigration(t *testing.T) {
 
 	_, err2 = f.WriteString(`
 		[main]
-		host = https://app.transifex.com
+		host = https://www.transifex.com
 		[projslug.ares]
 		file_filter = locale/<lang>.po
 		minimum_perc = 0
@@ -198,11 +198,12 @@ func TestSuccessfulMigration(t *testing.T) {
 
 	api := jsonapi.GetTestConnection(mockData)
 
+	assert.Equal(t, cfg.GetActiveHost().Name, "https://www.transifex.com")
 	assert.Equal(t, cfg.GetActiveHost().Token, "")
 	assert.Equal(t, cfg.GetActiveHost().RestHostname, "")
 	assert.Equal(t, cfg.Local.Resources[0].OrganizationSlug, "")
 
-	_, err = MigrateLegacyConfigFile(&cfg, api)
+	_, _, err = MigrateLegacyConfigFile(&cfg, api)
 	if err != nil {
 		t.Error(err)
 	}
@@ -214,6 +215,7 @@ func TestSuccessfulMigration(t *testing.T) {
 		t.Error(err)
 	}
 
+	assert.Equal(t, cfgReloaded.GetActiveHost().Name, "https://app.transifex.com")
 	assert.Equal(t, cfgReloaded.GetActiveHost().Token, "apassword")
 	assert.Equal(t, cfgReloaded.GetActiveHost().RestHostname,
 		"https://rest.api.transifex.com")
@@ -283,9 +285,9 @@ func TestSuccessfulMigrationWithSourceFileConstruction(t *testing.T) {
 	defer f.Close()
 
 	_, err2 := f.WriteString(`
-		[https://app.transifex.com]
+		[https://www.transifex.com]
 		api_hostname  = https://api.transifex.com
-		hostname      = https://app.transifex.com
+		hostname      = https://www.transifex.com
 		username      = api
 		password      = apassword
 	`)
@@ -304,7 +306,7 @@ func TestSuccessfulMigrationWithSourceFileConstruction(t *testing.T) {
 
 	_, err2 = f.WriteString(`
 		[main]
-		host = https://app.transifex.com
+		host = https://www.transifex.com
 		[projslug.ares]
 		file_filter = locale/<lang>.po
 		minimum_perc = 0
@@ -330,7 +332,7 @@ func TestSuccessfulMigrationWithSourceFileConstruction(t *testing.T) {
 	assert.Equal(t, cfg.GetActiveHost().RestHostname, "")
 	assert.Equal(t, cfg.Local.Resources[0].OrganizationSlug, "")
 
-	_, err = MigrateLegacyConfigFile(&cfg, api)
+	_, _, err = MigrateLegacyConfigFile(&cfg, api)
 	if err != nil {
 		t.Error(err)
 	}
@@ -385,9 +387,9 @@ func TestNeedsTokenInRootConfig(t *testing.T) {
 	defer f.Close()
 
 	_, err2 := f.WriteString(`
-		[https://app.transifex.com]
+		[https://www.transifex.com]
 		api_hostname  = https://api.transifex.com
-		hostname      = https://app.transifex.com
+		hostname      = https://www.transifex.com
 		username      = tk
 		password      = apassword
 	`)
@@ -406,7 +408,7 @@ func TestNeedsTokenInRootConfig(t *testing.T) {
 
 	_, err2 = f.WriteString(`
 		[main]
-		host = https://app.transifex.com
+		host = https://www.transifex.com
 		[projslug.ares]
 		file_filter = locale/<lang>.po
 		minimum_perc = 0
@@ -431,7 +433,7 @@ func TestNeedsTokenInRootConfig(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	_, _ = MigrateLegacyConfigFile(&cfg, api)
+	_, _, _ = MigrateLegacyConfigFile(&cfg, api)
 
 	w.Close()
 	out, _ := ioutil.ReadAll(r)
@@ -451,12 +453,40 @@ func TestNoTransifexRcFile(t *testing.T) {
 			fmt.Println("Delete error:", err)
 		}
 	}
+
+	// Get user's home directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	userTransifexRcPath := filepath.Join(homeDir, ".transifexrc")
+	userTransifexRcBackupPath := filepath.Join(homeDir, ".transifexrc.testbak")
+
+	// Check if user's .transifexrc exists and create a backup if needed
+	if _, err := os.Stat(userTransifexRcPath); err == nil {
+		err = os.Rename(userTransifexRcPath, userTransifexRcBackupPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Clean up any ~/.transifexrc that got created during the test, and restore the user's original
+	defer func() {
+		os.Remove(userTransifexRcPath)
+		if _, err = os.Stat(userTransifexRcBackupPath); err == nil {
+			err = os.Rename(userTransifexRcBackupPath, userTransifexRcPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+	}()
+
 	// Requests Data
 	mockData := jsonapi.MockData{
 		"/organizations": jsonapi.GetMockTextResponse(`{"data": []}`),
 	}
 
-	// Create deprecated config & .transifexrc
+	// Create deprecated config without .transifexrc
 	pkgDir, _ := os.Getwd()
 	tmpDir, err := os.MkdirTemp("", "")
 	if err != nil {
@@ -479,7 +509,7 @@ func TestNoTransifexRcFile(t *testing.T) {
 
 	_, err2 := f.WriteString(`
 		[main]
-		host = https://app.transifex.com
+		host = https://www.transifex.com
 		[projslug.ares]
 		file_filter = locale/<lang>.po
 		minimum_perc = 0
@@ -503,12 +533,13 @@ func TestNoTransifexRcFile(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	_, _ = MigrateLegacyConfigFile(&cfg, api)
+	_, _, _ = MigrateLegacyConfigFile(&cfg, api)
 
 	w.Close()
 	out, _ := ioutil.ReadAll(r)
 	os.Stdout = rescueStdout
 
+	assert.True(t, strings.Contains(string(out), "Root configuration file not found"))
 	assert.True(t, strings.Contains(string(out), "Please provide an API token to continue."))
 }
 
@@ -606,9 +637,9 @@ func TestResourceMigrationFailed(t *testing.T) {
 	defer f.Close()
 
 	_, err2 := f.WriteString(`
-		[https://app.transifex.com]
+		[https://www.transifex.com]
 		api_hostname  = https://api.transifex.com
-		hostname      = https://app.transifex.com
+		hostname      = https://www.transifex.com
 		username      = api
 		password      = apassword
 	`)
@@ -627,7 +658,7 @@ func TestResourceMigrationFailed(t *testing.T) {
 
 	_, err2 = f.WriteString(`
 		[main]
-		host = https://app.transifex.com
+		host = https://www.transifex.com
 		[projslug1.ares]
 		file_filter = locale/<lang>.po
 		minimum_perc = 10
@@ -661,7 +692,7 @@ func TestResourceMigrationFailed(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	_, err = MigrateLegacyConfigFile(&cfg, api)
+	_, _, err = MigrateLegacyConfigFile(&cfg, api)
 	if err != nil {
 		t.Error(err)
 	}
@@ -686,7 +717,7 @@ func TestResourceMigrationFailed(t *testing.T) {
 		string(content), "minimum_perc = 0"))
 }
 
-func TestBackUpFileCreated(t *testing.T) {
+func TestBackUpFilesCreated(t *testing.T) {
 	var afterTest = func(pkgDir string, tmpDir string) {
 		err := os.Chdir(pkgDir)
 		if err != nil {
@@ -747,9 +778,9 @@ func TestBackUpFileCreated(t *testing.T) {
 	defer f.Close()
 
 	_, err2 := f.WriteString(`
-		[https://app.transifex.com]
+		[https://www.transifex.com]
 		api_hostname  = https://api.transifex.com
-		hostname      = https://app.transifex.com
+		hostname      = https://www.transifex.com
 		username      = api
 		password      = apassword
 	`)
@@ -768,7 +799,7 @@ func TestBackUpFileCreated(t *testing.T) {
 
 	_, err2 = f.WriteString(`
 		[main]
-		host = https://app.transifex.com
+		host = https://www.transifex.com
 		[projslug.ares]
 		file_filter = locale/<lang>.po
 		minimum_perc = 0
@@ -789,22 +820,37 @@ func TestBackUpFileCreated(t *testing.T) {
 
 	api := jsonapi.GetTestConnection(mockData)
 
-	backupFilePath, _ := MigrateLegacyConfigFile(&cfg, api)
+	backupFilePath, backupRootFilePath, _ := MigrateLegacyConfigFile(&cfg, api)
 
-	newContent, err := ioutil.ReadFile(filepath.Join(tmpDir, "config"))
+	newLocalContent, err := ioutil.ReadFile(filepath.Join(tmpDir, "config"))
 	if err != nil {
 		t.Error(err)
 	}
-	buContent, err := ioutil.ReadFile(filepath.Join(backupFilePath))
+	buLocalContent, err := ioutil.ReadFile(filepath.Join(backupFilePath))
 	if err != nil {
 		t.Error(err)
 	}
 
-	if err != nil {
-		t.Errorf("A backup file was expected %s", err.Error())
+	newRootContent, err2 := ioutil.ReadFile(filepath.Join(tmpDir, ".transifexrc"))
+	if err2 != nil {
+		t.Error(err2)
+	}
+	buRootContent, err2 := ioutil.ReadFile(filepath.Join(backupRootFilePath))
+	if err2 != nil {
+		t.Error(err2)
 	}
 
-	assert.True(t, strings.Contains(string(buContent), "[projslug.ares]"))
-	assert.True(t, strings.Contains(string(newContent),
+	if err != nil {
+		t.Errorf("A backup local config file was expected %s", err.Error())
+	}
+
+	if err2 != nil {
+		t.Errorf("A backup root config file was expected %s", err2.Error())
+	}
+
+	assert.True(t, strings.Contains(string(buLocalContent), "[projslug.ares]"))
+	assert.True(t, strings.Contains(string(newLocalContent),
 		"o:org:p:projslug:r:ares"))
+	assert.True(t, strings.Contains(string(buRootContent), "[https://www.transifex.com]"))
+	assert.True(t, strings.Contains(string(newRootContent), "[https://app.transifex.com]"))
 }
