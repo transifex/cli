@@ -142,7 +142,7 @@ type ResourcePullTask struct {
 	cfg                 *config.Config
 }
 
-func (task *ResourcePullTask) Run(send func(string), abort func()) {
+func (task *ResourcePullTask) Run(send func(string), abort func()) bool {
 	cfgResource := task.cfgResource
 	api := task.api
 	args := task.args
@@ -177,7 +177,7 @@ func (task *ResourcePullTask) Run(send func(string), abort func()) {
 		if !args.Skip {
 			abort()
 		}
-		return
+		return false
 	}
 	if resource == nil {
 		sendMessage(
@@ -188,7 +188,7 @@ func (task *ResourcePullTask) Run(send func(string), abort func()) {
 			),
 			true,
 		)
-		return
+		return false
 	}
 
 	projectRelationship, err := resource.Fetch("project")
@@ -197,7 +197,7 @@ func (task *ResourcePullTask) Run(send func(string), abort func()) {
 		if !args.Skip {
 			abort()
 		}
-		return
+		return false
 	}
 	project := projectRelationship.DataSingular
 	sourceLanguage := project.Relationships["source_language"].DataSingular
@@ -213,7 +213,7 @@ func (task *ResourcePullTask) Run(send func(string), abort func()) {
 		if !args.Skip {
 			abort()
 		}
-		return
+		return false
 	}
 
 	if args.Source {
@@ -242,7 +242,7 @@ func (task *ResourcePullTask) Run(send func(string), abort func()) {
 			if !args.Skip {
 				abort()
 			}
-			return
+			return false
 		}
 		fileFilter := setFileTypeExtensions(args.FileType, cfgResource.FileFilter)
 		if args.Pseudo {
@@ -329,6 +329,7 @@ func (task *ResourcePullTask) Run(send func(string), abort func()) {
 		}
 	}
 	sendMessage("Done", false)
+	return true
 }
 
 type FilePullTask struct {
@@ -342,7 +343,7 @@ type FilePullTask struct {
 	remoteToLocalLanguageMappings map[string]string
 }
 
-func (task *FilePullTask) Run(send func(string), abort func()) {
+func (task *FilePullTask) Run(send func(string), abort func()) bool {
 	cfgResource := task.cfgResource
 	languageCode := task.languageCode
 	args := task.args
@@ -381,7 +382,7 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 		if err == nil && args.DisableOverwrite {
 			if !args.KeepNewFiles {
 				sendMessage("Disable overwrite enabled, skipping", false)
-				return
+				return true
 			} else {
 				sourceFile = sourceFile + ".new"
 			}
@@ -398,11 +399,11 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 				if !args.Skip {
 					abort()
 				}
-				return
+				return false
 			}
 			if shouldSkip {
 				sendMessage("Local file is newer than remote, skipping", false)
-				return
+				return true
 			}
 		}
 
@@ -429,7 +430,7 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 			if !args.Skip {
 				abort()
 			}
-			return
+			return false
 		}
 
 		// Polling
@@ -446,7 +447,7 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 			if !args.Skip {
 				abort()
 			}
-			return
+			return false
 		}
 	} else {
 		if filePath != "" {
@@ -454,7 +455,7 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 			if args.DisableOverwrite {
 				if !args.KeepNewFiles {
 					sendMessage("Disable overwrite enabled, skipping", false)
-					return
+					return true
 				} else {
 					filePath = filePath + ".new"
 				}
@@ -470,7 +471,7 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 				(!stringSliceContains(args.Languages, remoteLanguageCode) &&
 					!stringSliceContains(args.Languages, localLanguageCode)) {
 				sendMessage("File was not found locally, skipping", false)
-				return
+				return true
 			}
 			pseudo_postfix := ""
 			if args.Pseudo {
@@ -503,11 +504,11 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 			if !args.Skip {
 				abort()
 			}
-			return
+			return false
 		}
 		if shouldSkip {
 			sendMessage(feedbackMessage, false)
-			return
+			return true
 		}
 
 		// Creating download job
@@ -544,7 +545,7 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 			if !args.Skip {
 				abort()
 			}
-			return
+			return false
 		}
 
 		// Polling
@@ -561,10 +562,11 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 			if !args.Skip {
 				abort()
 			}
-			return
+			return false
 		}
 	}
 	sendMessage("Done", false)
+	return true
 }
 
 func shouldSkipDownload(
