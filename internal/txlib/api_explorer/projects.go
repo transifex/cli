@@ -27,7 +27,7 @@ const CREATE_PROJECT_STRING = `{
   "//instructions_url": "",
   "//license": "",
   "//long_description": "",
-  "//machine_tranlation_fillup": false,
+  "//machine_translation_fillup": false,
   "//repository_url": "",
   "//tags": [],
   "//translation_memory_fillup": false,
@@ -356,7 +356,7 @@ func cliCmdCreateProject(c *cli.Context) error {
 		[]string{
 			"name", "slug", "private", "description", "homepage_url",
 			"instructions_url", "license", "long_description",
-			"machine_tranlation_fillup", "repository_url", "tags",
+			"machine_translation_fillup", "repository_url", "tags",
 			"translation_memory_fillup", "type",
 		},
 	)
