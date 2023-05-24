@@ -170,6 +170,22 @@ func Cmd() *cli.Command {
 							return nil
 						},
 					},
+					{
+						Name:  "session",
+						Usage: "Get current session",
+						Action: func(c *cli.Context) error {
+							_, err := os.Stat(".tx/api_explorer_session.json")
+							if err != nil {
+								return err
+							}
+							body, err := os.ReadFile(".tx/api_explorer_session.json")
+							if err != nil {
+								return err
+							}
+							fmt.Println(string(body))
+							return nil
+						},
+					},
 				},
 			},
 			{
