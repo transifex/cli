@@ -18,14 +18,16 @@ type jsopenapi_t struct {
 				Summary string `json:"summary"`
 				Filters map[string]struct {
 					Description string `json:"description"`
+					Resource    string `json:"resource"`
+					Required    bool   `json:"required"`
 				} `json:"filters"`
 			} `json:"get_many"`
-      GetOne *struct {
-        Summary string `json:"summary"`
+			GetOne *struct {
+				Summary string `json:"summary"`
 				Filters map[string]struct {
 					Description string `json:"description"`
 				} `json:"filters"`
-      } `json:"get_one"`
+			} `json:"get_one"`
 		} `json:"operations"`
 		Display string `json:"display"`
 	} `json:"resources"`
@@ -66,7 +68,7 @@ func Cmd() *cli.Command {
 						return err
 					}
 					organizationId, err := selectResourceId(
-						api, "organizations", &jsopenapi,
+						api, "organizations", &jsopenapi, true,
 					)
 					if err != nil {
 						return err
@@ -87,7 +89,7 @@ func Cmd() *cli.Command {
 						return err
 					}
 					organizationId, err := getResourceId(
-						c, api, "organizations", &jsopenapi,
+						c, api, "organizations", &jsopenapi, true,
 					)
 					if err != nil {
 						return err
@@ -117,29 +119,43 @@ func Cmd() *cli.Command {
 			}
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
 			for filterName, filter := range resource.Operations.GetMany.Filters {
-				operation.Flags = append(
-					operation.Flags,
-					&cli.StringFlag{
-						Name:  strings.ReplaceAll(filterName, "__", "-"),
-						Usage: filter.Description,
-					},
-				)
+				if filter.Resource != "" {
+					operation.Flags = append(
+						operation.Flags,
+						&cli.StringFlag{
+							Name: fmt.Sprintf(
+								"%s-id",
+								filter.Resource[:len(filter.Resource)-1],
+							),
+							Usage: filter.Description,
+						},
+					)
+				} else {
+					operation.Flags = append(
+						operation.Flags,
+						&cli.StringFlag{
+							Name:     strings.ReplaceAll(filterName, "__", "-"),
+							Usage:    filter.Description,
+							Required: filter.Required,
+						},
+					)
+				}
 			}
 		}
 
-    if resource.Operations.GetOne != nil {
-      operation := cli.Command{
-        Name: resourceName[:len(resourceName)-1],
-        Usage: resource.Description,
+		if resource.Operations.GetOne != nil {
+			operation := cli.Command{
+				Name:  resourceName[:len(resourceName)-1],
+				Usage: resource.Description,
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "id"},
 				},
-        Action: func(c *cli.Context) error {
-          return cliCmdGetOne(c, resourceNameCopy, &jsopenapi)
-        },
-      }
-      subcommand.Subcommands = append(subcommand.Subcommands, &operation)
-    }
+				Action: func(c *cli.Context) error {
+					return cliCmdGetOne(c, resourceNameCopy, &jsopenapi)
+				},
+			}
+			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
+		}
 	}
 
 	return &result
@@ -152,10 +168,22 @@ func cliCmdGetMany(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) 
 	}
 	query := jsonapi.Query{Filters: make(map[string]string)}
 	filters := jsopenapi.Resources[resourceName].Operations.GetMany.Filters
-	for filterName := range filters {
-		filterValue := c.String(strings.ReplaceAll(filterName, "__", "-"))
-		if filterValue != "" {
-			query.Filters[filterName] = filterValue
+	for filterName, filter := range filters {
+		if filter.Resource != "" {
+			filterValue, err := getResourceId(
+				c, api, filter.Resource, jsopenapi, filter.Required,
+			)
+			if err != nil {
+				return err
+			}
+			if filterValue != "" {
+				query.Filters[filterName] = filterValue
+			}
+		} else {
+			filterValue := c.String(strings.ReplaceAll(filterName, "__", "-"))
+			if filterValue != "" {
+				query.Filters[filterName] = filterValue
+			}
 		}
 	}
 	body, err := api.ListBody(resourceName, query.Encode())
@@ -177,6 +205,7 @@ func selectResourceId(
 	api *jsonapi.Connection,
 	resourceName string,
 	jsopenapi *jsopenapi_t,
+	required bool,
 ) (string, error) {
 	body, err := api.ListBody(resourceName, "")
 	if err != nil {
@@ -191,7 +220,7 @@ func selectResourceId(
 		body,
 		fmt.Sprintf("Select %s", resourceName[:len(resourceName)-1]),
 		jsopenapi.Resources[resourceName].Display,
-		false,
+		!required,
 	)
 	if err != nil {
 		return "", err
@@ -204,6 +233,7 @@ func getResourceId(
 	api *jsonapi.Connection,
 	resourceName string,
 	jsopenapi *jsopenapi_t,
+	required bool,
 ) (string, error) {
 	resourceId := c.String("id")
 	if resourceId != "" {
@@ -218,7 +248,7 @@ func getResourceId(
 		return "", err
 	}
 	if resourceId == "" {
-		resourceId, err = selectResourceId(api, resourceName, jsopenapi)
+		resourceId, err = selectResourceId(api, resourceName, jsopenapi, required)
 		if err != nil {
 			return "", err
 		}
@@ -233,11 +263,11 @@ func cliCmdGetOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 	}
 	resourceId := c.String("id")
 	if resourceId == "" {
-    resourceId, err = getResourceId(c, api, resourceName, jsopenapi)
-    if err != nil {
-      return err
-    }
-  }
+		resourceId, err = getResourceId(c, api, resourceName, jsopenapi, true)
+		if err != nil {
+			return err
+		}
+	}
 	body, err := api.GetBody(resourceName, resourceId)
 	if err != nil {
 		return err

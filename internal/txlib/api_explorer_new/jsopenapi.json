@@ -36,6 +36,26 @@
         }
       },
       "display": "{{.Attributes.name}} ({{.Attributes.slug}})"
+    },
+    "projects": {
+      "operations": {
+        "get_many": {
+          "summary": "List projects",
+          "filters": {
+            "organization": {
+              "description": "Filter results by an organization",
+              "resource": "organizations",
+              "required": true
+            },
+            "slug": {
+              "description": "Filter results by slug"
+            },
+            "name": {
+              "description": "Filter results by name"
+            }
+          }
+        }
+      }
     }
   }
 }
