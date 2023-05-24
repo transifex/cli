@@ -1,5 +1,3 @@
----
-
 resources:
   languages:
     description:
@@ -15,6 +13,8 @@ resources:
             description:
               A list of codes of the languages to get details. This
               will fetch any available.
+      get_one:
+        summary: Get language
     display: '{{.Attributes.name}} ({{.Attributes.code}})'
   organizations:
     description:
@@ -24,7 +24,6 @@ resources:
     operations:
       get_many:
         summary: List organizations
-        filters:
-          slug:
-            description: The slug of the organization to get details
+      get_one:
+        summary: Get organization
     display: '{{.Attributes.name}} ({{.Attributes.slug}})'

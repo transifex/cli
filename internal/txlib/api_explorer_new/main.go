@@ -20,6 +20,12 @@ type jsopenapi_t struct {
 					Description string `json:"description"`
 				} `json:"filters"`
 			} `json:"get_many"`
+      GetOne *struct {
+        Summary string `json:"summary"`
+				Filters map[string]struct {
+					Description string `json:"description"`
+				} `json:"filters"`
+      } `json:"get_one"`
 		} `json:"operations"`
 		Display string `json:"display"`
 	} `json:"resources"`
@@ -120,6 +126,20 @@ func Cmd() *cli.Command {
 				)
 			}
 		}
+
+    if resource.Operations.GetOne != nil {
+      operation := cli.Command{
+        Name: resourceName[:len(resourceName)-1],
+        Usage: resource.Description,
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "id"},
+				},
+        Action: func(c *cli.Context) error {
+          return cliCmdGetOne(c, resourceNameCopy, &jsopenapi)
+        },
+      }
+      subcommand.Subcommands = append(subcommand.Subcommands, &operation)
+    }
 	}
 
 	return &result
@@ -204,4 +224,27 @@ func getResourceId(
 		}
 	}
 	return resourceId, nil
+}
+
+func cliCmdGetOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
+	api, err := getApi(c)
+	if err != nil {
+		return err
+	}
+	resourceId := c.String("id")
+	if resourceId == "" {
+    resourceId, err = getResourceId(c, api, resourceName, jsopenapi)
+    if err != nil {
+      return err
+    }
+  }
+	body, err := api.GetBody(resourceName, resourceId)
+	if err != nil {
+		return err
+	}
+	err = page(c.String("pager"), body)
+	if err != nil {
+		return err
+	}
+	return nil
 }
