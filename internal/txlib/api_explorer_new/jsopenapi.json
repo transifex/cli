@@ -83,6 +83,14 @@
               "summary": "Update team relationship"
             }
           }
+        },
+        "languages": {
+          "resource": "languages",
+          "operations": {
+            "get": {
+              "summary": "List project languages"
+            }
+          }
         }
       },
       "display": "{{.Attributes.name}} ({{.Attributes.slug}})"

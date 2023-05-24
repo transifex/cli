@@ -15,8 +15,7 @@ import (
 
 type jsopenapi_t struct {
 	Resources map[string]struct {
-		Description string `json:"description"`
-		Operations  struct {
+		Operations struct {
 			GetMany *struct {
 				Summary string `json:"summary"`
 				Filters map[string]struct {
@@ -42,6 +41,9 @@ type jsopenapi_t struct {
 				Change *struct {
 					Summary string `json:"summary"`
 				} `json:"change"`
+				Get *struct {
+					Summary string `json:"summary"`
+				} `json:"get"`
 			} `json:"operations"`
 		} `json:"relationships"`
 		Display string `json:"display"`
@@ -157,15 +159,13 @@ func Cmd() *cli.Command {
 			}
 			operation := cli.Command{
 				Name:  resourceName,
-				Usage: resource.Description,
+				Usage: resource.Operations.GetMany.Summary,
 				Action: func(c *cli.Context) error {
 					return cliCmdGetMany(c, resourceNameCopy, &jsopenapi)
 				},
 			}
+			addFilterTags(&operation, resourceName, &jsopenapi)
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
-			operation.Flags = append(
-				operation.Flags, getFilterFlags(resourceName, &jsopenapi)...,
-			)
 		}
 
 		if resource.Operations.GetOne != nil {
@@ -191,9 +191,7 @@ func Cmd() *cli.Command {
 					return cliCmdGetOne(c, resourceNameCopy, &jsopenapi)
 				},
 			}
-			operation.Flags = append(
-				operation.Flags, getFilterFlags(resourceName, &jsopenapi)...,
-			)
+			addFilterTags(&operation, resourceName, &jsopenapi)
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
 		}
 
@@ -220,9 +218,7 @@ func Cmd() *cli.Command {
 					return cliCmdEditOne(c, resourceNameCopy, &jsopenapi)
 				},
 			}
-			operation.Flags = append(
-				operation.Flags, getFilterFlags(resourceName, &jsopenapi)...,
-			)
+			addFilterTags(&operation, resourceName, &jsopenapi)
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
 		}
 
@@ -234,7 +230,7 @@ func Cmd() *cli.Command {
 			}
 			operation := cli.Command{
 				Name:  resourceName[:len(resourceName)-1],
-				Usage: resource.Description,
+				Usage: resource.Operations.Delete.Summary,
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "id"},
 				},
@@ -259,10 +255,7 @@ func Cmd() *cli.Command {
 					parent = &cli.Command{Name: resourceName[:len(resourceName)-1]}
 					subcommand.Subcommands = append(subcommand.Subcommands, parent)
 				}
-				parent.Flags = append(
-					parent.Flags,
-					getFilterFlags(resourceName, &jsopenapi)...,
-				)
+				addFilterTags(parent, resourceName, &jsopenapi)
 				operation := cli.Command{
 					Name:  relationshipName,
 					Usage: relationship.Operations.Change.Summary,
@@ -270,10 +263,33 @@ func Cmd() *cli.Command {
 						return cliCmdChange(c, resourceNameCopy, relationshipNameCopy, &jsopenapi)
 					},
 				}
-				operation.Flags = append(
-					operation.Flags,
-					getFilterFlags(relationship.Resource, &jsopenapi)...,
+				addFilterTags(&operation, relationship.Resource, &jsopenapi)
+				parent.Subcommands = append(parent.Subcommands, &operation)
+			}
+
+			if relationship.Operations.Get != nil {
+				subcommand := findSubcommand(result.Subcommands, "get")
+				if subcommand == nil {
+					subcommand = &cli.Command{Name: "get"}
+					result.Subcommands = append(result.Subcommands, subcommand)
+				}
+				parent := findSubcommand(
+					subcommand.Subcommands, resourceName[:len(resourceName)-1],
 				)
+				if parent == nil {
+					parent = &cli.Command{Name: resourceName[:len(resourceName)-1]}
+					subcommand.Subcommands = append(subcommand.Subcommands, parent)
+				}
+				addFilterTags(parent, resourceName, &jsopenapi)
+				operation := cli.Command{
+					Name:  relationshipName,
+					Usage: relationship.Operations.Get.Summary,
+					Action: func(c *cli.Context) error {
+						return cliCmdGetRelated(
+							c, resourceNameCopy, relationshipNameCopy, &jsopenapi,
+						)
+					},
+				}
 				parent.Subcommands = append(parent.Subcommands, &operation)
 			}
 		}
@@ -501,33 +517,43 @@ func cliCmdChange(
 	return nil
 }
 
-func getFilterFlags(resourceName string, jsopenapi *jsopenapi_t) []cli.Flag {
-	var result []cli.Flag
+func addFilterTags(command *cli.Command, resourceName string, jsopenapi *jsopenapi_t) {
 	resource := jsopenapi.Resources[resourceName]
 	if resource.Operations.GetMany == nil {
-		return result
+		return
 	}
 	for filterName, filter := range resource.Operations.GetMany.Filters {
 		if filter.Resource != "" {
-			result = append(
-				result,
-				&cli.StringFlag{
-					Name:  fmt.Sprintf("%s-id", filterName),
-					Usage: filter.Description,
-				},
-			)
+			flagName := fmt.Sprintf("%s-id", filterName)
+			if !flagExists(command.Flags, flagName) {
+				command.Flags = append(
+					command.Flags,
+					&cli.StringFlag{Name: flagName, Usage: filter.Description},
+				)
+			}
 		} else {
-			result = append(
-				result,
-				&cli.StringFlag{
-					Name:     strings.ReplaceAll(filterName, "__", "-"),
-					Usage:    filter.Description,
-					Required: filter.Required,
-				},
-			)
+			flagName := strings.ReplaceAll(filterName, "__", "-")
+			if !flagExists(command.Flags, flagName) {
+				command.Flags = append(
+					command.Flags,
+					&cli.StringFlag{
+						Name:     strings.ReplaceAll(filterName, "__", "-"),
+						Usage:    filter.Description,
+						Required: filter.Required,
+					},
+				)
+			}
 		}
 	}
-	return result
+}
+
+func flagExists(flags []cli.Flag, name string) bool {
+	for _, flag := range flags {
+		if stringSliceContains(flag.Names(), name) {
+			return true
+		}
+	}
+	return false
 }
 
 func cliCmdDelete(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
@@ -554,6 +580,33 @@ func cliCmdDelete(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 		fmt.Printf("Deleted %s: %s\n", resourceName[:len(resourceName)-1], resourceId)
 	} else {
 		fmt.Printf("Deletion aborted\n")
+	}
+	return nil
+}
+
+func cliCmdGetRelated(
+	c *cli.Context, resourceName, relationshipName string, jsopenapi *jsopenapi_t,
+) error {
+	api, err := getApi(c)
+	if err != nil {
+		return err
+	}
+	parentId, err := getResourceId(c, api, resourceName, jsopenapi, true)
+	if err != nil {
+		return err
+	}
+	parent, err := api.Get(resourceName, parentId)
+	if err != nil {
+		return err
+	}
+	url := parent.Relationships[relationshipName].Links.Related
+	body, err := api.ListBodyFromPath(url)
+	if err != nil {
+		return err
+	}
+	err = invokePager(c.String("pager"), body)
+	if err != nil {
+		return err
 	}
 	return nil
 }
