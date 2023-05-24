@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
 	// "io"
 	"os"
 	"strings"
@@ -51,15 +52,15 @@ type jsopenapi_t struct {
 				Summary string `json:"summary"`
 			} `json:"get_one"`
 			CreateOne *struct {
-				Summary string   `json:"summary"`
-        Attributes *struct{
-          Required []string `json:"required"`
-          Optional []string `json:"optional"`
-        } `json:"attributes"`
-        Relationships *struct{
-          Required map[string]string `json:"required"`
-          Optional map[string]string `json:"optional"`
-        } `json:"relationships"`
+				Summary    string `json:"summary"`
+				Attributes *struct {
+					Required []string `json:"required"`
+					Optional []string `json:"optional"`
+				} `json:"attributes"`
+				Relationships *struct {
+					Required map[string]string `json:"required"`
+					Optional map[string]string `json:"optional"`
+				} `json:"relationships"`
 			} `json:"create_one"`
 			EditOne *struct {
 				Summary string   `json:"summary"`
@@ -68,6 +69,9 @@ type jsopenapi_t struct {
 			Delete *struct {
 				Summary string `json:"summary"`
 			} `json:"delete"`
+			Select *struct {
+				Summary string `json:"summary"`
+			} `json:"select"`
 		} `json:"operations"`
 		Relationships map[string]struct {
 			Resource   string `json:"resource"`
@@ -286,6 +290,21 @@ func Cmd() *cli.Command {
 				},
 				Action: func(c *cli.Context) error {
 					return cliCmdDelete(c, resourceNameCopy, &jsopenapi)
+				},
+			}
+			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
+		}
+		if resource.Operations.Select != nil {
+			subcommand := findSubcommand(result.Subcommands, "select")
+			if subcommand == nil {
+				subcommand = &cli.Command{Name: "select"}
+				result.Subcommands = append(result.Subcommands, subcommand)
+			}
+			operation := cli.Command{
+				Name:  resourceName[:len(resourceName)-1],
+				Usage: resource.Description,
+				Action: func(c *cli.Context) error {
+					return cliCmdSelect(c, resourceNameCopy, &jsopenapi)
 				},
 			}
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
@@ -658,5 +677,22 @@ func cliCmdGetRelated(
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func cliCmdSelect(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
+	api, err := getApi(c)
+	if err != nil {
+		return err
+	}
+	resourceId, err := selectResourceId(c, api, resourceName, jsopenapi, true)
+	if err != nil {
+		return err
+	}
+	err = save(resourceName[:len(resourceName)-1], resourceId)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Saved %s: %s\n", resourceName[:len(resourceName)-1], resourceId)
 	return nil
 }

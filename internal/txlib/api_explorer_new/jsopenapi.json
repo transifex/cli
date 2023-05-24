@@ -16,6 +16,9 @@
         },
         "get_one": {
           "summary": "Get language"
+        },
+        "select": {
+          "summary": "Set language on session file"
         }
       },
       "display": "{{.Attributes.name}} ({{.Attributes.code}})"
@@ -28,6 +31,9 @@
         },
         "get_one": {
           "summary": "Get organization"
+        },
+        "select": {
+          "summary": "Set organization on session file"
         }
       },
       "display": "{{.Attributes.name}} ({{.Attributes.slug}})"
@@ -104,6 +110,9 @@
             "license",
             "team"
           ]
+        },
+        "select": {
+          "summary": "Set project for session file"
         }
       },
       "relationships": {
