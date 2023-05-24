@@ -103,13 +103,13 @@ func Cmd() *cli.Command {
 
 	for resourceName, resource := range jsopenapi.Resources {
 		resourceNameCopy := resourceName
-		subcommand := findSubcommand(result.Subcommands, "get")
-		if subcommand == nil {
-			subcommand = &cli.Command{Name: "get"}
-			result.Subcommands = append(result.Subcommands, subcommand)
-		}
 
 		if resource.Operations.GetMany != nil {
+			subcommand := findSubcommand(result.Subcommands, "get")
+			if subcommand == nil {
+				subcommand = &cli.Command{Name: "get"}
+				result.Subcommands = append(result.Subcommands, subcommand)
+			}
 			operation := cli.Command{
 				Name:  resourceName,
 				Usage: resource.Description,
@@ -144,6 +144,11 @@ func Cmd() *cli.Command {
 		}
 
 		if resource.Operations.GetOne != nil {
+			subcommand := findSubcommand(result.Subcommands, "get")
+			if subcommand == nil {
+				subcommand = &cli.Command{Name: "get"}
+				result.Subcommands = append(result.Subcommands, subcommand)
+			}
 			operation := cli.Command{
 				Name:  resourceName[:len(resourceName)-1],
 				Usage: resource.Description,
