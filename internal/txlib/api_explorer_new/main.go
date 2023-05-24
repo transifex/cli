@@ -24,9 +24,6 @@ type jsopenapi_t struct {
 			} `json:"get_many"`
 			GetOne *struct {
 				Summary string `json:"summary"`
-				Filters map[string]struct {
-					Description string `json:"description"`
-				} `json:"filters"`
 			} `json:"get_one"`
 		} `json:"operations"`
 		Display string `json:"display"`
@@ -57,47 +54,6 @@ func Cmd() *cli.Command {
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "pager", EnvVars: []string{"PAGER"}},
 			&cli.StringFlag{Name: "editor", EnvVars: []string{"EDITOR"}},
-		},
-		// TODO: Remove these
-		Subcommands: []*cli.Command{
-			{
-				Name: "test-select-resource-id",
-				Action: func(c *cli.Context) error {
-					api, err := getApi(c)
-					if err != nil {
-						return err
-					}
-					organizationId, err := selectResourceId(
-						api, "organizations", &jsopenapi, true,
-					)
-					if err != nil {
-						return err
-					}
-					fmt.Println(organizationId)
-					return nil
-				},
-			},
-			{
-				Name: "test-get-resource-id",
-				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "id"},
-					&cli.StringFlag{Name: "organization-id"},
-				},
-				Action: func(c *cli.Context) error {
-					api, err := getApi(c)
-					if err != nil {
-						return err
-					}
-					organizationId, err := getResourceId(
-						c, api, "organizations", &jsopenapi, true,
-					)
-					if err != nil {
-						return err
-					}
-					fmt.Println(organizationId)
-					return nil
-				},
-			},
 		},
 	}
 
@@ -153,11 +109,37 @@ func Cmd() *cli.Command {
 				Name:  resourceName[:len(resourceName)-1],
 				Usage: resource.Description,
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "id"},
+					&cli.StringFlag{
+						Name: "id",
+						// If we want to `get something` and the `somethings`
+						// resource does not support `get_many`, then the user
+						// won't be able to fuzzy-select the something and
+						// `--id` should be required
+						Required: resource.Operations.GetMany == nil,
+					},
 				},
 				Action: func(c *cli.Context) error {
 					return cliCmdGetOne(c, resourceNameCopy, &jsopenapi)
 				},
+			}
+			if resource.Operations.GetMany != nil {
+				for filterName, filter := range resource.Operations.GetMany.Filters {
+					if filter.Resource != "" {
+						operation.Flags = append(operation.Flags, &cli.StringFlag{
+							Name:  fmt.Sprintf("%s-id", filterName),
+							Usage: filter.Description,
+						})
+					} else {
+						operation.Flags = append(
+							operation.Flags,
+							&cli.StringFlag{
+								Name:     strings.ReplaceAll(filterName, "__", "-"),
+								Usage:    filter.Description,
+								Required: filter.Required,
+							},
+						)
+					}
+				}
 			}
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
 		}
@@ -207,12 +189,39 @@ func cliCmdGetMany(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) 
 }
 
 func selectResourceId(
+	c *cli.Context,
 	api *jsonapi.Connection,
 	resourceName string,
 	jsopenapi *jsopenapi_t,
 	required bool,
 ) (string, error) {
-	body, err := api.ListBody(resourceName, "")
+	// Before we show a list of options, we need to fetch it. In order to do
+	// so, we need to see if there are any filters
+	query := jsonapi.Query{Filters: make(map[string]string)}
+	if jsopenapi.Resources[resourceName].Operations.GetMany != nil {
+		filters := jsopenapi.Resources[resourceName].Operations.GetMany.Filters
+		for filterName, filter := range filters {
+			if filter.Resource != "" {
+				filterValue, err := getResourceId(
+					c, api, filter.Resource, jsopenapi, filter.Required,
+				)
+				if err != nil {
+					return "", err
+				}
+				if filterValue != "" {
+					query.Filters[filterName] = filterValue
+				}
+			} else {
+				filterValue := c.String(
+					strings.ReplaceAll(filterName, "__", "-"),
+				)
+				if filterValue != "" {
+					query.Filters[filterName] = filterValue
+				}
+			}
+		}
+	}
+	body, err := api.ListBody(resourceName, query.Encode())
 	if err != nil {
 		return "", err
 	}
@@ -220,7 +229,23 @@ func selectResourceId(
 	if err != nil {
 		return "", err
 	}
-	resourceId, err := fuzzy(
+
+	isEmpty, err := getIsEmpty(body)
+	if err != nil {
+		return "", err
+	}
+	if isEmpty && required {
+		return "", fmt.Errorf("%s not found", resourceName[:len(resourceName)-1])
+	}
+	resourceId, err := getIfOnlyOne(body)
+	if err != nil {
+		return "", err
+	}
+	if resourceId != "" {
+		return resourceId, nil
+	}
+
+	resourceId, err = fuzzy(
 		api,
 		body,
 		fmt.Sprintf("Select %s", resourceName[:len(resourceName)-1]),
@@ -253,7 +278,7 @@ func getResourceId(
 		return "", err
 	}
 	if resourceId == "" {
-		resourceId, err = selectResourceId(api, resourceName, jsopenapi, required)
+		resourceId, err = selectResourceId(c, api, resourceName, jsopenapi, required)
 		if err != nil {
 			return "", err
 		}
@@ -266,12 +291,9 @@ func cliCmdGetOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 	if err != nil {
 		return err
 	}
-	resourceId := c.String("id")
-	if resourceId == "" {
-		resourceId, err = getResourceId(c, api, resourceName, jsopenapi, true)
-		if err != nil {
-			return err
-		}
+	resourceId, err := getResourceId(c, api, resourceName, jsopenapi, true)
+	if err != nil {
+		return err
 	}
 	body, err := api.GetBody(resourceName, resourceId)
 	if err != nil {

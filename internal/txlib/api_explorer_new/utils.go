@@ -217,6 +217,36 @@ func joinPages(api *jsonapi.Connection, bodyBytes []byte) ([]byte, error) {
 	return resultBody, nil
 }
 
+func getIsEmpty(bodyBytes []byte) (bool, error) {
+	var bodyJson struct {
+		Data []interface{} `json:"data"`
+	}
+	err := json.Unmarshal(bodyBytes, &bodyJson)
+	if err != nil {
+		return false, err
+	}
+	if len(bodyJson.Data) == 0 {
+		return true, nil
+	}
+	return false, nil
+}
+
+func getIfOnlyOne(bodyBytes []byte) (string, error) {
+	var bodyJson struct {
+		Data []struct {
+			Id string `json:"id"`
+		} `json:"data"`
+	}
+	err := json.Unmarshal(bodyBytes, &bodyJson)
+	if err != nil {
+		return "", err
+	}
+	if len(bodyJson.Data) == 1 {
+		return bodyJson.Data[0].Id, nil
+	}
+	return "", nil
+}
+
 func fuzzy(
 	api *jsonapi.Connection,
 	body []byte,

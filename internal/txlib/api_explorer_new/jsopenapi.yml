@@ -1,3 +1,5 @@
+---
+
 resources:
   languages:
     description:
@@ -40,3 +42,6 @@ resources:
             description: Filter results by slug
           name:
             description: Filter results by name
+      get_one:
+        summary: Get project
+    display: '{{.Attributes.name}} ({{.Attributes.slug}})'
