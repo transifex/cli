@@ -56,6 +56,37 @@
         "delete": {
           "summary": "Delete project"
         },
+        "create_one": {
+          "summary": "Create a Project",
+          "attributes": {
+            "required": [
+              "name",
+              "slug",
+              "private"
+            ],
+            "optional": [
+              "type",
+              "tags",
+              "description",
+              "long_description",
+              "translation_memory_fillup",
+              "machine_translation_fillup",
+              "homepage_url",
+              "instructions_url",
+              "repository_url",
+              "license"
+            ]
+          },
+          "relationships": {
+            "required": {
+              "organization": "organizations",
+              "source_language": "languages"
+            },
+            "optional": {
+              "team": "teams"
+            }
+          }
+        },
         "edit_one": {
           "summary": "Update a Project",
           "fields": [
@@ -89,6 +120,27 @@
           "operations": {
             "get": {
               "summary": "List project languages"
+            }
+          }
+        }
+      },
+      "display": "{{.Attributes.name}} ({{.Attributes.slug}})"
+    },
+    "teams": {
+      "operations": {
+        "get_many": {
+          "summary": "List teams",
+          "filters": {
+            "organization": {
+              "description": "Filter results by an organization",
+              "resource": "organizations",
+              "required": true
+            },
+            "slug": {
+              "description": "Filter results by slug"
+            },
+            "name": {
+              "description": "Filter results by name"
             }
           }
         }

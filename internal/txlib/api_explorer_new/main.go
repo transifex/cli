@@ -6,12 +6,35 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	// "io"
 	"os"
 	"strings"
 
+	// "github.com/mattn/go-isatty"
 	"github.com/transifex/cli/pkg/jsonapi"
 	"github.com/urfave/cli/v2"
 )
+
+const CREATE_ONE_STRING = `{
+  "Required fields": "",
+
+  "name": "The name of the project",
+  "slug": "the_slug_of_the_project",
+  "private": true,
+
+  "Optional fields (remember to remove the leading '//' from the keys)": "",
+
+  "//description": "",
+  "//homepage_url": "",
+  "//instructions_url": "",
+  "//license": "",
+  "//long_description": "",
+  "//machine_translation_fillup": false,
+  "//repository_url": "",
+  "//tags": [],
+  "//translation_memory_fillup": false,
+  "//type": "file/live"
+}`
 
 type jsopenapi_t struct {
 	Resources map[string]struct {
@@ -27,6 +50,17 @@ type jsopenapi_t struct {
 			GetOne *struct {
 				Summary string `json:"summary"`
 			} `json:"get_one"`
+			CreateOne *struct {
+				Summary string   `json:"summary"`
+        Attributes *struct{
+          Required []string `json:"required"`
+          Optional []string `json:"optional"`
+        } `json:"attributes"`
+        Relationships *struct{
+          Required map[string]string `json:"required"`
+          Optional map[string]string `json:"optional"`
+        } `json:"relationships"`
+			} `json:"create_one"`
 			EditOne *struct {
 				Summary string   `json:"summary"`
 				Fields  []string `json:"fields"`
@@ -219,6 +253,22 @@ func Cmd() *cli.Command {
 				},
 			}
 			addFilterTags(&operation, resourceName, &jsopenapi)
+			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
+		}
+
+		if resource.Operations.CreateOne != nil {
+			subcommand := findSubcommand(result.Subcommands, "create")
+			if subcommand == nil {
+				subcommand = &cli.Command{Name: "create"}
+				result.Subcommands = append(result.Subcommands, subcommand)
+			}
+			operation := cli.Command{
+				Name:  resourceName[:len(resourceName)-1],
+				Usage: resource.Operations.CreateOne.Summary,
+				Action: func(c *cli.Context) error {
+					return cliCmdCreateOne(c, resourceNameCopy, &jsopenapi)
+				},
+			}
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
 		}
 
