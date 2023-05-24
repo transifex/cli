@@ -138,6 +138,9 @@
           "operations": {
             "get": {
               "summary": "List project languages"
+            },
+            "add": {
+              "summary": "Add languages to project"
             }
           }
         }

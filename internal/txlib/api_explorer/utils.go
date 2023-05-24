@@ -307,17 +307,20 @@ func fuzzyMulti(
 	if err != nil {
 		return nil, err
 	}
+
 	var data []jsonapi.Resource
 	if allowEmpty {
 		data = append([]jsonapi.Resource{{}}, items.Data...)
 	} else {
 		data = append([]jsonapi.Resource{}, items.Data...)
 	}
+
 	if pprint == nil {
 		pprint = func(obj *jsonapi.Resource) string {
 			return obj.Id
 		}
 	}
+
 	idx, err := fuzzyfinder.FindMulti(
 		data,
 		func(i int) string {

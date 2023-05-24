@@ -89,6 +89,8 @@ resources:
         operations:
           get:
             summary: List project languages
+          add:
+            summary: Add languages to project
     display: '{{.Attributes.name}} ({{.Attributes.slug}})'
   teams:
     operations:

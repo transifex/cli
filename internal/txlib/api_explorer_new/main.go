@@ -62,6 +62,9 @@ type jsopenapi_t struct {
 				Get *struct {
 					Summary string `json:"summary"`
 				} `json:"get"`
+				Add *struct {
+					Summary string `json:"summary"`
+				} `json:"add"`
 			} `json:"operations"`
 		} `json:"relationships"`
 		Display string `json:"display"`
@@ -369,6 +372,32 @@ func Cmd() *cli.Command {
 				}
 				parent.Subcommands = append(parent.Subcommands, &operation)
 			}
+
+			if relationship.Operations.Add != nil {
+				subcommand := findSubcommand(result.Subcommands, "add")
+				if subcommand == nil {
+					subcommand = &cli.Command{Name: "add"}
+					result.Subcommands = append(result.Subcommands, subcommand)
+				}
+				parent := findSubcommand(
+					subcommand.Subcommands, resourceName[:len(resourceName)-1],
+				)
+				if parent == nil {
+					parent = &cli.Command{Name: resourceName[:len(resourceName)-1]}
+					subcommand.Subcommands = append(subcommand.Subcommands, parent)
+				}
+				addFilterTags(parent, resourceName, &jsopenapi)
+				operation := cli.Command{
+					Name:  relationshipName,
+					Usage: relationship.Operations.Add.Summary,
+					Action: func(c *cli.Context) error {
+						return cliCmdAdd(
+							c, resourceNameCopy, relationshipNameCopy, &jsopenapi,
+						)
+					},
+				}
+				parent.Subcommands = append(parent.Subcommands, &operation)
+			}
 		}
 	}
 
@@ -415,13 +444,14 @@ func cliCmdGetMany(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) 
 	return nil
 }
 
-func selectResourceId(
+func selectResourceIds(
 	c *cli.Context,
 	api *jsonapi.Connection,
 	resourceName string,
 	jsopenapi *jsopenapi_t,
 	required bool,
-) (string, error) {
+	multi bool,
+) ([]string, error) {
 	// Before we show a list of options, we need to fetch it. In order to do
 	// so, we need to see if there are any filters
 	query := jsonapi.Query{Filters: make(map[string]string)}
@@ -433,7 +463,7 @@ func selectResourceId(
 					c, api, filter.Resource, jsopenapi, filter.Required,
 				)
 				if err != nil {
-					return "", err
+					return nil, err
 				}
 				if filterValue != "" {
 					query.Filters[filterName] = filterValue
@@ -450,39 +480,38 @@ func selectResourceId(
 	}
 	body, err := api.ListBody(resourceName, query.Encode())
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	body, err = joinPages(api, body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	isEmpty, err := getIsEmpty(body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if isEmpty && required {
-		return "", fmt.Errorf("%s not found", resourceName[:len(resourceName)-1])
+		return nil, fmt.Errorf("%s not found", resourceName[:len(resourceName)-1])
 	}
-	resourceId, err := getIfOnlyOne(body)
-	if err != nil {
-		return "", err
-	}
-	if resourceId != "" {
-		return resourceId, nil
+	if !multi {
+		resourceId, err := getIfOnlyOne(body)
+		if err != nil {
+			return nil, err
+		}
+		if resourceId != "" {
+			return []string{resourceId}, nil
+		}
 	}
 
-	resourceId, err = fuzzy(
+	return fuzzy(
 		api,
 		body,
 		fmt.Sprintf("Select %s", resourceName[:len(resourceName)-1]),
 		jsopenapi.Resources[resourceName].Display,
 		!required,
+		multi,
 	)
-	if err != nil {
-		return "", err
-	}
-	return resourceId, nil
 }
 
 func getResourceId(
@@ -505,10 +534,13 @@ func getResourceId(
 		return "", err
 	}
 	if resourceId == "" {
-		resourceId, err = selectResourceId(c, api, resourceName, jsopenapi, required)
+		resourceIds, err := selectResourceIds(
+			c, api, resourceName, jsopenapi, required, false,
+		)
 		if err != nil {
 			return "", err
 		}
+		resourceId = resourceIds[0]
 	}
 	return resourceId, nil
 }
@@ -571,16 +603,18 @@ func cliCmdChange(
 	if err != nil {
 		return err
 	}
-	childId, err := selectResourceId(
+	childIds, err := selectResourceIds(
 		c,
 		api,
 		jsopenapi.Resources[resourceName].Relationships[relationshipName].Resource,
 		jsopenapi,
 		false,
+		false,
 	)
 	if err != nil {
 		return err
 	}
+	childId := childIds[0]
 
 	parent, err := api.Get(resourceName, parentId)
 	if err != nil {
@@ -693,10 +727,11 @@ func cliCmdSelect(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 	if err != nil {
 		return err
 	}
-	resourceId, err := selectResourceId(c, api, resourceName, jsopenapi, true)
+	resourceIds, err := selectResourceIds(c, api, resourceName, jsopenapi, true, false)
 	if err != nil {
 		return err
 	}
+	resourceId := resourceIds[0]
 	err = save(resourceName[:len(resourceName)-1], resourceId)
 	if err != nil {
 		return err
@@ -716,4 +751,42 @@ func cliCmdClear(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) er
 	}
 
 	return clear(resourceName[:len(resourceName)-1])
+}
+
+func cliCmdAdd(
+	c *cli.Context, resourceName, relationshipName string, jsopenapi *jsopenapi_t,
+) error {
+	resource := jsopenapi.Resources[resourceName]
+	relatedResourceName := resource.Relationships[relationshipName].Resource
+
+	api, err := getApi(c)
+	if err != nil {
+		return err
+	}
+	parentId, err := getResourceId(c, api, resourceName, jsopenapi, true)
+	if err != nil {
+		return err
+	}
+	parent, err := api.Get(resourceName, parentId)
+	if err != nil {
+		return err
+	}
+	childIds, err := selectResourceIds(
+		c, api, relatedResourceName, jsopenapi, true, true,
+	)
+	if err != nil {
+		return err
+	}
+	var children []*jsonapi.Resource
+	for _, childId := range childIds {
+		children = append(children, &jsonapi.Resource{
+			Type: relatedResourceName,
+			Id:   childId,
+		})
+	}
+	err = parent.Add(relationshipName, children)
+	if err != nil {
+		return err
+	}
+	return nil
 }

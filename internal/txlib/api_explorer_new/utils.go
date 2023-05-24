@@ -284,15 +284,16 @@ func fuzzy(
 	header string,
 	display string,
 	allowEmpty bool,
-) (string, error) {
+	multi bool,
+) ([]string, error) {
 	var payload map[string]interface{}
 	err := json.Unmarshal(body, &payload)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	items, err := jsonapi.PostProcessListResponse(api, body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	var data []jsonapi.Resource
@@ -302,7 +303,11 @@ func fuzzy(
 		data = append([]jsonapi.Resource{}, items.Data...)
 	}
 
-	pprint := func(obj *jsonapi.Resource) string {
+	displayFunc := func(i int) string {
+		if allowEmpty && i == 0 {
+			return "<empty>"
+		}
+		obj := data[i]
 		result, err := renderTemplate(display, obj)
 		if err != nil {
 			return obj.Id
@@ -310,44 +315,49 @@ func fuzzy(
 		return result
 	}
 
-	idx, err := fuzzyfinder.Find(
-		data,
-		func(i int) string {
-			if allowEmpty && i == 0 {
-				return "<empty>"
-			}
-			item := data[i]
-			return pprint(&item)
-		},
-		fuzzyfinder.WithPreviewWindow(func(i, w, h int) string {
-			if i == -1 {
-				return ""
-			}
-			if allowEmpty && i == 0 {
-				return "Empty selection"
-			}
-			var idx int
-			if allowEmpty {
-				idx = i - 1
-			} else {
-				idx = i
-			}
-			item, err := json.MarshalIndent(
-				payload["data"].([]interface{})[idx],
-				"",
-				"  ",
-			)
-			if err != nil {
-				return ""
-			}
-			return string(item)
-		}),
-		fuzzyfinder.WithHeader(header),
-	)
-	if err != nil {
-		return "", err
+	previewOption := fuzzyfinder.WithPreviewWindow(func(i, w, h int) string {
+		if i == -1 {
+			return ""
+		}
+		if allowEmpty && i == 0 {
+			return "Empty selection"
+		}
+		var idx int
+		if allowEmpty {
+			idx = i - 1
+		} else {
+			idx = i
+		}
+		item, err := json.MarshalIndent(
+			payload["data"].([]interface{})[idx],
+			"",
+			"  ",
+		)
+		if err != nil {
+			return ""
+		}
+		return string(item)
+	})
+
+	var indices []int
+	if multi {
+		indices, err = fuzzyfinder.FindMulti(
+			data, displayFunc, previewOption, fuzzyfinder.WithHeader(header),
+		)
+	} else {
+		index, err := fuzzyfinder.Find(
+			data, displayFunc, previewOption, fuzzyfinder.WithHeader(header),
+		)
+		if err != nil {
+			return nil, err
+		}
+		indices = append(indices, index)
 	}
-	return data[idx].Id, nil
+	var ids []string
+	for _, index := range indices {
+		ids = append(ids, data[index].Id)
+	}
+	return ids, nil
 }
 
 func edit(editor string, item *jsonapi.Resource, editable_fields []string) error {
