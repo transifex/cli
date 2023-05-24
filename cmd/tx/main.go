@@ -11,6 +11,7 @@ import (
 	"github.com/manifoldco/promptui"
 	"github.com/transifex/cli/internal/txlib"
 	"github.com/transifex/cli/internal/txlib/api_explorer"
+	"github.com/transifex/cli/internal/txlib/api_explorer_new"
 	"github.com/transifex/cli/internal/txlib/config"
 	"github.com/transifex/cli/pkg/jsonapi"
 	"github.com/urfave/cli/v2"
@@ -1050,6 +1051,7 @@ func Main() {
 				},
 			},
 			api_explorer.Cmd,
+			api_explorer_new.Cmd(),
 		},
 		Flags: flags,
 	}
