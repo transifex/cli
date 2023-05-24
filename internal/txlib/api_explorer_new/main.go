@@ -338,7 +338,19 @@ func Cmd() *cli.Command {
 					subcommand.Subcommands, resourceName[:len(resourceName)-1],
 				)
 				if parent == nil {
-					parent = &cli.Command{Name: resourceName[:len(resourceName)-1]}
+					parent = &cli.Command{
+						Name: resourceName[:len(resourceName)-1],
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name: "id",
+								// If we want to `get something` and the `somethings`
+								// resource does not support `get_many`, then the user
+								// won't be able to fuzzy-select the something and
+								// `--id` should be required
+								Required: resource.Operations.GetMany == nil,
+							},
+						},
+					}
 					subcommand.Subcommands = append(subcommand.Subcommands, parent)
 				}
 				addFilterTags(parent, resourceName, &jsopenapi)
@@ -346,7 +358,9 @@ func Cmd() *cli.Command {
 					Name:  relationshipName,
 					Usage: relationship.Operations.Change.Summary,
 					Action: func(c *cli.Context) error {
-						return cliCmdChange(c, resourceNameCopy, relationshipNameCopy, &jsopenapi)
+						return cliCmdChange(
+							c, resourceNameCopy, relationshipNameCopy, &jsopenapi,
+						)
 					},
 				}
 				addFilterTags(&operation, relationship.Resource, &jsopenapi)
@@ -579,11 +593,7 @@ func getResourceId(
 	jsopenapi *jsopenapi_t,
 	required bool,
 ) (string, error) {
-	resourceId := c.String("id")
-	if resourceId != "" {
-		return resourceId, nil
-	}
-	resourceId = c.String(fmt.Sprintf("%s-id", resourceName[:len(resourceName)-1]))
+	resourceId := c.String(fmt.Sprintf("%s-id", resourceName[:len(resourceName)-1]))
 	if resourceId != "" {
 		return resourceId, nil
 	}
@@ -608,9 +618,12 @@ func cliCmdGetOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 	if err != nil {
 		return err
 	}
-	resourceId, err := getResourceId(c, api, resourceName, jsopenapi, true)
-	if err != nil {
-		return err
+	resourceId := c.String("id")
+	if resourceId == "" {
+		resourceId, err = getResourceId(c, api, resourceName, jsopenapi, true)
+		if err != nil {
+			return err
+		}
 	}
 	body, err := api.GetBody(resourceName, resourceId)
 	if err != nil {
@@ -628,9 +641,12 @@ func cliCmdEditOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) 
 	if err != nil {
 		return err
 	}
-	resourceId, err := getResourceId(c, api, resourceName, jsopenapi, true)
-	if err != nil {
-		return err
+	resourceId := c.String("id")
+	if resourceId == "" {
+		resourceId, err = getResourceId(c, api, resourceName, jsopenapi, true)
+		if err != nil {
+			return err
+		}
 	}
 	resource, err := api.Get(resourceName, resourceId)
 	if err != nil {
@@ -657,9 +673,12 @@ func cliCmdChange(
 	if err != nil {
 		return err
 	}
-	parentId, err := getResourceId(c, api, resourceName, jsopenapi, true)
-	if err != nil {
-		return err
+	parentId := c.String("id")
+	if parentId == "" {
+		parentId, err = getResourceId(c, api, resourceName, jsopenapi, true)
+		if err != nil {
+			return err
+		}
 	}
 	childIds, err := selectResourceIds(
 		c,
@@ -730,9 +749,12 @@ func cliCmdDelete(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 	if err != nil {
 		return err
 	}
-	resourceId, err := getResourceId(c, api, resourceName, jsopenapi, true)
-	if err != nil {
-		return err
+	resourceId := c.String("id")
+	if resourceId == "" {
+		resourceId, err = getResourceId(c, api, resourceName, jsopenapi, true)
+		if err != nil {
+			return err
+		}
 	}
 	fmt.Printf("About to delete %s: %s, are you sure (y/N)? ", resourceName[:len(resourceName)-1], resourceId)
 	reader := bufio.NewReader(os.Stdin)
@@ -760,9 +782,12 @@ func cliCmdGetRelated(
 	if err != nil {
 		return err
 	}
-	parentId, err := getResourceId(c, api, resourceName, jsopenapi, true)
-	if err != nil {
-		return err
+	parentId := c.String("id")
+	if parentId == "" {
+		parentId, err = getResourceId(c, api, resourceName, jsopenapi, true)
+		if err != nil {
+			return err
+		}
 	}
 	parent, err := api.Get(resourceName, parentId)
 	if err != nil {
@@ -821,9 +846,12 @@ func cliCmdAdd(
 	if err != nil {
 		return err
 	}
-	parentId, err := getResourceId(c, api, resourceName, jsopenapi, true)
-	if err != nil {
-		return err
+	parentId := c.String("id")
+	if parentId == "" {
+		parentId, err = getResourceId(c, api, resourceName, jsopenapi, true)
+		if err != nil {
+			return err
+		}
 	}
 	parent, err := api.Get(resourceName, parentId)
 	if err != nil {
@@ -859,9 +887,12 @@ func cliCmdRemove(
 	if err != nil {
 		return err
 	}
-	parentId, err := getResourceId(c, api, resourceName, jsopenapi, true)
-	if err != nil {
-		return err
+	parentId := c.String("id")
+	if parentId == "" {
+		parentId, err = getResourceId(c, api, resourceName, jsopenapi, true)
+		if err != nil {
+			return err
+		}
 	}
 	parent, err := api.Get(resourceName, parentId)
 	if err != nil {
@@ -907,9 +938,12 @@ func cliCmdReset(
 	if err != nil {
 		return err
 	}
-	parentId, err := getResourceId(c, api, resourceName, jsopenapi, true)
-	if err != nil {
-		return err
+	parentId := c.String("id")
+	if parentId == "" {
+		parentId, err = getResourceId(c, api, resourceName, jsopenapi, true)
+		if err != nil {
+			return err
+		}
 	}
 	parent, err := api.Get(resourceName, parentId)
 	if err != nil {

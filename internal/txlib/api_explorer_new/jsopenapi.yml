@@ -30,6 +30,9 @@ resources:
     operations:
       get_many:
         summary: List organizations
+        filters:
+          slug:
+            description: Filter results by slug
       get_one:
         summary: Get organization
       select:
@@ -82,6 +85,8 @@ resources:
       team:
         resource: teams
         operations:
+          get:
+            summary: Get project team
           change:
             summary: Update team relationship
       languages:

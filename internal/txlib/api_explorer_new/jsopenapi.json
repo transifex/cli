@@ -30,7 +30,12 @@
       "description": "Represents Transifex's organizations. Every user can be a member of one or multiple organizations. Only the organizations the authenticated user belongs to will appear here.",
       "operations": {
         "get_many": {
-          "summary": "List organizations"
+          "summary": "List organizations",
+          "filters": {
+            "slug": {
+              "description": "Filter results by slug"
+            }
+          }
         },
         "get_one": {
           "summary": "Get organization"
@@ -128,6 +133,9 @@
         "team": {
           "resource": "teams",
           "operations": {
+            "get": {
+              "summary": "Get project team"
+            },
             "change": {
               "summary": "Update team relationship"
             }
