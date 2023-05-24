@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
+	"reflect"
 	"text/template"
 
 	"github.com/ktr0731/go-fuzzyfinder"
@@ -163,7 +165,7 @@ func handlePagination(body []byte) error {
 	return nil
 }
 
-func page(pager string, body []byte) error {
+func invokePager(pager string, body []byte) error {
 	var unmarshalled map[string]interface{}
 	err := json.Unmarshal(body, &unmarshalled)
 	if err != nil {
@@ -181,6 +183,34 @@ func page(pager string, body []byte) error {
 		return err
 	}
 	return nil
+}
+
+func invokeEditor(input []byte, editor string) ([]byte, error) {
+	tempFile, err := os.CreateTemp("", "*.json")
+	if err != nil {
+		return nil, err
+	}
+	defer os.Remove(tempFile.Name())
+	_, err = tempFile.Write(input)
+	if err != nil {
+		return nil, err
+	}
+	cmd := exec.Command(editor, tempFile.Name())
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	err = cmd.Run()
+	if err != nil {
+		return nil, err
+	}
+	_, err = tempFile.Seek(0, 0)
+	if err != nil {
+		return nil, err
+	}
+	output, err := io.ReadAll(tempFile)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
 }
 
 func joinPages(api *jsonapi.Connection, bodyBytes []byte) ([]byte, error) {
@@ -319,6 +349,50 @@ func fuzzy(
 	return data[idx].Id, nil
 }
 
+func edit(editor string, item *jsonapi.Resource, editable_fields []string) error {
+	var preAttributes map[string]interface{}
+	err := item.MapAttributes(&preAttributes)
+	if err != nil {
+		return err
+	}
+	for field := range preAttributes {
+		if !stringSliceContains(editable_fields, field) {
+			delete(preAttributes, field)
+		}
+	}
+	body, err := json.MarshalIndent(preAttributes, "", "  ")
+	if err != nil {
+		return err
+	}
+	body, err = invokeEditor(body, editor)
+	if err != nil {
+		return err
+	}
+	var postAttributes map[string]interface{}
+	err = json.Unmarshal(body, &postAttributes)
+	if err != nil {
+		return err
+	}
+	var finalFields []string
+	for field, postValue := range postAttributes {
+		preValue, exists := preAttributes[field]
+		if !exists || reflect.DeepEqual(preValue, postValue) {
+			delete(postAttributes, field)
+		} else {
+			finalFields = append(finalFields, field)
+		}
+	}
+	if len(finalFields) == 0 {
+		return errors.New("nothing changed")
+	}
+	item.Attributes = postAttributes
+	err = item.Save(finalFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func renderTemplate(templateString string, context interface{}) (string, error) {
 	t := template.New("")
 	t, err := t.Parse(templateString)
@@ -331,4 +405,13 @@ func renderTemplate(templateString string, context interface{}) (string, error) 
 		return "", err
 	}
 	return buf.String(), nil
+}
+
+func stringSliceContains(haystack []string, needle string) bool {
+	for _, key := range haystack {
+		if key == needle {
+			return true
+		}
+	}
+	return false
 }

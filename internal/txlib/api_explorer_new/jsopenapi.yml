@@ -44,4 +44,9 @@ resources:
             description: Filter results by name
       get_one:
         summary: Get project
+      edit_one:
+        summary: Update a Project
+        fields: [name, tags, description, long_description, private, archived,
+                 translation_memory_fillup, machine_translation_fillup,
+                 homepage_url, repository_url, instructions_url, license, team]
     display: '{{.Attributes.name}} ({{.Attributes.slug}})'

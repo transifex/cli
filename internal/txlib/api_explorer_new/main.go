@@ -26,6 +26,10 @@ type jsopenapi_t struct {
 			GetOne *struct {
 				Summary string `json:"summary"`
 			} `json:"get_one"`
+			EditOne *struct {
+				Summary string   `json:"summary"`
+				Fields  []string `json:"fields"`
+			} `json:"edit_one"`
 		} `json:"operations"`
 		Display string `json:"display"`
 	} `json:"resources"`
@@ -85,7 +89,7 @@ func Cmd() *cli.Command {
 							if err != nil {
 								return err
 							}
-							err = page(c.String("pager"), body)
+							err = invokePager(c.String("pager"), body)
 							if err != nil {
 								return err
 							}
@@ -117,7 +121,7 @@ func Cmd() *cli.Command {
 							if err != nil {
 								return err
 							}
-							err = page(c.String("pager"), body)
+							err = invokePager(c.String("pager"), body)
 							if err != nil {
 								return err
 							}
@@ -146,29 +150,9 @@ func Cmd() *cli.Command {
 				},
 			}
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
-			for filterName, filter := range resource.Operations.GetMany.Filters {
-				if filter.Resource != "" {
-					operation.Flags = append(
-						operation.Flags,
-						&cli.StringFlag{
-							Name: fmt.Sprintf(
-								"%s-id",
-								filter.Resource[:len(filter.Resource)-1],
-							),
-							Usage: filter.Description,
-						},
-					)
-				} else {
-					operation.Flags = append(
-						operation.Flags,
-						&cli.StringFlag{
-							Name:     strings.ReplaceAll(filterName, "__", "-"),
-							Usage:    filter.Description,
-							Required: filter.Required,
-						},
-					)
-				}
-			}
+			operation.Flags = append(
+				operation.Flags, getFilterFlags(resourceName, &jsopenapi)...,
+			)
 		}
 
 		if resource.Operations.GetOne != nil {
@@ -179,7 +163,7 @@ func Cmd() *cli.Command {
 			}
 			operation := cli.Command{
 				Name:  resourceName[:len(resourceName)-1],
-				Usage: resource.Description,
+				Usage: resource.Operations.GetOne.Summary,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name: "id",
@@ -194,25 +178,38 @@ func Cmd() *cli.Command {
 					return cliCmdGetOne(c, resourceNameCopy, &jsopenapi)
 				},
 			}
-			if resource.Operations.GetMany != nil {
-				for filterName, filter := range resource.Operations.GetMany.Filters {
-					if filter.Resource != "" {
-						operation.Flags = append(operation.Flags, &cli.StringFlag{
-							Name:  fmt.Sprintf("%s-id", filterName),
-							Usage: filter.Description,
-						})
-					} else {
-						operation.Flags = append(
-							operation.Flags,
-							&cli.StringFlag{
-								Name:     strings.ReplaceAll(filterName, "__", "-"),
-								Usage:    filter.Description,
-								Required: filter.Required,
-							},
-						)
-					}
-				}
+			operation.Flags = append(
+				operation.Flags, getFilterFlags(resourceName, &jsopenapi)...,
+			)
+			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
+		}
+
+		if resource.Operations.EditOne != nil {
+			subcommand := findSubcommand(result.Subcommands, "edit")
+			if subcommand == nil {
+				subcommand = &cli.Command{Name: "edit"}
+				result.Subcommands = append(result.Subcommands, subcommand)
 			}
+			operation := cli.Command{
+				Name:  resourceName[:len(resourceName)-1],
+				Usage: resource.Operations.EditOne.Summary,
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name: "id",
+						// If we want to `get something` and the `somethings`
+						// resource does not support `get_many`, then the user
+						// won't be able to fuzzy-select the something and
+						// `--id` should be required
+						Required: resource.Operations.GetMany == nil,
+					},
+				},
+				Action: func(c *cli.Context) error {
+					return cliCmdEditOne(c, resourceNameCopy, &jsopenapi)
+				},
+			}
+			operation.Flags = append(
+				operation.Flags, getFilterFlags(resourceName, &jsopenapi)...,
+			)
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
 		}
 	}
@@ -253,7 +250,7 @@ func cliCmdGetMany(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) 
 	if err != nil {
 		return err
 	}
-	err = page(c.String("pager"), body)
+	err = invokePager(c.String("pager"), body)
 	if err != nil {
 		return err
 	}
@@ -371,9 +368,62 @@ func cliCmdGetOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 	if err != nil {
 		return err
 	}
-	err = page(c.String("pager"), body)
+	err = invokePager(c.String("pager"), body)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func cliCmdEditOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
+	api, err := getApi(c)
+	if err != nil {
+		return err
+	}
+	resourceId, err := getResourceId(c, api, resourceName, jsopenapi, true)
+	if err != nil {
+		return err
+	}
+	resource, err := api.Get(resourceName, resourceId)
+	if err != nil {
+		return err
+	}
+	err = edit(
+		c.String("editor"),
+		&resource,
+		jsopenapi.Resources[resourceName].Operations.EditOne.Fields,
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func getFilterFlags(resourceName string, jsopenapi *jsopenapi_t) []cli.Flag {
+	var result []cli.Flag
+	resource := jsopenapi.Resources[resourceName]
+	if resource.Operations.GetMany == nil {
+		return result
+	}
+	for filterName, filter := range resource.Operations.GetMany.Filters {
+		if filter.Resource != "" {
+			result = append(
+				result,
+				&cli.StringFlag{
+					Name:  fmt.Sprintf("%s-id", filterName),
+					Usage: filter.Description,
+				},
+			)
+		} else {
+			result = append(
+				result,
+				&cli.StringFlag{
+					Name:     strings.ReplaceAll(filterName, "__", "-"),
+					Usage:    filter.Description,
+					Required: filter.Required,
+				},
+			)
+		}
+	}
+	return result
 }
