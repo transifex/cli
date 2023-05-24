@@ -91,6 +91,8 @@ resources:
             summary: List project languages
           add:
             summary: Add languages to project
+          remove:
+            summary: Remove languages from project
     display: '{{.Attributes.name}} ({{.Attributes.slug}})'
   teams:
     operations:
