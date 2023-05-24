@@ -75,6 +75,37 @@
           ]
         }
       },
+      "relationships": {
+        "team": {
+          "resource": "teams",
+          "operations": {
+            "change": {
+              "summary": "Update team relationship"
+            }
+          }
+        }
+      },
+      "display": "{{.Attributes.name}} ({{.Attributes.slug}})"
+    },
+    "teams": {
+      "operations": {
+        "get_many": {
+          "summary": "List teams",
+          "filters": {
+            "organization": {
+              "description": "Filter results by an organization",
+              "resource": "organizations",
+              "required": true
+            },
+            "slug": {
+              "description": "Filter results by slug"
+            },
+            "name": {
+              "description": "Filter results by name"
+            }
+          }
+        }
+      },
       "display": "{{.Attributes.name}} ({{.Attributes.slug}})"
     }
   }

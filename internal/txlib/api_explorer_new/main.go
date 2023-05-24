@@ -36,6 +36,14 @@ type jsopenapi_t struct {
 				Summary string `json:"summary"`
 			} `json:"delete"`
 		} `json:"operations"`
+		Relationships map[string]struct {
+			Resource   string `json:"resource"`
+			Operations struct {
+				Change *struct {
+					Summary string `json:"summary"`
+				} `json:"change"`
+			} `json:"operations"`
+		} `json:"relationships"`
 		Display string `json:"display"`
 	} `json:"resources"`
 }
@@ -236,6 +244,39 @@ func Cmd() *cli.Command {
 			}
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
 		}
+		for relationshipName, relationship := range resource.Relationships {
+			relationshipNameCopy := relationshipName
+			if relationship.Operations.Change != nil {
+				subcommand := findSubcommand(result.Subcommands, "change")
+				if subcommand == nil {
+					subcommand = &cli.Command{Name: "change"}
+					result.Subcommands = append(result.Subcommands, subcommand)
+				}
+				parent := findSubcommand(
+					subcommand.Subcommands, resourceName[:len(resourceName)-1],
+				)
+				if parent == nil {
+					parent = &cli.Command{Name: resourceName[:len(resourceName)-1]}
+					subcommand.Subcommands = append(subcommand.Subcommands, parent)
+				}
+				parent.Flags = append(
+					parent.Flags,
+					getFilterFlags(resourceName, &jsopenapi)...,
+				)
+				operation := cli.Command{
+					Name:  relationshipName,
+					Usage: relationship.Operations.Change.Summary,
+					Action: func(c *cli.Context) error {
+						return cliCmdChange(c, resourceNameCopy, relationshipNameCopy, &jsopenapi)
+					},
+				}
+				operation.Flags = append(
+					operation.Flags,
+					getFilterFlags(relationship.Resource, &jsopenapi)...,
+				)
+				parent.Subcommands = append(parent.Subcommands, &operation)
+			}
+		}
 	}
 
 	return &result
@@ -417,6 +458,43 @@ func cliCmdEditOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) 
 		&resource,
 		jsopenapi.Resources[resourceName].Operations.EditOne.Fields,
 	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func cliCmdChange(
+	c *cli.Context,
+	resourceName,
+	relationshipName string,
+	jsopenapi *jsopenapi_t,
+) error {
+	api, err := getApi(c)
+	if err != nil {
+		return err
+	}
+	parentId, err := getResourceId(c, api, resourceName, jsopenapi, true)
+	if err != nil {
+		return err
+	}
+	childId, err := selectResourceId(
+		c,
+		api,
+		jsopenapi.Resources[resourceName].Relationships[relationshipName].Resource,
+		jsopenapi,
+		false,
+	)
+	if err != nil {
+		return err
+	}
+
+	parent, err := api.Get(resourceName, parentId)
+	if err != nil {
+		return err
+	}
+	parent.Relationships[relationshipName].DataSingular.Id = childId
+	err = parent.Save([]string{relationshipName})
 	if err != nil {
 		return err
 	}
