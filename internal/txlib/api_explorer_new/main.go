@@ -3,6 +3,7 @@ package api_explorer_new
 import (
 	_ "embed"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/transifex/cli/pkg/jsonapi"
@@ -20,6 +21,7 @@ type jsopenapi_t struct {
 				} `json:"filters"`
 			} `json:"get_many"`
 		} `json:"operations"`
+		Display string `json:"display"`
 	} `json:"resources"`
 }
 
@@ -47,6 +49,47 @@ func Cmd() *cli.Command {
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "pager", EnvVars: []string{"PAGER"}},
 			&cli.StringFlag{Name: "editor", EnvVars: []string{"EDITOR"}},
+		},
+		// TODO: Remove these
+		Subcommands: []*cli.Command{
+			{
+				Name: "test-select-resource-id",
+				Action: func(c *cli.Context) error {
+					api, err := getApi(c)
+					if err != nil {
+						return err
+					}
+					organizationId, err := selectResourceId(
+						api, "organizations", &jsopenapi,
+					)
+					if err != nil {
+						return err
+					}
+					fmt.Println(organizationId)
+					return nil
+				},
+			},
+			{
+				Name: "test-get-resource-id",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "id"},
+					&cli.StringFlag{Name: "organization-id"},
+				},
+				Action: func(c *cli.Context) error {
+					api, err := getApi(c)
+					if err != nil {
+						return err
+					}
+					organizationId, err := getResourceId(
+						c, api, "organizations", &jsopenapi,
+					)
+					if err != nil {
+						return err
+					}
+					fmt.Println(organizationId)
+					return nil
+				},
+			},
 		},
 	}
 
@@ -108,4 +151,57 @@ func cliCmdGetMany(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) 
 		return err
 	}
 	return nil
+}
+
+func selectResourceId(
+	api *jsonapi.Connection,
+	resourceName string,
+	jsopenapi *jsopenapi_t,
+) (string, error) {
+	body, err := api.ListBody(resourceName, "")
+	if err != nil {
+		return "", err
+	}
+	body, err = paginate(api, body)
+	if err != nil {
+		return "", err
+	}
+	resourceId, err := fuzzy(
+		api,
+		body,
+		fmt.Sprintf("Select %s", resourceName[:len(resourceName)-1]),
+		jsopenapi.Resources[resourceName].Display,
+		false,
+	)
+	if err != nil {
+		return "", err
+	}
+	return resourceId, nil
+}
+
+func getResourceId(
+	c *cli.Context,
+	api *jsonapi.Connection,
+	resourceName string,
+	jsopenapi *jsopenapi_t,
+) (string, error) {
+	resourceId := c.String("id")
+	if resourceId != "" {
+		return resourceId, nil
+	}
+	resourceId = c.String(fmt.Sprintf("%s-id", resourceName[:len(resourceName)-1]))
+	if resourceId != "" {
+		return resourceId, nil
+	}
+	resourceId, err := load(resourceName[:len(resourceName)-1])
+	if err != nil {
+		return "", err
+	}
+	if resourceId == "" {
+		resourceId, err = selectResourceId(api, resourceName, jsopenapi)
+		if err != nil {
+			return "", err
+		}
+	}
+	return resourceId, nil
 }

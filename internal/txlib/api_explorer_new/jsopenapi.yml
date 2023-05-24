@@ -15,6 +15,7 @@ resources:
             description:
               A list of codes of the languages to get details. This
               will fetch any available.
+    display: '{{.Attributes.name}} ({{.Attributes.code}})'
   organizations:
     description:
       Represents Transifex's organizations. Every user can be a member of one
@@ -26,3 +27,4 @@ resources:
         filters:
           slug:
             description: The slug of the organization to get details
+    display: '{{.Attributes.name}} ({{.Attributes.slug}})'

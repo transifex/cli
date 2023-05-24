@@ -14,7 +14,8 @@
             }
           }
         }
-      }
+      },
+      "display": "{{.Attributes.name}} ({{.Attributes.code}})"
     },
     "organizations": {
       "description": "Represents Transifex's organizations. Every user can be a member of one or multiple organizations. Only the organizations the authenticated user belongs to will appear here.",
@@ -27,7 +28,8 @@
             }
           }
         }
-      }
+      },
+      "display": "{{.Attributes.name}} ({{.Attributes.slug}})"
     }
   }
 }
