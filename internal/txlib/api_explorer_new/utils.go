@@ -132,6 +132,7 @@ func clear(key string) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("Cleared %s from session file\n", key)
 	return nil
 }
 

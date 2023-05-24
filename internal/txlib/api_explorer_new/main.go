@@ -49,6 +49,9 @@ type jsopenapi_t struct {
 			Select *struct {
 				Summary string `json:"summary"`
 			} `json:"select"`
+			Clear *struct {
+				Summary string `json:"summary"`
+			} `json:"clear"`
 		} `json:"operations"`
 		Relationships map[string]struct {
 			Resource   string `json:"resource"`
@@ -156,6 +159,19 @@ func Cmd() *cli.Command {
 								return err
 							}
 							return nil
+						},
+					},
+				},
+			},
+			{
+				Name: "clear",
+				Subcommands: []*cli.Command{
+					{
+						Name:  "all",
+						Usage: "Clear session file",
+						Action: func(c *cli.Context) error {
+							fmt.Printf("Removed .tx/api_explorer_session.json successfully\n")
+							return os.Remove(".tx/api_explorer_session.json")
 						},
 					},
 				},
@@ -279,9 +295,24 @@ func Cmd() *cli.Command {
 			}
 			operation := cli.Command{
 				Name:  resourceName[:len(resourceName)-1],
-				Usage: resource.Description,
+				Usage: resource.Operations.Select.Summary,
 				Action: func(c *cli.Context) error {
 					return cliCmdSelect(c, resourceNameCopy, &jsopenapi)
+				},
+			}
+			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
+		}
+		if resource.Operations.Clear != nil {
+			subcommand := findSubcommand(result.Subcommands, "clear")
+			if subcommand == nil {
+				subcommand = &cli.Command{Name: "clear"}
+				result.Subcommands = append(result.Subcommands, subcommand)
+			}
+			operation := cli.Command{
+				Name:  resourceName[:len(resourceName)-1],
+				Usage: resource.Operations.Clear.Summary,
+				Action: func(c *cli.Context) error {
+					return cliCmdClear(c, resourceNameCopy, &jsopenapi)
 				},
 			}
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
@@ -672,4 +703,17 @@ func cliCmdSelect(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 	}
 	fmt.Printf("Saved %s: %s\n", resourceName[:len(resourceName)-1], resourceId)
 	return nil
+}
+
+func cliCmdClear(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
+	resourceId, err := load(resourceName[:len(resourceName)-1])
+	if err != nil {
+		return err
+	}
+	if resourceId == "" {
+		fmt.Printf("Key %s has no entry in .tx/api_explorer_session.json\n", resourceName[:len(resourceName)-1])
+		return nil
+	}
+
+	return clear(resourceName[:len(resourceName)-1])
 }

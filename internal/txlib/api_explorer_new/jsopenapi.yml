@@ -19,6 +19,8 @@ resources:
         summary: Get language
       select:
         summary: Set language on session file
+      clear:
+        summary: Clear language from session file
     display: '{{.Attributes.name}} ({{.Attributes.code}})'
   organizations:
     description:
@@ -32,6 +34,8 @@ resources:
         summary: Get organization
       select:
         summary: Set organization on session file
+      clear:
+        summary: Clear organization from session file
     display: '{{.Attributes.name}} ({{.Attributes.slug}})'
   projects:
     operations:
@@ -67,6 +71,8 @@ resources:
             team: teams
       select:
         summary: Set project on session file
+      clear:
+        summary: Clear project from session file
       edit_one:
         summary: Update a Project
         fields: [name, tags, description, long_description, private, archived,
@@ -99,4 +105,6 @@ resources:
             description: Filter results by name
       select:
         summary: Set team on session file
+      clear:
+        summary: Clear team from session file
     display: '{{.Attributes.name}} ({{.Attributes.slug}})'

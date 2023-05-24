@@ -19,6 +19,9 @@
         },
         "select": {
           "summary": "Set language on session file"
+        },
+        "clear": {
+          "summary": "Clear language from session file"
         }
       },
       "display": "{{.Attributes.name}} ({{.Attributes.code}})"
@@ -34,6 +37,9 @@
         },
         "select": {
           "summary": "Set organization on session file"
+        },
+        "clear": {
+          "summary": "Clear organization from session file"
         }
       },
       "display": "{{.Attributes.name}} ({{.Attributes.slug}})"
@@ -93,6 +99,12 @@
             }
           }
         },
+        "select": {
+          "summary": "Set project on session file"
+        },
+        "clear": {
+          "summary": "Clear project from session file"
+        },
         "edit_one": {
           "summary": "Update a Project",
           "fields": [
@@ -110,9 +122,6 @@
             "license",
             "team"
           ]
-        },
-        "select": {
-          "summary": "Set project for session file"
         }
       },
       "relationships": {
@@ -152,27 +161,12 @@
               "description": "Filter results by name"
             }
           }
-        }
-      },
-      "display": "{{.Attributes.name}} ({{.Attributes.slug}})"
-    },
-    "teams": {
-      "operations": {
-        "get_many": {
-          "summary": "List teams",
-          "filters": {
-            "organization": {
-              "description": "Filter results by an organization",
-              "resource": "organizations",
-              "required": true
-            },
-            "slug": {
-              "description": "Filter results by slug"
-            },
-            "name": {
-              "description": "Filter results by name"
-            }
-          }
+        },
+        "select": {
+          "summary": "Set team on session file"
+        },
+        "clear": {
+          "summary": "Clear team from session file"
         }
       },
       "display": "{{.Attributes.name}} ({{.Attributes.slug}})"
