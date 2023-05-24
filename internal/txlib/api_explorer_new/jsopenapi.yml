@@ -62,9 +62,9 @@ resources:
         attributes:
           required: [name, slug, private]
           optional: [
-           type, tags, description, long_description, translation_memory_fillup,
-           machine_translation_fillup, homepage_url, instructions_url,
-           repository_url, license
+            type, tags, description, long_description,
+            translation_memory_fillup, machine_translation_fillup,
+            homepage_url, instructions_url, repository_url, license
           ]
         relationships:
           required:
