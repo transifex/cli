@@ -68,6 +68,9 @@ type jsopenapi_t struct {
 				Remove *struct {
 					Summary string `json:"summary"`
 				} `json:"remove"`
+				Reset *struct {
+					Summary string `json:"summary"`
+				} `json:"reset"`
 			} `json:"operations"`
 		} `json:"relationships"`
 		Display string `json:"display"`
@@ -421,6 +424,32 @@ func Cmd() *cli.Command {
 					Usage: relationship.Operations.Remove.Summary,
 					Action: func(c *cli.Context) error {
 						return cliCmdRemove(
+							c, resourceNameCopy, relationshipNameCopy, &jsopenapi,
+						)
+					},
+				}
+				parent.Subcommands = append(parent.Subcommands, &operation)
+			}
+
+			if relationship.Operations.Reset != nil {
+				subcommand := findSubcommand(result.Subcommands, "reset")
+				if subcommand == nil {
+					subcommand = &cli.Command{Name: "reset"}
+					result.Subcommands = append(result.Subcommands, subcommand)
+				}
+				parent := findSubcommand(
+					subcommand.Subcommands, resourceName[:len(resourceName)-1],
+				)
+				if parent == nil {
+					parent = &cli.Command{Name: resourceName[:len(resourceName)-1]}
+					subcommand.Subcommands = append(subcommand.Subcommands, parent)
+				}
+				addFilterTags(parent, resourceName, &jsopenapi)
+				operation := cli.Command{
+					Name:  relationshipName,
+					Usage: relationship.Operations.Reset.Summary,
+					Action: func(c *cli.Context) error {
+						return cliCmdReset(
 							c, resourceNameCopy, relationshipNameCopy, &jsopenapi,
 						)
 					},
@@ -862,6 +891,44 @@ func cliCmdRemove(
 		})
 	}
 	err = parent.Remove(relationshipName, children)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func cliCmdReset(
+	c *cli.Context, resourceName, relationshipName string, jsopenapi *jsopenapi_t,
+) error {
+	resource := jsopenapi.Resources[resourceName]
+	relatedResourceName := resource.Relationships[relationshipName].Resource
+
+	api, err := getApi(c)
+	if err != nil {
+		return err
+	}
+	parentId, err := getResourceId(c, api, resourceName, jsopenapi, true)
+	if err != nil {
+		return err
+	}
+	parent, err := api.Get(resourceName, parentId)
+	if err != nil {
+		return err
+	}
+	childIds, err := selectResourceIds(
+		c, api, relatedResourceName, jsopenapi, true, true,
+	)
+	if err != nil {
+		return err
+	}
+	var children []*jsonapi.Resource
+	for _, childId := range childIds {
+		children = append(children, &jsonapi.Resource{
+			Type: relatedResourceName,
+			Id:   childId,
+		})
+	}
+	err = parent.Reset(relationshipName, children)
 	if err != nil {
 		return err
 	}

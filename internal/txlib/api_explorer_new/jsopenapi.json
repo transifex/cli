@@ -144,6 +144,9 @@
             },
             "remove": {
               "summary": "Remove languages from project"
+            },
+            "reset": {
+              "summary": "Reset project languages"
             }
           }
         }

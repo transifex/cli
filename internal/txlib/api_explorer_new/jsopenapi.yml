@@ -93,6 +93,8 @@ resources:
             summary: Add languages to project
           remove:
             summary: Remove languages from project
+          reset:
+            summary: Reset project languages
     display: '{{.Attributes.name}} ({{.Attributes.slug}})'
   teams:
     operations:
