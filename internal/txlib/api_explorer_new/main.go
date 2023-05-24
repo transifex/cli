@@ -7,35 +7,12 @@ import (
 	"errors"
 	"fmt"
 
-	// "io"
 	"os"
 	"strings"
 
-	// "github.com/mattn/go-isatty"
 	"github.com/transifex/cli/pkg/jsonapi"
 	"github.com/urfave/cli/v2"
 )
-
-const CREATE_ONE_STRING = `{
-  "Required fields": "",
-
-  "name": "The name of the project",
-  "slug": "the_slug_of_the_project",
-  "private": true,
-
-  "Optional fields (remember to remove the leading '//' from the keys)": "",
-
-  "//description": "",
-  "//homepage_url": "",
-  "//instructions_url": "",
-  "//license": "",
-  "//long_description": "",
-  "//machine_translation_fillup": false,
-  "//repository_url": "",
-  "//tags": [],
-  "//translation_memory_fillup": false,
-  "//type": "file/live"
-}`
 
 type jsopenapi_t struct {
 	Resources map[string]struct {

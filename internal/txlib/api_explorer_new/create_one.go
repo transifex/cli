@@ -8,9 +8,14 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+type resourceInfo struct{
+  id string
+  path string
+}
+
 func cliCmdCreateOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
-  requiredResourceIds := make(map[string]string)
-  optionalResourceIds := make(map[string]string)
+  requiredResourceInfo := make(map[string]*resourceInfo)
+  optionalResourceInfo:= make(map[string]*resourceInfo)
 
 	api, err := getApi(c)
 	if err != nil {
@@ -23,7 +28,7 @@ func cliCmdCreateOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t
     if err != nil {
       return err
     }
-    requiredResourceIds[required] = resourceId
+    requiredResourceInfo[required] = &resourceInfo{id: resourceId, path: path}
   }
   for optional, path := range resourceData.Operations.CreateOne.Relationships.Optional {
     resourceId, err := selectResourceId(c, api, path, jsopenapi, false)
@@ -31,17 +36,14 @@ func cliCmdCreateOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t
       return err
     }
     if resourceId != "<empty>" {
-      requiredResourceIds[optional] = resourceId
+      optionalResourceInfo[optional] = &resourceInfo{id: resourceId, path: path}
     }
   }
 
-  validAttributes := resourceData.Operations.CreateOne.Attributes.Required
-  validAttributes = append(validAttributes, resourceData.Operations.CreateOne.Attributes.Optional...)
-
 	attributes, err := create(
-		CREATE_ONE_STRING,
 		c.String("editor"),
-    validAttributes,
+    resourceData.Operations.CreateOne.Attributes.Required,
+    resourceData.Operations.CreateOne.Attributes.Optional,
 	)
 	if err != nil {
 		return err
@@ -51,16 +53,14 @@ func cliCmdCreateOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t
 		Type:       resourceName,
 		Attributes: attributes,
 	}
-  for required, resourceName := range resourceData.Operations.CreateOne.Relationships.Required {
+  for required, resourceInfo := range requiredResourceInfo {
     resource.SetRelated(required, &jsonapi.Resource{
-      Type: resourceName,
-      Id:   requiredResourceIds[required],
+      Type: resourceInfo.path,
+      Id:   requiredResourceInfo[required].id,
     })
   }
-  for optional, resourceName := range resourceData.Operations.CreateOne.Relationships.Optional {
-    if resourceId, ok := optionalResourceIds[optional]; ok {
-      resource.SetRelated(optional, &jsonapi.Resource{Type: resourceName, Id: resourceId})
-    }
+  for optional, resourceInfo := range optionalResourceInfo {
+    resource.SetRelated(optional, &jsonapi.Resource{Type: resourceInfo.path, Id: resourceInfo.id})
   }
 	err = resource.Save(nil)
 	if err != nil {
@@ -70,12 +70,24 @@ func cliCmdCreateOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t
 	return nil
 }
 
-func create(
-	create_string,
-	editor string,
-	fields []string,
-) (map[string]interface{}, error) {
-	body, err := invokeEditor([]byte(create_string), editor)
+func create(editor string, required_attrs, optional_attrs []string) (map[string]interface{}, error){
+  preAttributes := map[string]interface{}{
+    " ": "A '//' infront of the attribute name implies that the key is optional. Remove the slashes to include the field in the request payload.",
+  }
+
+  for _, attr := range optional_attrs {
+    preAttributes[fmt.Sprintf("//%s", attr)] = ""
+  }
+
+  for _, attr := range required_attrs {
+    preAttributes[attr] = ""
+  }
+
+	body, err := json.MarshalIndent(preAttributes, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	body, err = invokeEditor(body, editor)
 	if err != nil {
 		return nil, err
 	}
@@ -84,11 +96,12 @@ func create(
 	if err != nil {
 		return nil, err
 	}
-	for field := range attributes {
-		if !stringSliceContains(fields, field) {
-			delete(attributes, field)
+  validAttributes := required_attrs
+  validAttributes = append(validAttributes, optional_attrs...)
+	for attr := range attributes {
+		if !stringSliceContains(validAttributes, attr) {
+			delete(attributes, attr)
 		}
 	}
-	return attributes, nil
+	return  attributes, nil
 }
-
