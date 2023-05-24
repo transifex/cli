@@ -1,10 +1,12 @@
 package api_explorer_new
 
 import (
+	"bufio"
 	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/transifex/cli/pkg/jsonapi"
@@ -30,6 +32,9 @@ type jsopenapi_t struct {
 				Summary string   `json:"summary"`
 				Fields  []string `json:"fields"`
 			} `json:"edit_one"`
+			Delete *struct {
+				Summary string `json:"summary"`
+			} `json:"delete"`
 		} `json:"operations"`
 		Display string `json:"display"`
 	} `json:"resources"`
@@ -210,6 +215,25 @@ func Cmd() *cli.Command {
 			operation.Flags = append(
 				operation.Flags, getFilterFlags(resourceName, &jsopenapi)...,
 			)
+			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
+		}
+
+		if resource.Operations.Delete != nil {
+			subcommand := findSubcommand(result.Subcommands, "delete")
+			if subcommand == nil {
+				subcommand = &cli.Command{Name: "delete"}
+				result.Subcommands = append(result.Subcommands, subcommand)
+			}
+			operation := cli.Command{
+				Name:  resourceName[:len(resourceName)-1],
+				Usage: resource.Description,
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "id"},
+				},
+				Action: func(c *cli.Context) error {
+					return cliCmdDelete(c, resourceNameCopy, &jsopenapi)
+				},
+			}
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
 		}
 	}
@@ -426,4 +450,32 @@ func getFilterFlags(resourceName string, jsopenapi *jsopenapi_t) []cli.Flag {
 		}
 	}
 	return result
+}
+
+func cliCmdDelete(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
+	api, err := getApi(c)
+	if err != nil {
+		return err
+	}
+	resourceId, err := getResourceId(c, api, resourceName, jsopenapi, true)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("About to delete %s: %s, are you sure (y/N)? ", resourceName[:len(resourceName)-1], resourceId)
+	reader := bufio.NewReader(os.Stdin)
+	answer, err := reader.ReadString('\n')
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(strings.ToLower(answer)) == "y" {
+		resource := jsonapi.Resource{API: api, Type: resourceName, Id: resourceId}
+		err = resource.Delete()
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Deleted %s: %s\n", resourceName[:len(resourceName)-1], resourceId)
+	} else {
+		fmt.Printf("Deletion aborted\n")
+	}
+	return nil
 }
