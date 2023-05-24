@@ -183,7 +183,7 @@ func page(pager string, body []byte) error {
 	return nil
 }
 
-func paginate(api *jsonapi.Connection, bodyBytes []byte) ([]byte, error) {
+func joinPages(api *jsonapi.Connection, bodyBytes []byte) ([]byte, error) {
 	var resultJson struct {
 		Data []interface{} `json:"data"`
 	}
