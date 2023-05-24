@@ -3,6 +3,7 @@ package api_explorer_new
 import (
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -54,6 +55,77 @@ func Cmd() *cli.Command {
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "pager", EnvVars: []string{"PAGER"}},
 			&cli.StringFlag{Name: "editor", EnvVars: []string{"EDITOR"}},
+		},
+		Subcommands: []*cli.Command{
+			{
+				Name: "get",
+				Subcommands: []*cli.Command{
+					{
+						Name:  "next",
+						Usage: "Get the next page of the last request",
+						Action: func(c *cli.Context) error {
+							api, err := getApi(c)
+							if err != nil {
+								return err
+							}
+							url, err := load("next")
+							if err != nil {
+								return err
+							}
+							if url == "" {
+								return errors.New(
+									"last request did not have a next page",
+								)
+							}
+							body, err := api.ListBodyFromPath(url)
+							if err != nil {
+								return err
+							}
+							err = handlePagination(body)
+							if err != nil {
+								return err
+							}
+							err = page(c.String("pager"), body)
+							if err != nil {
+								return err
+							}
+							return nil
+						},
+					},
+					{
+						Name:  "previous",
+						Usage: "Get the previous page of the last request",
+						Action: func(c *cli.Context) error {
+							api, err := getApi(c)
+							if err != nil {
+								return err
+							}
+							url, err := load("previous")
+							if err != nil {
+								return err
+							}
+							if url == "" {
+								return errors.New(
+									"last request did not have a previous page",
+								)
+							}
+							body, err := api.ListBodyFromPath(url)
+							if err != nil {
+								return err
+							}
+							err = handlePagination(body)
+							if err != nil {
+								return err
+							}
+							err = page(c.String("pager"), body)
+							if err != nil {
+								return err
+							}
+							return nil
+						},
+					},
+				},
+			},
 		},
 	}
 
