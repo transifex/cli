@@ -167,3 +167,14 @@ resources:
           name:
             description: Filter results by name
     display: '{{.Attributes.name}}'
+  project_webhooks:
+    operations:
+      create_one:
+        summary: Create a Project Webhook
+        attributes:
+          required: [event_type, active, callback_url]
+          optional: [secret_key]
+        relationships:
+          required:
+            project: projects
+    display: '{{.Attributes.name}} ({{.Attributes.slug}})'
