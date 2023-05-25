@@ -248,7 +248,7 @@ func Cmd() *cli.Command {
 					return cliCmdGetMany(c, resourceNameCopy, &jsopenapi)
 				},
 			}
-			addFilterTags(&operation, resourceName, &jsopenapi)
+			addFilterTags(&operation, resourceName, &jsopenapi, false)
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
 		}
 
@@ -271,7 +271,7 @@ func Cmd() *cli.Command {
 					return cliCmdGetOne(c, resourceNameCopy, &jsopenapi)
 				},
 			}
-			addFilterTags(&operation, resourceName, &jsopenapi)
+			addFilterTags(&operation, resourceName, &jsopenapi, true)
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
 		}
 
@@ -294,7 +294,7 @@ func Cmd() *cli.Command {
 					return cliCmdEditOne(c, resourceNameCopy, &jsopenapi)
 				},
 			}
-			addFilterTags(&operation, resourceName, &jsopenapi)
+			addFilterTags(&operation, resourceName, &jsopenapi, true)
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
 		}
 
@@ -367,7 +367,7 @@ func Cmd() *cli.Command {
 						Required: resource.Operations.GetMany == nil,
 					})
 				}
-				addFilterTags(parent, resourceName, &jsopenapi)
+				addFilterTags(parent, resourceName, &jsopenapi, true)
 				operation := cli.Command{
 					Name:  relationshipName,
 					Usage: relationship.Operations.Change.Summary,
@@ -377,7 +377,7 @@ func Cmd() *cli.Command {
 						)
 					},
 				}
-				addFilterTags(&operation, relationship.Resource, &jsopenapi)
+				addFilterTags(&operation, relationship.Resource, &jsopenapi, true)
 				parent.Subcommands = append(parent.Subcommands, &operation)
 			}
 
@@ -386,7 +386,7 @@ func Cmd() *cli.Command {
 				parent := getOrCreateSubcommand(
 					subcommand, resourceName[:len(resourceName)-1],
 				)
-				addFilterTags(parent, resourceName, &jsopenapi)
+				addFilterTags(parent, resourceName, &jsopenapi, true)
 				operation := cli.Command{
 					Name:  relationshipName,
 					Usage: relationship.Operations.Get.Summary,
@@ -404,7 +404,7 @@ func Cmd() *cli.Command {
 				parent := getOrCreateSubcommand(
 					subcommand, resourceName[:len(resourceName)-1],
 				)
-				addFilterTags(parent, resourceName, &jsopenapi)
+				addFilterTags(parent, resourceName, &jsopenapi, true)
 				operation := cli.Command{
 					Name:  relationshipName,
 					Usage: relationship.Operations.Add.Summary,
@@ -432,7 +432,7 @@ func Cmd() *cli.Command {
 				parent := getOrCreateSubcommand(
 					subcommand, resourceName[:len(resourceName)-1],
 				)
-				addFilterTags(parent, resourceName, &jsopenapi)
+				addFilterTags(parent, resourceName, &jsopenapi, true)
 				operation := cli.Command{
 					Name:  relationshipName,
 					Usage: relationship.Operations.Remove.Summary,
@@ -460,7 +460,7 @@ func Cmd() *cli.Command {
 				parent := getOrCreateSubcommand(
 					subcommand, resourceName[:len(resourceName)-1],
 				)
-				addFilterTags(parent, resourceName, &jsopenapi)
+				addFilterTags(parent, resourceName, &jsopenapi, true)
 				operation := cli.Command{
 					Name:  relationshipName,
 					Usage: relationship.Operations.Reset.Summary,

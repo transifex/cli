@@ -16,7 +16,9 @@ func findSubcommand(subcommands []*cli.Command, name string) *cli.Command {
 	return nil
 }
 
-func addFilterTags(command *cli.Command, resourceName string, jsopenapi *jsopenapi_t) {
+func addFilterTags(
+	command *cli.Command, resourceName string, jsopenapi *jsopenapi_t, optional bool,
+) {
 	resource := jsopenapi.Resources[resourceName]
 	if resource.Operations.GetMany == nil {
 		return
@@ -38,7 +40,7 @@ func addFilterTags(command *cli.Command, resourceName string, jsopenapi *jsopena
 					&cli.StringFlag{
 						Name:     strings.ReplaceAll(filterName, "__", "-"),
 						Usage:    filter.Description,
-						Required: filter.Required,
+						Required: !optional && filter.Required,
 					},
 				)
 			}
