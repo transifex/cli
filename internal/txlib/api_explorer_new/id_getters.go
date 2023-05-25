@@ -58,7 +58,7 @@ func selectResourceIds(
 	if isEmpty && required {
 		return nil, fmt.Errorf("%s not found", resourceName[:len(resourceName)-1])
 	}
-	if !multi {
+	if !multi && required {
 		resourceId, err := getIfOnlyOne(body)
 		if err != nil {
 			return nil, err

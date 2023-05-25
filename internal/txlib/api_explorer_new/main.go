@@ -352,7 +352,7 @@ func Cmd() *cli.Command {
 					},
 				},
 				Action: func(c *cli.Context) error {
-					return cliCmdUploadResourceStringsAsyncUpload(c, resourceNameCopy, &jsopenapi)
+					return cliCmdUpload(c, resourceNameCopy, &jsopenapi)
 				},
 			}
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
@@ -938,7 +938,7 @@ func cliCmdCreateOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t
 	return nil
 }
 
-func cliCmdUploadResourceStringsAsyncUpload(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
+func cliCmdUpload(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
 	type resourceInfo struct {
 		id           string
 		resourceName string
@@ -973,7 +973,7 @@ func cliCmdUploadResourceStringsAsyncUpload(c *cli.Context, resourceName string,
 		}
 	}
 
-	filteredRequiredAttrs := make([]string, len(operation.Attributes.Required)-2)
+	filteredRequiredAttrs := make([]string, 0, len(operation.Attributes.Required)-2)
 	for _, required := range operation.Attributes.Required {
 		if required != "content" && required != "content_encoding" {
 			filteredRequiredAttrs = append(filteredRequiredAttrs, required)
