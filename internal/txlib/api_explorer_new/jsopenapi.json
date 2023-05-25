@@ -576,6 +576,295 @@
           }
         }
       }
+    },
+    "resource_strings": {
+      "operations": {
+        "get_many": {
+          "summary": "Get resource strings collection",
+          "filters": {
+            "resource": {
+              "description": "Filter results by a resource",
+              "required": true,
+              "resource": "resources"
+            },
+            "strings_date_modified__gte": {
+              "required": false
+            },
+            "strings_date_modified__lte": {
+              "required": false
+            },
+            "key": {
+              "description": "Exact match for the key of the resource string. This filter is case sensitive.",
+              "required": false
+            },
+            "tags__all": {
+              "description": "Retrieve source strings containing all of the query tags.",
+              "required": false
+            }
+          }
+        },
+        "create_one": {
+          "summary": "Create resource string",
+          "attributes": {
+            "required": [
+              "key",
+              "context",
+              "strings"
+            ],
+            "optional": [
+              "appearance_order",
+              "tags",
+              "occurrences",
+              "developer_comment",
+              "instructions",
+              "character_limit",
+              "pluralized"
+            ]
+          },
+          "relationships": {
+            "required": {
+              "resource": "resources"
+            }
+          }
+        },
+        "get_one": {
+          "summary": "Get resource string details"
+        },
+        "edit_one": {
+          "summary": "Update resource string",
+          "fields": [
+            "tags",
+            "instructions",
+            "character_limit",
+            "appearance_order",
+            "occurrences",
+            "developer_comment",
+            "strings"
+          ]
+        },
+        "delete": {
+          "summary": "Delete resource string"
+        }
+      },
+      "display": "{{.Attributes.strings.other}}"
+    },
+    "resource_strings_revisions": {
+      "operations": {
+        "get_many": {
+          "summary": "Get revisions of resource strings",
+          "filters": {
+            "resource_string__resource": {
+              "description": "Filter results by a resource",
+              "required": true
+            },
+            "resource_string__key": {
+              "required": false,
+              "description": "Exact match for the key of the resource string. This filter is case sensitive."
+            },
+            "resource_string__tags__all": {
+              "description": "Retrieve source strings revisions containing all of the query tags.",
+              "required": false
+            }
+          }
+        }
+      },
+      "display": "{{.Attributes.strings.other}} ({{.Attributes.date_created}})"
+    },
+    "resource_translations": {
+      "operations": {
+        "get_many": {
+          "summary": "Get a Resource Translations collection",
+          "filters": {
+            "resource": {
+              "description": "Filter results by a resource",
+              "required": true,
+              "resource": "resources"
+            },
+            "language": {
+              "description": "Filter results by a language",
+              "required": true,
+              "resource": "languages"
+            },
+            "date_translated__gt": {
+              "required": false
+            },
+            "date_translated__lt": {
+              "required": false
+            },
+            "resource_string__key": {
+              "required": false
+            },
+            "resource_string__date_modified__gte": {
+              "required": false
+            },
+            "resource_string__date_modified__lte": {
+              "required": false
+            },
+            "translated": {
+              "required": false
+            },
+            "reviewed": {
+              "required": false
+            },
+            "proofread": {
+              "required": false
+            },
+            "finalized": {
+              "required": false
+            },
+            "translator": {
+              "required": false
+            },
+            "origin": {
+              "required": false
+            },
+            "resource_string__tags__all": {
+              "description": "Retrieve translation strings containing all of the query tags.",
+              "required": false
+            }
+          }
+        },
+        "get_one": {
+          "summary": "Get a Resource Translation details"
+        },
+        "edit_one": {
+          "summary": "Update a Resource Translation",
+          "fields": [
+            "strings",
+            "reviewed",
+            "proofread"
+          ]
+        }
+      },
+      "display": "{{.Attributes.strings.other}}"
+    },
+    "resource_string_comments": {
+      "operations": {
+        "get_many": {
+          "summary": "List resource string comments",
+          "filters": {
+            "organization": {
+              "description": "Filter results by an organization",
+              "required": true,
+              "resource": "organizations"
+            },
+            "project": {
+              "description": "Filter results by a project",
+              "required": false,
+              "resource": "projects"
+            },
+            "category": {
+              "required": false
+            },
+            "author": {
+              "required": false,
+              "resource": "users"
+            },
+            "datetime_created__gte": {
+              "required": false
+            },
+            "datetime_created__lt": {
+              "required": false
+            },
+            "priority": {
+              "required": false
+            },
+            "resource": {
+              "required": false,
+              "resource": "resources"
+            },
+            "resource_string": {
+              "required": false,
+              "resource": "resource_strings"
+            },
+            "status": {
+              "required": false
+            },
+            "type": {
+              "required": false
+            }
+          }
+        },
+        "create_one": {
+          "summary": "Create resource string comments",
+          "attributes": {
+            "required": [
+              "message",
+              "type"
+            ],
+            "optional": [
+              "category",
+              "priority"
+            ]
+          },
+          "relationships": {
+            "required": {
+              "language": "languages",
+              "resource_string": "resource_strings"
+            }
+          }
+        },
+        "get_one": {
+          "summary": "Get resource string comment"
+        },
+        "edit_one": {
+          "summary": "Update resource string comment",
+          "fields": [
+            "category",
+            "message",
+            "priority",
+            "status"
+          ]
+        },
+        "delete": {
+          "summary": "Delete resource string comment"
+        }
+      },
+      "display": "{{.Attributes.message}}"
+    },
+    "unique_identifiers": {
+      "operations": {
+        "get_many": {
+          "summary": "List unique identifiers",
+          "filters": {
+            "resource_type": {
+              "required": true
+            },
+            "resource_id": {
+              "required": true
+            }
+          }
+        },
+        "get_one": {
+          "summary": "Get unique identifier"
+        }
+      },
+      "display": "{{.Id}}"
+    },
+    "resource_async_merges": {
+      "operations": {
+        "create_one": {
+          "summary": "Create new resources merge",
+          "attributes": {
+            "required": [
+              "conflict_resolution"
+            ],
+            "optional": [
+              "callback_url",
+              "force"
+            ]
+          },
+          "relationships": {
+            "required": {
+              "resource": "resources"
+            }
+          }
+        },
+        "get_one": {
+          "summary": "Get resource merge status"
+        }
+      },
+      "display": "{{.Relationships.base.DataSingular.Id}} -> {{.Relationships.head.DataSingular.Id}}: {{.Attributes.status}}, {{.Attributes.conflict_resolution}}"
     }
   }
 }
