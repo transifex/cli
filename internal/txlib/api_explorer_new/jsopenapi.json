@@ -184,9 +184,76 @@
         },
         "clear": {
           "summary": "Clear team from session file"
+        },
+        "create_one": {
+          "summary": "Create a Team",
+          "attributes": {
+            "required": [
+              "name"
+            ],
+            "optional": [
+              "auto_join",
+              "cla",
+              "cla_required"
+            ]
+          },
+          "relationships": {
+            "required": {
+              "organization": "organizations"
+            }
+          }
         }
       },
-      "display": "{{.Attributes.name}} ({{.Attributes.slug}})"
+      "display": "{} ({{.Attributes.slug}})"
+    },
+    "resources": {
+      "operations": {
+        "create_one": {
+          "summary": "Create a Resource",
+          "attributes": {
+            "required": [
+              "slug",
+              "name"
+            ],
+            "optional": [
+              "priority",
+              "accept_translations",
+              "categories",
+              "i18n_options",
+              "mp4_url",
+              "ogg_url",
+              "webm_url",
+              "youtube_url"
+            ]
+          },
+          "relationships": {
+            "required": {
+              "project": "projects",
+              "i18n_format": null
+            },
+            "optional": {
+              "base": "resources"
+            }
+          }
+        }
+      }
+    },
+    "i18n_formats": {
+      "operations": {
+        "get_many": {
+          "summary": "List i18n formats",
+          "filters": {
+            "organization": {
+              "description": "Filter results by an organization",
+              "resource": "organizations",
+              "required": true
+            },
+            "name": {
+              "description": "Filter results by name"
+            }
+          }
+        }
+      }
     }
   }
 }
