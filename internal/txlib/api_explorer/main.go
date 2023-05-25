@@ -205,13 +205,21 @@ func Cmd() *cli.Command {
 		},
 	}
 
-	for resourceName, resource := range jsopenapi.Resources {
+	for resourceName := range jsopenapi.Resources {
+		// In order to avoid the 'cannot assign to struct field in map' error,
+		// we have to extract a copy of each resource, modify its PluralName
+		// and SingularName and then put it back
+		resource := jsopenapi.Resources[resourceName]
 		if resource.PluralName == "" {
 			resource.PluralName = resourceName
 		}
 		if resource.SingularName == "" {
 			resource.SingularName = resource.PluralName[:len(resource.PluralName)-1]
 		}
+		jsopenapi.Resources[resourceName] = resource
+	}
+
+	for resourceName, resource := range jsopenapi.Resources {
 		resourceNameCopy := resourceName
 
 		if resource.Operations.GetMany != nil {
@@ -606,7 +614,7 @@ func cliCmdChange(
 		api,
 		jsopenapi.Resources[resourceName].Relationships[relationshipName].Resource,
 		jsopenapi,
-		false,
+		true,
 		false,
 	)
 	if err != nil {
