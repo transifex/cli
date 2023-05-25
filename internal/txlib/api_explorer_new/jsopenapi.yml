@@ -1,6 +1,11 @@
 ---
 
 resources:
+  users:
+    operations:
+      get_one:
+        summary: Get the details of a User 
+    display: '{{.Attributes.username}}'
   languages:
     description:
       Languages objects represent each available language in
@@ -31,6 +36,18 @@ resources:
             description: Filter results by slug
       get_one:
         summary: Get organization
+    relationships:
+      administrators:
+        resource: users
+        operations:
+          get:
+            summary: Get organization administrators
+          add:
+            summary: Add administrators to organization
+          remove:
+            summary: Remove administrators from organization
+          reset:
+            summary: Update organization administrators
     display: '{{.Attributes.name}} ({{.Attributes.slug}})'
   projects:
     operations:
@@ -88,6 +105,17 @@ resources:
             summary: Remove languages from project
           reset:
             summary: Reset project languages
+      matinainers:
+        resource: users
+        operations:
+          get:
+            summary: Get project maintainers
+          add:
+            summary: Add maintainers to project
+          remove:
+            summary: Remove maintainers from project
+          reset:
+            summary: Update project maintainers
     display: '{{.Attributes.name}} ({{.Attributes.slug}})'
   teams:
     operations:
@@ -110,6 +138,25 @@ resources:
         relationships:
           required:
             organization: organizations
+      get_one:
+        summary: Get team detail
+      edit_one:
+        summary: Update a team
+        fields: [name, auto_join, cla_required, cla]
+      delete:
+        summary: Delete team
+    relationships:
+      managers:
+        resource: users
+        operations:
+          get:
+            summary: Get team managers
+          add:
+            summary: Add managers to team
+          remove:
+            summary: Remove managers from team
+          reset:
+            summary: Update team managers
     display: '{{.Attributes.Name}} ({{.Attributes.slug}})'
   resources:
     operations:
@@ -128,16 +175,22 @@ resources:
         summary: Create a Resource
         attributes:
           required: [slug, name]
-          optional: [
-            priority, accept_translations, categories, 
-            i18n_options, mp4_url, ogg_url, webm_url, youtube_url
-          ]
+          optional: [priority, accept_translations, categories, i18n_options,
+                     mp4_url, ogg_url, webm_url, youtube_url]
         relationships:
           required:
             project: projects
             i18n_format: i18n_formats
           optional:
             base: resources
+      get_one:
+        summary: Get resource details
+      edit_one:
+        summary: Update resource
+        fields: [name, slug, priority, accept_translations, categories,
+                 mp4_url, ogg_url, webm_url, youtube_url]
+      delete_one:
+        summary: Delete resource
     display: '{{.Attributes.name}} ({{.Attributes.slug}})'
   i18n_formats:
     operations:
@@ -153,6 +206,17 @@ resources:
     display: '{{.Attributes.name}}'
   project_webhooks:
     operations:
+      get_many:
+        summary: List project webhooks.
+        filters:
+          organization:
+            description: Filter results by an organization
+            required: true
+            resource: organizations
+          project:
+            description: Filter results by a project
+            required: false
+            resource: projects
       create_one:
         summary: Create a Project Webhook
         attributes:
@@ -161,4 +225,119 @@ resources:
         relationships:
           required:
             project: projects
+      get_one:
+        summary: Get the details of a Project Webhook
+      edit_one:
+        summary: Update project webhook
+        fields: [event_type, active, callback_url, secret_key]
+      delete:
+        summary: Delete project webhook
     display: '{{.Attributes.name}} ({{.Attributes.slug}})'
+  team_memberships:
+    operations:
+      get_many:
+        summary: List team memberships
+        filters:
+          organization:
+            description: Filter results by an organization
+            required: true
+            resource: organizations
+          team:
+            description: Filter results by a team
+            required: false
+            resource: teams
+          language:
+            description: Filter results by a language
+            required: false
+            resource: languages
+          user:
+            description: Filter results by a user
+            required: false
+            resource: users
+          role:
+            description: Filter results by role
+      create_one:
+        summary: Create a new team membership
+        attributes:
+          required: [role]
+        relationships:
+          required:
+            team: teams
+            language: languages
+            user: users
+      get_one:
+        summary: Get single team membership
+      delete:
+        summary: Delete team membership
+      edit_one:
+        summary: Update a membership's role
+        fields: [role]
+    display: '{{.Relationships.user.DataSingular.Id}} - {{.Relationships.team.DataSingular.Id}} - {{.Relationships.language.DataSingular.Id}} ({{.Attributes.role}})'
+  discussions:
+    operations:
+      get_many:
+        summary: List discussions
+        filters:
+          organization:
+            description: Filter results by an organization
+            required: true
+            resource: organizations
+          project:
+            description: Filter results by a project
+            required: false
+            resource: projects
+          type:
+            description:
+              Filter by discussion type. Leave blank to fetch all types, use
+              `global` to fetch organization level discussions and `project`
+              for project level discussions.
+            required: false
+          datetime_created__gte:
+            required: false
+          datetime_created__lt:
+            required: false
+          author__any:
+            description: Filter results by discussion/reply author
+            required: false
+      create_one:
+        summary: Create new Discussion
+        attributes:
+          required: [title, content]
+        relationships:
+          optional:
+            organization: organizations
+            project: projects
+      get_one:
+        summary: Get Discussion detail
+      delete:
+        summary: Delete Discussion
+      edit_one:
+        summary: Update a discussion.
+        fields: [title, content]
+    relationships:
+      replies:
+        resource: discussions
+        operations:
+          get:
+            summary: List Replies
+    display: '{{.Attributes.title}}'
+  resource_language_stats:
+    operations:
+      get_many:
+        summary: Get resource language stats collection
+        filters:
+          project:
+            description: Filter results by a project
+            required: true
+            resource: projects
+          resource:
+            description: Filter results by a resource
+            required: false
+            resource: resources
+          language:
+            description: Filter results by a language
+            required: false
+            resource: languages
+      get_one:
+        summary: Get resource language stats
+    display: '{{.Relationships.resource.DataSingular.Id}} - {{.Relationships.language.DataSingular.Id}} ({{.Attributes.translated_strings}}/{{.Attributes.total_strings}})'
