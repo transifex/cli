@@ -16,7 +16,6 @@ import (
 	"strings"
 
 	"github.com/transifex/cli/pkg/jsonapi"
-	"github.com/transifex/cli/pkg/txapi"
 	"github.com/urfave/cli/v2"
 )
 
@@ -1054,7 +1053,15 @@ func cliCmdUpload(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 	if err != nil {
 		return err
 	}
-	var uploadAttributes txapi.ResourceStringAsyncUploadAttributes
+	var uploadAttributes struct {
+		Status  string `json:"status"`
+		Details struct {
+			StringsCreated int `json:"strings_created"`
+			StringsDeleted int `json:"strings_deleted"`
+			StringsSkipped int `json:"strings_skipped"`
+			StringsUpdated int `json:"strings_updated"`
+		} `json:"details"`
+	}
 	for {
 		err = upload.MapAttributes(&uploadAttributes)
 		if err != nil {
