@@ -157,7 +157,7 @@ resources:
             summary: Remove managers from team
           reset:
             summary: Update team managers
-    display: '{{.Attributes.Name}} ({{.Attributes.slug}})'
+    display: '{{.Attributes.name}} ({{.Attributes.slug}})'
   resources:
     operations:
       get_many:
