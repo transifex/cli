@@ -55,12 +55,19 @@ func invokePager(pager string, body []byte) error {
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command(pager)
-	cmd.Stdin = bytes.NewBuffer(output)
-	cmd.Stdout = os.Stdout
-	err = cmd.Run()
-	if err != nil {
-		return err
+	if pager != "" {
+		cmd := exec.Command(pager)
+		cmd.Stdin = bytes.NewBuffer(output)
+		cmd.Stdout = os.Stdout
+		err = cmd.Run()
+		if err != nil {
+			return err
+		}
+	} else {
+		_, err = fmt.Fprintln(os.Stdout, bytes.NewBuffer(output))
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

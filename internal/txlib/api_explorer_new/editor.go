@@ -13,6 +13,11 @@ import (
 )
 
 func invokeEditor(input []byte, editor string) ([]byte, error) {
+	if editor == "" {
+		return nil, errors.New(
+			"no editor specified, use the --editor flag or set the EDITOR environment variable",
+		)
+	}
 	tempFile, err := os.CreateTemp("", "*.json")
 	if err != nil {
 		return nil, err
