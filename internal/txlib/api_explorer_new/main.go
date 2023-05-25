@@ -842,42 +842,42 @@ func cliCmdReset(
 
 func cliCmdCreateOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
 	type resourceInfo struct {
-		id   string
-		path string
+		id           string
+		resourceName string
 	}
 
-	requiredResourceInfo := make(map[string]*resourceInfo)
-	optionalResourceInfo := make(map[string]*resourceInfo)
+	requiredRelationships := make(map[string]*resourceInfo)
+	optionalRelationships := make(map[string]*resourceInfo)
 
 	api, err := getApi(c)
 	if err != nil {
 		return err
 	}
 
-	resourceData := jsopenapi.Resources[resourceName]
-	for required, path := range resourceData.Operations.CreateOne.Relationships.Required {
-		resourceIds, err := selectResourceIds(c, api, path, jsopenapi, true, false)
+	operation := jsopenapi.Resources[resourceName].Operations.CreateOne
+	for relationhipName, resourceName := range operation.Relationships.Required {
+		resourceIds, err := selectResourceIds(c, api, resourceName, jsopenapi, true, false)
 		if err != nil {
 			return err
 		}
 		resourceId := resourceIds[0]
-		requiredResourceInfo[required] = &resourceInfo{id: resourceId, path: path}
+		requiredRelationships[relationhipName] = &resourceInfo{id: resourceId, resourceName: resourceName}
 	}
-	for optional, path := range resourceData.Operations.CreateOne.Relationships.Optional {
-		resourceIds, err := selectResourceIds(c, api, path, jsopenapi, false, false)
+	for relationshipName, resourceName := range operation.Relationships.Optional {
+		resourceIds, err := selectResourceIds(c, api, resourceName, jsopenapi, false, false)
 		if err != nil {
 			return err
 		}
 		resourceId := resourceIds[0]
 		if resourceId != "<empty>" {
-			optionalResourceInfo[optional] = &resourceInfo{id: resourceId, path: path}
+			optionalRelationships[relationshipName] = &resourceInfo{id: resourceId, resourceName: resourceName}
 		}
 	}
 
 	attributes, err := create(
 		c.String("editor"),
-		resourceData.Operations.CreateOne.Attributes.Required,
-		resourceData.Operations.CreateOne.Attributes.Optional,
+		operation.Attributes.Required,
+		operation.Attributes.Optional,
 	)
 	if err != nil {
 		return err
@@ -887,14 +887,17 @@ func cliCmdCreateOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t
 		Type:       resourceName,
 		Attributes: attributes,
 	}
-	for required, resourceInfo := range requiredResourceInfo {
-		resource.SetRelated(required, &jsonapi.Resource{
-			Type: resourceInfo.path,
-			Id:   requiredResourceInfo[required].id,
+	for relationshipName, resourceInfo := range requiredRelationships {
+		resource.SetRelated(relationshipName, &jsonapi.Resource{
+			Type: resourceInfo.resourceName,
+			Id:   requiredRelationships[relationshipName].id,
 		})
 	}
-	for optional, resourceInfo := range optionalResourceInfo {
-		resource.SetRelated(optional, &jsonapi.Resource{Type: resourceInfo.path, Id: resourceInfo.id})
+	for relationshipName, resourceInfo := range optionalRelationships {
+		resource.SetRelated(
+			relationshipName,
+			&jsonapi.Resource{Type: resourceInfo.resourceName, Id: resourceInfo.id},
+		)
 	}
 	err = resource.Save(nil)
 	if err != nil {

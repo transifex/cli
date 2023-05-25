@@ -86,7 +86,7 @@ func edit(editor string, item *jsonapi.Resource, editable_fields []string) error
 
 func create(editor string, required_attrs, optional_attrs []string) (map[string]interface{}, error) {
 	preAttributes := map[string]interface{}{
-		" ": "A '//' infront of the attribute name implies that the key is optional. Remove the slashes to include the field in the request payload.",
+		"": "A '//' in front of the attribute name implies that the key is optional. Remove the slashes to include the field in the request payload.",
 	}
 
 	for _, attr := range optional_attrs {
@@ -110,7 +110,8 @@ func create(editor string, required_attrs, optional_attrs []string) (map[string]
 	if err != nil {
 		return nil, err
 	}
-	validAttributes := required_attrs
+	var validAttributes []string // Make sure it's a copy
+	validAttributes = append(validAttributes, required_attrs...)
 	validAttributes = append(validAttributes, optional_attrs...)
 	for attr := range attributes {
 		if !stringSliceContains(validAttributes, attr) {
