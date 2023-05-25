@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"time"
 	"unicode/utf8"
 
@@ -20,7 +22,8 @@ import (
 
 type jsopenapi_t struct {
 	Resources map[string]struct {
-    Upload bool `json:"upload"`
+		Upload     bool `json:"upload"`
+		Download   bool `json:"download"`
 		Operations struct {
 			GetMany *struct {
 				Summary string `json:"summary"`
@@ -214,7 +217,7 @@ func Cmd() *cli.Command {
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
 		}
 
-		if resource.Operations.GetOne != nil && !resource.Upload {
+		if resource.Operations.GetOne != nil && !resource.Upload && !resource.Download {
 			subcommand := getOrCreateSubcommand(&result, "get")
 			operation := cli.Command{
 				Name:  resourceName[:len(resourceName)-1],
@@ -260,7 +263,7 @@ func Cmd() *cli.Command {
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
 		}
 
-		if resource.Operations.CreateOne != nil && !resource.Upload {
+		if resource.Operations.CreateOne != nil && !resource.Upload && !resource.Download {
 			subcommand := getOrCreateSubcommand(&result, "create")
 			operation := cli.Command{
 				Name:  resourceName[:len(resourceName)-1],
@@ -282,6 +285,25 @@ func Cmd() *cli.Command {
 				},
 				Action: func(c *cli.Context) error {
 					return cliCmdDelete(c, resourceNameCopy, &jsopenapi)
+				},
+			}
+			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
+		}
+		if resource.Download {
+			subcommand := getOrCreateSubcommand(&result, "download")
+			operation := cli.Command{
+				Name:  resourceName[:len(resourceName)-1],
+				Usage: resource.Operations.GetOne.Summary,
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "output", Aliases: []string{"o"}},
+					&cli.IntFlag{
+						Name:    "interval",
+						Aliases: []string{"t"},
+						Value:   2,
+					},
+				},
+				Action: func(c *cli.Context) error {
+					return cliCmdDownloadResourceStringsAsyncDownload(c, resourceNameCopy, &jsopenapi)
 				},
 			}
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
@@ -312,29 +334,29 @@ func Cmd() *cli.Command {
 			}
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
 		}
-    if resource.Upload {
-      subcommand := getOrCreateSubcommand(&result, "upload")
-      operation := cli.Command{
-        Name:  resourceName[:len(resourceName)-1],
-        Usage: resource.Operations.CreateOne.Summary,
-        Flags: []cli.Flag{
-          &cli.StringFlag{
-            Name:     "input",
-            Aliases:  []string{"i"},
-            Required: true,
-          },
-          &cli.IntFlag{
-            Name:    "interval",
-            Aliases: []string{"t"},
-            Value:   2,
-          },
-        },
-        Action: func(c *cli.Context) error {
-          return cliCmdUploadResourceStringsAsyncUpload(c, resourceNameCopy, &jsopenapi)
-        },
-      }
-      subcommand.Subcommands = append(subcommand.Subcommands, &operation)
-    }
+		if resource.Upload {
+			subcommand := getOrCreateSubcommand(&result, "upload")
+			operation := cli.Command{
+				Name:  resourceName[:len(resourceName)-1],
+				Usage: resource.Operations.CreateOne.Summary,
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "input",
+						Aliases:  []string{"i"},
+						Required: true,
+					},
+					&cli.IntFlag{
+						Name:    "interval",
+						Aliases: []string{"t"},
+						Value:   2,
+					},
+				},
+				Action: func(c *cli.Context) error {
+					return cliCmdUploadResourceStringsAsyncUpload(c, resourceNameCopy, &jsopenapi)
+				},
+			}
+			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
+		}
 
 		for relationshipName, relationship := range resource.Relationships {
 			relationshipNameCopy := relationshipName
@@ -916,7 +938,7 @@ func cliCmdCreateOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t
 	return nil
 }
 
-func cliCmdUploadResourceStringsAsyncUpload(c *cli.Context,  resourceName string, jsopenapi *jsopenapi_t) error {
+func cliCmdUploadResourceStringsAsyncUpload(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
 	type resourceInfo struct {
 		id           string
 		resourceName string
@@ -951,12 +973,12 @@ func cliCmdUploadResourceStringsAsyncUpload(c *cli.Context,  resourceName string
 		}
 	}
 
-  filteredRequiredAttrs := make([]string, len(operation.Attributes.Required)-2)
-  for _, required := range operation.Attributes.Required {
-    if required != "content" && required != "content_encoding"{
-      filteredRequiredAttrs = append(filteredRequiredAttrs, required)
-    }
-  }
+	filteredRequiredAttrs := make([]string, len(operation.Attributes.Required)-2)
+	for _, required := range operation.Attributes.Required {
+		if required != "content" && required != "content_encoding" {
+			filteredRequiredAttrs = append(filteredRequiredAttrs, required)
+		}
+	}
 
 	attributes, err := create(
 		c.String("editor"),
@@ -1028,4 +1050,102 @@ func cliCmdUploadResourceStringsAsyncUpload(c *cli.Context,  resourceName string
 		uploadAttributes.Details.StringsUpdated,
 	)
 	return nil
+}
+
+func cliCmdDownloadResourceStringsAsyncDownload(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
+	type resourceInfo struct {
+		id           string
+		resourceName string
+	}
+
+	requiredRelationships := make(map[string]*resourceInfo)
+	optionalRelationships := make(map[string]*resourceInfo)
+
+	api, err := getApi(c)
+	if err != nil {
+		return err
+	}
+
+	operation := jsopenapi.Resources[resourceName].Operations.CreateOne
+	for relationhipName, resourceName := range operation.Relationships.Required {
+		resourceIds, err := selectResourceIds(c, api, resourceName, jsopenapi, true, false)
+		if err != nil {
+			return err
+		}
+		resourceId := resourceIds[0]
+		requiredRelationships[relationhipName] = &resourceInfo{id: resourceId, resourceName: resourceName}
+	}
+	for relationshipName, resourceName := range operation.Relationships.Optional {
+		resourceIds, err := selectResourceIds(c, api, resourceName, jsopenapi, false, false)
+		if err != nil {
+			return err
+		}
+		resourceId := resourceIds[0]
+		if resourceId != "" {
+			optionalRelationships[relationshipName] = &resourceInfo{id: resourceId, resourceName: resourceName}
+		}
+	}
+
+	attributes, err := create(
+		c.String("editor"),
+		operation.Attributes.Required,
+		operation.Attributes.Optional,
+	)
+	if err != nil {
+		return err
+	}
+	download := &jsonapi.Resource{
+		API:        api,
+		Type:       resourceName,
+		Attributes: attributes,
+	}
+	for relationshipName, resourceInfo := range requiredRelationships {
+		download.SetRelated(relationshipName, &jsonapi.Resource{
+			Type: resourceInfo.resourceName,
+			Id:   requiredRelationships[relationshipName].id,
+		})
+	}
+	for relationshipName, resourceInfo := range optionalRelationships {
+		download.SetRelated(
+			relationshipName,
+			&jsonapi.Resource{Type: resourceInfo.resourceName, Id: resourceInfo.id},
+		)
+	}
+	err = download.Save(nil)
+	if err != nil {
+		return err
+	}
+	for {
+		if download.Redirect != "" {
+			response, err := http.Get(download.Redirect)
+			if err != nil {
+				return err
+			}
+			if response.StatusCode != 200 {
+				return errors.New("file download error")
+			}
+			body, err := io.ReadAll(response.Body)
+			if err != nil {
+				return err
+			}
+			defer response.Body.Close()
+			if c.String("output") != "" {
+				os.WriteFile(c.String("output"), body, 0644)
+			} else {
+				os.Stdout.Write(body)
+			}
+			return nil
+		} else if download.Attributes["status"] == "failed" {
+			var errorsMessages []string
+			for _, err := range download.Attributes["errors"].([]map[string]string) {
+				errorsMessages = append(errorsMessages, err["detail"])
+			}
+			return fmt.Errorf("download failed: %s", strings.Join(errorsMessages, ", "))
+		}
+		time.Sleep(time.Duration(c.Int("interval")) * time.Second)
+		err = download.Reload()
+		if err != nil {
+			return err
+		}
+	}
 }

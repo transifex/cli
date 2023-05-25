@@ -354,6 +354,19 @@ resources:
             resource: resources
       get_one:
         summary: Get resource strings async upload detail
+  resource_strings_async_downloads:
+    download: true
+    operations:
+      get_one:
+        summary: Get resource strings async download details
+      create_one:
+        summary: Download resource
+        attributes:
+          required: []
+          optional: [content_encoding, file_type, pseudo, pseudo_length_increase, callback_url]
+        relationships:
+          required:
+            resource: resources
   resource_strings:
     operations:
       get_many:
@@ -534,3 +547,4 @@ resources:
       get_one:
         summary: Get resource merge status
     display: '{{.Relationships.base.DataSingular.Id}} -> {{.Relationships.head.DataSingular.Id}}: {{.Attributes.status}}, {{.Attributes.conflict_resolution}}'
+

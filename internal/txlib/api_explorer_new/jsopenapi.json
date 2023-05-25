@@ -586,6 +586,32 @@
         }
       }
     },
+    "resource_strings_async_downloads": {
+      "download": true,
+      "operations": {
+        "get_one": {
+          "summary": "Get resource strings async download details"
+        },
+        "create_one": {
+          "summary": "Download resource",
+          "attributes": {
+            "required": [],
+            "optional": [
+              "content_encoding",
+              "file_type",
+              "pseudo",
+              "pseudo_length_increase",
+              "callback_url"
+            ]
+          },
+          "relationships": {
+            "required": {
+              "resource": "resources"
+            }
+          }
+        }
+      }
+    },
     "resource_strings": {
       "operations": {
         "get_many": {
