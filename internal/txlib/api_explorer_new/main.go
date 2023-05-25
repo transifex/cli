@@ -554,10 +554,11 @@ func cliCmdDelete(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 	}
 	resourceId := c.String("id")
 	if resourceId == "" {
-		resourceId, err = getResourceId(c, api, resourceName, jsopenapi, true)
+		resourceIds, err := selectResourceIds(c, api, resourceName, jsopenapi, true, false)
 		if err != nil {
 			return err
 		}
+		resourceId = resourceIds[0]
 	}
 	fmt.Printf("About to delete %s: %s, are you sure (y/N)? ", resourceName[:len(resourceName)-1], resourceId)
 	reader := bufio.NewReader(os.Stdin)
