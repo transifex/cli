@@ -17,10 +17,6 @@ resources:
               will fetch any available.
       get_one:
         summary: Get language
-      select:
-        summary: Set language on session file
-      clear:
-        summary: Clear language from session file
     display: '{{.Attributes.name}} ({{.Attributes.code}})'
   organizations:
     description:
@@ -35,10 +31,6 @@ resources:
             description: Filter results by slug
       get_one:
         summary: Get organization
-      select:
-        summary: Set organization on session file
-      clear:
-        summary: Clear organization from session file
     display: '{{.Attributes.name}} ({{.Attributes.slug}})'
   projects:
     operations:
@@ -72,10 +64,6 @@ resources:
             source_language: languages
           optional:
             team: teams
-      select:
-        summary: Set project on session file
-      clear:
-        summary: Clear project from session file
       edit_one:
         summary: Update a Project
         fields: [name, tags, description, long_description, private, archived,
@@ -114,10 +102,6 @@ resources:
             description: Filter results by slug
           name:
             description: Filter results by name
-      select:
-        summary: Set team on session file
-      clear:
-        summary: Clear team from session file
       create_one:
         summary: Create a Team
         attributes:
@@ -126,7 +110,7 @@ resources:
         relationships:
           required:
             organization: organizations
-    display: '{} ({{.Attributes.slug}})'
+    display: '{{.Attributes.Name}} ({{.Attributes.slug}})'
   resources:
     operations:
       get_many:

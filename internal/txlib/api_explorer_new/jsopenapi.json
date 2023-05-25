@@ -16,12 +16,6 @@
         },
         "get_one": {
           "summary": "Get language"
-        },
-        "select": {
-          "summary": "Set language on session file"
-        },
-        "clear": {
-          "summary": "Clear language from session file"
         }
       },
       "display": "{{.Attributes.name}} ({{.Attributes.code}})"
@@ -39,12 +33,6 @@
         },
         "get_one": {
           "summary": "Get organization"
-        },
-        "select": {
-          "summary": "Set organization on session file"
-        },
-        "clear": {
-          "summary": "Clear organization from session file"
         }
       },
       "display": "{{.Attributes.name}} ({{.Attributes.slug}})"
@@ -103,12 +91,6 @@
               "team": "teams"
             }
           }
-        },
-        "select": {
-          "summary": "Set project on session file"
-        },
-        "clear": {
-          "summary": "Clear project from session file"
         },
         "edit_one": {
           "summary": "Update a Project",
@@ -179,12 +161,6 @@
             }
           }
         },
-        "select": {
-          "summary": "Set team on session file"
-        },
-        "clear": {
-          "summary": "Clear team from session file"
-        },
         "create_one": {
           "summary": "Create a Team",
           "attributes": {
@@ -204,7 +180,7 @@
           }
         }
       },
-      "display": "{} ({{.Attributes.slug}})"
+      "display": "{{.Attributes.Name}} ({{.Attributes.slug}})"
     },
     "resources": {
       "operations": {

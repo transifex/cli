@@ -46,12 +46,6 @@ type jsopenapi_t struct {
 			Delete *struct {
 				Summary string `json:"summary"`
 			} `json:"delete"`
-			Select *struct {
-				Summary string `json:"summary"`
-			} `json:"select"`
-			Clear *struct {
-				Summary string `json:"summary"`
-			} `json:"clear"`
 		} `json:"operations"`
 		Relationships map[string]struct {
 			Resource   string `json:"resource"`
@@ -183,11 +177,15 @@ func Cmd() *cli.Command {
 				Name: "clear",
 				Subcommands: []*cli.Command{
 					{
-						Name:  "all",
+						Name:  "session",
 						Usage: "Clear session file",
 						Action: func(c *cli.Context) error {
+							err := os.Remove(".tx/api_explorer_session.json")
+							if err != nil {
+								return err
+							}
 							fmt.Printf("Removed .tx/api_explorer_session.json successfully\n")
-							return os.Remove(".tx/api_explorer_session.json")
+							return nil
 						},
 					},
 				},
@@ -283,22 +281,26 @@ func Cmd() *cli.Command {
 			}
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
 		}
-		if resource.Operations.Select != nil {
+		if resource.Operations.GetMany != nil {
 			subcommand := getOrCreateSubcommand(&result, "select")
 			operation := cli.Command{
-				Name:  resourceName[:len(resourceName)-1],
-				Usage: resource.Operations.Select.Summary,
+				Name: resourceName[:len(resourceName)-1],
+				Usage: fmt.Sprintf(
+					"Save %s to session file", resourceName[:len(resourceName)-1],
+				),
 				Action: func(c *cli.Context) error {
 					return cliCmdSelect(c, resourceNameCopy, &jsopenapi)
 				},
 			}
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
 		}
-		if resource.Operations.Clear != nil {
+		if resource.Operations.GetMany != nil {
 			subcommand := getOrCreateSubcommand(&result, "clear")
 			operation := cli.Command{
-				Name:  resourceName[:len(resourceName)-1],
-				Usage: resource.Operations.Clear.Summary,
+				Name: resourceName[:len(resourceName)-1],
+				Usage: fmt.Sprintf(
+					"Clear %s from session file", resourceName[:len(resourceName)-1],
+				),
 				Action: func(c *cli.Context) error {
 					return cliCmdClear(c, resourceNameCopy, &jsopenapi)
 				},
