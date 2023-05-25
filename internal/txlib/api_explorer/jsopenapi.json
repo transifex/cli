@@ -329,6 +329,50 @@
       },
       "display": "{{.Attributes.name}} ({{.Attributes.slug}})"
     },
+    "resource_metadata": {
+      "plural_name": "resource_metadatas",
+      "operations": {
+        "get_many": {
+          "summary": "List resource metadata",
+          "filters": {
+            "resource": {
+              "description": "Filter results by a resource",
+              "required": true,
+              "resource": "resources"
+            },
+            "namespace": {
+              "description": "Filter results by a namespace",
+              "required": false
+            }
+          }
+        },
+        "create_one": {
+          "summary": "Create new resource metadata",
+          "attributes": {
+            "required": [
+              "namespace",
+              "name",
+              "value"
+            ]
+          },
+          "relationships": {
+            "required": {
+              "resource": "resources"
+            }
+          }
+        },
+        "get_one": {
+          "summary": "Get resource metadata details"
+        },
+        "edit_one": {
+          "summary": "Update resource metadata",
+          "fields": [
+            "value"
+          ]
+        }
+      },
+      "display": "{{.Attributes.namespace}}:{{.Attributes.name}} = {{.Attributes.value}}"
+    },
     "i18n_formats": {
       "operations": {
         "get_many": {
