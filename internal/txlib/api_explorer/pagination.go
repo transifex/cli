@@ -1,4 +1,4 @@
-package api_explorer_new
+package api_explorer
 
 import (
 	"encoding/json"
