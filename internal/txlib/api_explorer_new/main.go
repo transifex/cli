@@ -77,15 +77,6 @@ type jsopenapi_t struct {
 	} `json:"resources"`
 }
 
-func findSubcommand(subcommands []*cli.Command, name string) *cli.Command {
-	for _, subcommand := range subcommands {
-		if subcommand.Name == name {
-			return subcommand
-		}
-	}
-	return nil
-}
-
 //go:embed jsopenapi.json
 var jsopenapi_bytes []byte
 
@@ -532,103 +523,6 @@ func cliCmdGetMany(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) 
 	return nil
 }
 
-func selectResourceIds(
-	c *cli.Context,
-	api *jsonapi.Connection,
-	resourceName string,
-	jsopenapi *jsopenapi_t,
-	required bool,
-	multi bool,
-) ([]string, error) {
-	// Before we show a list of options, we need to fetch it. In order to do
-	// so, we need to see if there are any filters
-	query := jsonapi.Query{Filters: make(map[string]string)}
-	if jsopenapi.Resources[resourceName].Operations.GetMany != nil {
-		filters := jsopenapi.Resources[resourceName].Operations.GetMany.Filters
-		for filterName, filter := range filters {
-			if filter.Resource != "" {
-				filterValue, err := getResourceId(
-					c, api, filter.Resource, jsopenapi, filter.Required,
-				)
-				if err != nil {
-					return nil, err
-				}
-				if filterValue != "" {
-					query.Filters[filterName] = filterValue
-				}
-			} else {
-				filterValue := c.String(
-					strings.ReplaceAll(filterName, "__", "-"),
-				)
-				if filterValue != "" {
-					query.Filters[filterName] = filterValue
-				}
-			}
-		}
-	}
-	body, err := api.ListBody(resourceName, query.Encode())
-	if err != nil {
-		return nil, err
-	}
-	body, err = joinPages(api, body)
-	if err != nil {
-		return nil, err
-	}
-
-	isEmpty, err := getIsEmpty(body)
-	if err != nil {
-		return nil, err
-	}
-	if isEmpty && required {
-		return nil, fmt.Errorf("%s not found", resourceName[:len(resourceName)-1])
-	}
-	if !multi {
-		resourceId, err := getIfOnlyOne(body)
-		if err != nil {
-			return nil, err
-		}
-		if resourceId != "" {
-			return []string{resourceId}, nil
-		}
-	}
-
-	return fuzzy(
-		api,
-		body,
-		fmt.Sprintf("Select %s", resourceName[:len(resourceName)-1]),
-		jsopenapi.Resources[resourceName].Display,
-		!required,
-		multi,
-	)
-}
-
-func getResourceId(
-	c *cli.Context,
-	api *jsonapi.Connection,
-	resourceName string,
-	jsopenapi *jsopenapi_t,
-	required bool,
-) (string, error) {
-	resourceId := c.String(fmt.Sprintf("%s-id", resourceName[:len(resourceName)-1]))
-	if resourceId != "" {
-		return resourceId, nil
-	}
-	resourceId, err := load(resourceName[:len(resourceName)-1])
-	if err != nil {
-		return "", err
-	}
-	if resourceId == "" {
-		resourceIds, err := selectResourceIds(
-			c, api, resourceName, jsopenapi, required, false,
-		)
-		if err != nil {
-			return "", err
-		}
-		resourceId = resourceIds[0]
-	}
-	return resourceId, nil
-}
-
 func cliCmdGetOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
 	api, err := getApi(c)
 	if err != nil {
@@ -719,45 +613,6 @@ func cliCmdChange(
 		return err
 	}
 	return nil
-}
-
-func addFilterTags(command *cli.Command, resourceName string, jsopenapi *jsopenapi_t) {
-	resource := jsopenapi.Resources[resourceName]
-	if resource.Operations.GetMany == nil {
-		return
-	}
-	for filterName, filter := range resource.Operations.GetMany.Filters {
-		if filter.Resource != "" {
-			flagName := fmt.Sprintf("%s-id", filterName)
-			if !flagExists(command.Flags, flagName) {
-				command.Flags = append(
-					command.Flags,
-					&cli.StringFlag{Name: flagName, Usage: filter.Description},
-				)
-			}
-		} else {
-			flagName := strings.ReplaceAll(filterName, "__", "-")
-			if !flagExists(command.Flags, flagName) {
-				command.Flags = append(
-					command.Flags,
-					&cli.StringFlag{
-						Name:     strings.ReplaceAll(filterName, "__", "-"),
-						Usage:    filter.Description,
-						Required: filter.Required,
-					},
-				)
-			}
-		}
-	}
-}
-
-func flagExists(flags []cli.Flag, name string) bool {
-	for _, flag := range flags {
-		if stringSliceContains(flag.Names(), name) {
-			return true
-		}
-	}
-	return false
 }
 
 func cliCmdDelete(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
@@ -982,5 +837,69 @@ func cliCmdReset(
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func cliCmdCreateOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
+	type resourceInfo struct {
+		id   string
+		path string
+	}
+
+	requiredResourceInfo := make(map[string]*resourceInfo)
+	optionalResourceInfo := make(map[string]*resourceInfo)
+
+	api, err := getApi(c)
+	if err != nil {
+		return err
+	}
+
+	resourceData := jsopenapi.Resources[resourceName]
+	for required, path := range resourceData.Operations.CreateOne.Relationships.Required {
+		resourceIds, err := selectResourceIds(c, api, path, jsopenapi, true, false)
+		if err != nil {
+			return err
+		}
+		resourceId := resourceIds[0]
+		requiredResourceInfo[required] = &resourceInfo{id: resourceId, path: path}
+	}
+	for optional, path := range resourceData.Operations.CreateOne.Relationships.Optional {
+		resourceIds, err := selectResourceIds(c, api, path, jsopenapi, false, false)
+		if err != nil {
+			return err
+		}
+		resourceId := resourceIds[0]
+		if resourceId != "<empty>" {
+			optionalResourceInfo[optional] = &resourceInfo{id: resourceId, path: path}
+		}
+	}
+
+	attributes, err := create(
+		c.String("editor"),
+		resourceData.Operations.CreateOne.Attributes.Required,
+		resourceData.Operations.CreateOne.Attributes.Optional,
+	)
+	if err != nil {
+		return err
+	}
+	resource := jsonapi.Resource{
+		API:        api,
+		Type:       resourceName,
+		Attributes: attributes,
+	}
+	for required, resourceInfo := range requiredResourceInfo {
+		resource.SetRelated(required, &jsonapi.Resource{
+			Type: resourceInfo.path,
+			Id:   requiredResourceInfo[required].id,
+		})
+	}
+	for optional, resourceInfo := range optionalResourceInfo {
+		resource.SetRelated(optional, &jsonapi.Resource{Type: resourceInfo.path, Id: resourceInfo.id})
+	}
+	err = resource.Save(nil)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Created %s: %s\n", resourceName[:len(resourceName)-1], resource.Id)
 	return nil
 }
