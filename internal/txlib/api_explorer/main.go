@@ -195,7 +195,9 @@ func Cmd() *cli.Command {
 							if err != nil {
 								return err
 							}
-							fmt.Printf("Removed .tx/api_explorer_session.json successfully\n")
+							fmt.Printf(
+								"Removed .tx/api_explorer_session.json successfully\n",
+							)
 							return nil
 						},
 					},
@@ -272,7 +274,9 @@ func Cmd() *cli.Command {
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
 		}
 
-		if resource.Operations.CreateOne != nil && !resource.Upload && !resource.Download {
+		if resource.Operations.CreateOne != nil &&
+			!resource.Upload &&
+			!resource.Download {
 			subcommand := getOrCreateSubcommand(&result, "create")
 			operation := cli.Command{
 				Name:  resource.SingularName,
@@ -631,13 +635,19 @@ func cliCmdDelete(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 	}
 	resourceId := c.String("id")
 	if resourceId == "" {
-		resourceIds, err := selectResourceIds(c, api, resourceName, jsopenapi, true, false)
+		resourceIds, err := selectResourceIds(
+			c, api, resourceName, jsopenapi, true, false,
+		)
 		if err != nil {
 			return err
 		}
 		resourceId = resourceIds[0]
 	}
-	fmt.Printf("About to delete %s: %s, are you sure (y/N)? ", resource.SingularName, resourceId)
+	fmt.Printf(
+		"About to delete %s: %s, are you sure (y/N)? ",
+		resource.SingularName,
+		resourceId,
+	)
 	reader := bufio.NewReader(os.Stdin)
 	answer, err := reader.ReadString('\n')
 	if err != nil {
@@ -712,7 +722,10 @@ func cliCmdClear(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) er
 		return err
 	}
 	if resourceId == "" {
-		fmt.Printf("Key %s has no entry in .tx/api_explorer_session.json\n", resource.SingularName)
+		fmt.Printf(
+			"Key %s has no entry in .tx/api_explorer_session.json\n",
+			resource.SingularName,
+		)
 		return nil
 	}
 
@@ -869,7 +882,9 @@ func cliCmdReset(
 	return nil
 }
 
-func cliCmdCreateOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
+func cliCmdCreateOne(
+	c *cli.Context, resourceName string, jsopenapi *jsopenapi_t,
+) error {
 	resource := jsopenapi.Resources[resourceName]
 	type resourceInfo struct {
 		id           string
@@ -886,21 +901,31 @@ func cliCmdCreateOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t
 
 	operation := jsopenapi.Resources[resourceName].Operations.CreateOne
 	for relationhipName, resourceName := range operation.Relationships.Required {
-		resourceIds, err := selectResourceIds(c, api, resourceName, jsopenapi, true, false)
+		resourceIds, err := selectResourceIds(
+			c, api, resourceName, jsopenapi, true, false,
+		)
 		if err != nil {
 			return err
 		}
 		resourceId := resourceIds[0]
-		requiredRelationships[relationhipName] = &resourceInfo{id: resourceId, resourceName: resourceName}
+		requiredRelationships[relationhipName] = &resourceInfo{
+			id:           resourceId,
+			resourceName: resourceName,
+		}
 	}
 	for relationshipName, resourceName := range operation.Relationships.Optional {
-		resourceIds, err := selectResourceIds(c, api, resourceName, jsopenapi, false, false)
+		resourceIds, err := selectResourceIds(
+			c, api, resourceName, jsopenapi, false, false,
+		)
 		if err != nil {
 			return err
 		}
 		resourceId := resourceIds[0]
 		if resourceId != "" {
-			optionalRelationships[relationshipName] = &resourceInfo{id: resourceId, resourceName: resourceName}
+			optionalRelationships[relationshipName] = &resourceInfo{
+				id:           resourceId,
+				resourceName: resourceName,
+			}
 		}
 	}
 
@@ -953,22 +978,32 @@ func cliCmdUpload(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 
 	operation := jsopenapi.Resources[resourceName].Operations.CreateOne
 	for relationhipName, resourceName := range operation.Relationships.Required {
-		resourceIds, err := selectResourceIds(c, api, resourceName, jsopenapi, true, false)
+		resourceIds, err := selectResourceIds(
+			c, api, resourceName, jsopenapi, true, false,
+		)
 		if err != nil {
 			return err
 		}
 		resourceId := resourceIds[0]
-		requiredRelationships[relationhipName] = &resourceInfo{id: resourceId, resourceName: resourceName}
+		requiredRelationships[relationhipName] = &resourceInfo{
+			id:           resourceId,
+			resourceName: resourceName,
+		}
 	}
 
 	for relationshipName, resourceName := range operation.Relationships.Optional {
-		resourceIds, err := selectResourceIds(c, api, resourceName, jsopenapi, false, false)
+		resourceIds, err := selectResourceIds(
+			c, api, resourceName, jsopenapi, false, false,
+		)
 		if err != nil {
 			return err
 		}
 		resourceId := resourceIds[0]
 		if resourceId != "" {
-			optionalRelationships[relationshipName] = &resourceInfo{id: resourceId, resourceName: resourceName}
+			optionalRelationships[relationshipName] = &resourceInfo{
+				id:           resourceId,
+				resourceName: resourceName,
+			}
 		}
 	}
 
@@ -1067,21 +1102,31 @@ func cliCmdDownload(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t)
 
 	operation := jsopenapi.Resources[resourceName].Operations.CreateOne
 	for relationhipName, resourceName := range operation.Relationships.Required {
-		resourceIds, err := selectResourceIds(c, api, resourceName, jsopenapi, true, false)
+		resourceIds, err := selectResourceIds(
+			c, api, resourceName, jsopenapi, true, false,
+		)
 		if err != nil {
 			return err
 		}
 		resourceId := resourceIds[0]
-		requiredRelationships[relationhipName] = &resourceInfo{id: resourceId, resourceName: resourceName}
+		requiredRelationships[relationhipName] = &resourceInfo{
+			id:           resourceId,
+			resourceName: resourceName,
+		}
 	}
 	for relationshipName, resourceName := range operation.Relationships.Optional {
-		resourceIds, err := selectResourceIds(c, api, resourceName, jsopenapi, false, false)
+		resourceIds, err := selectResourceIds(
+			c, api, resourceName, jsopenapi, false, false,
+		)
 		if err != nil {
 			return err
 		}
 		resourceId := resourceIds[0]
 		if resourceId != "" {
-			optionalRelationships[relationshipName] = &resourceInfo{id: resourceId, resourceName: resourceName}
+			optionalRelationships[relationshipName] = &resourceInfo{
+				id:           resourceId,
+				resourceName: resourceName,
+			}
 		}
 	}
 

@@ -16,7 +16,8 @@ import (
 func invokeEditor(input []byte, editor string) ([]byte, error) {
 	if editor == "" {
 		return nil, errors.New(
-			"no editor specified, use the --editor flag or set the EDITOR environment variable",
+			"no editor specified, use the --editor flag or set the EDITOR environment " +
+				"variable",
 		)
 	}
 	tempFile, err := os.CreateTemp("", "*.json")
@@ -95,9 +96,12 @@ func edit(editor string, item *jsonapi.Resource, editable_fields []string) error
 	return nil
 }
 
-func create(editor string, required_attrs, optional_attrs []string) (map[string]interface{}, error) {
+func create(
+	editor string, required_attrs, optional_attrs []string,
+) (map[string]interface{}, error) {
 	preAttributes := map[string]interface{}{
-		"": "A '//' in front of the attribute name implies that the key is optional. Remove the slashes to include the field in the request payload.",
+		"": "A '//' in front of the attribute name implies that the key is optional. " +
+			"Remove the slashes to include the field in the request payload.",
 	}
 
 	for _, attr := range optional_attrs {
