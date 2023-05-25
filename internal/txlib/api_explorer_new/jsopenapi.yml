@@ -4,7 +4,7 @@ resources:
   users:
     operations:
       get_one:
-        summary: Get the details of a User 
+        summary: Get the details of a User
     display: '{{.Attributes.username}}'
   languages:
     description:
@@ -189,7 +189,7 @@ resources:
         summary: Update resource
         fields: [name, slug, priority, accept_translations, categories,
                  mp4_url, ogg_url, webm_url, youtube_url]
-      delete_one:
+      delete:
         summary: Delete resource
     display: '{{.Attributes.name}} ({{.Attributes.slug}})'
   i18n_formats:

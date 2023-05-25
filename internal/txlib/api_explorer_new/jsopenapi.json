@@ -323,7 +323,7 @@
             "youtube_url"
           ]
         },
-        "delete_one": {
+        "delete": {
           "summary": "Delete resource"
         }
       },
