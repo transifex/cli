@@ -21,8 +21,8 @@ import (
 type jsopenapi_t struct {
 	Resources map[string]struct {
 		Operations struct {
-      Upload *struct {
-        Summary string `json:"summary"`
+			Upload *struct {
+				Summary    string `json:"summary"`
 				Attributes *struct {
 					Required []string `json:"required"`
 					Optional []string `json:"optional"`
@@ -31,7 +31,7 @@ type jsopenapi_t struct {
 					Required map[string]string `json:"required"`
 					Optional map[string]string `json:"optional"`
 				} `json:"relationships"`
-      } `json:"upload"`
+			} `json:"upload"`
 			GetMany *struct {
 				Summary string `json:"summary"`
 				Filters map[string]struct {
@@ -211,7 +211,7 @@ func Cmd() *cli.Command {
 	for resourceName, resource := range jsopenapi.Resources {
 		resourceNameCopy := resourceName
 
-    if resource.Operations.Upload != nil {
+		if resource.Operations.Upload != nil {
 			subcommand := findSubcommand(result.Subcommands, "upload")
 			if subcommand == nil {
 				subcommand = &cli.Command{Name: "upload"}
@@ -220,24 +220,24 @@ func Cmd() *cli.Command {
 			operation := cli.Command{
 				Name:  resourceName[:len(resourceName)-1],
 				Usage: resource.Operations.Upload.Summary,
-        Flags: []cli.Flag{
-          &cli.StringFlag{
-            Name:     "input",
-            Aliases:  []string{"i"},
-            Required: true,
-          },
-          &cli.IntFlag{
-            Name:    "interval",
-            Aliases: []string{"t"},
-            Value:   2,
-          },
-        },
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "input",
+						Aliases:  []string{"i"},
+						Required: true,
+					},
+					&cli.IntFlag{
+						Name:    "interval",
+						Aliases: []string{"t"},
+						Value:   2,
+					},
+				},
 				Action: func(c *cli.Context) error {
 					return cliCmdUploadResourceStringsAsyncUpload(c, resourceNameCopy, &jsopenapi)
 				},
 			}
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
-    }
+		}
 
 		if resource.Operations.GetMany != nil {
 			subcommand := getOrCreateSubcommand(&result, "get")
@@ -414,6 +414,16 @@ func Cmd() *cli.Command {
 						)
 					},
 				}
+				relatedResource := jsopenapi.Resources[relationship.Resource]
+				if relatedResource.Operations.GetMany == nil {
+					operation.Flags = []cli.Flag{
+						&cli.StringFlag{
+							Name:     "ids",
+							Usage:    "Comma-separated IDs to use for the relationship",
+							Required: true,
+						},
+					}
+				}
 				parent.Subcommands = append(parent.Subcommands, &operation)
 			}
 
@@ -432,6 +442,16 @@ func Cmd() *cli.Command {
 						)
 					},
 				}
+				relatedResource := jsopenapi.Resources[relationship.Resource]
+				if relatedResource.Operations.GetMany == nil {
+					operation.Flags = []cli.Flag{
+						&cli.StringFlag{
+							Name:     "ids",
+							Usage:    "Comma-separated IDs to use for the relationship",
+							Required: true,
+						},
+					}
+				}
 				parent.Subcommands = append(parent.Subcommands, &operation)
 			}
 
@@ -449,6 +469,16 @@ func Cmd() *cli.Command {
 							c, resourceNameCopy, relationshipNameCopy, &jsopenapi,
 						)
 					},
+				}
+				relatedResource := jsopenapi.Resources[relationship.Resource]
+				if relatedResource.Operations.GetMany == nil {
+					operation.Flags = []cli.Flag{
+						&cli.StringFlag{
+							Name:     "ids",
+							Usage:    "Comma-separated IDs to use for the relationship",
+							Required: true,
+						},
+					}
 				}
 				parent.Subcommands = append(parent.Subcommands, &operation)
 			}
@@ -704,11 +734,16 @@ func cliCmdAdd(
 	if err != nil {
 		return err
 	}
-	childIds, err := selectResourceIds(
-		c, api, relatedResourceName, jsopenapi, true, true,
-	)
-	if err != nil {
-		return err
+	var childIds []string
+	if jsopenapi.Resources[relatedResourceName].Operations.GetMany != nil {
+		childIds, err = selectResourceIds(
+			c, api, relatedResourceName, jsopenapi, true, true,
+		)
+		if err != nil {
+			return err
+		}
+	} else {
+		childIds = strings.Split(c.String("ids"), ",")
 	}
 	var children []*jsonapi.Resource
 	for _, childId := range childIds {
@@ -745,22 +780,29 @@ func cliCmdRemove(
 	if err != nil {
 		return err
 	}
-	url := parent.Relationships[relationshipName].Links.Related
-	body, err := api.ListBodyFromPath(url)
-	if err != nil {
-		return err
+
+	var childIds []string
+	if jsopenapi.Resources[relatedResourceName].Operations.GetMany != nil {
+		url := parent.Relationships[relationshipName].Links.Related
+		body, err := api.ListBodyFromPath(url)
+		if err != nil {
+			return err
+		}
+		childIds, err = fuzzy(
+			api,
+			body,
+			fmt.Sprintf("Select %s to remove", relationshipName),
+			jsopenapi.Resources[relatedResourceName].Display,
+			false,
+			true,
+		)
+		if err != nil {
+			return err
+		}
+	} else {
+		childIds = strings.Split(c.String("ids"), ",")
 	}
-	childIds, err := fuzzy(
-		api,
-		body,
-		fmt.Sprintf("Select %s to remove", relationshipName),
-		jsopenapi.Resources[relatedResourceName].Display,
-		false,
-		true,
-	)
-	if err != nil {
-		return err
-	}
+
 	var children []*jsonapi.Resource
 	for _, childId := range childIds {
 		children = append(children, &jsonapi.Resource{
@@ -796,11 +838,16 @@ func cliCmdReset(
 	if err != nil {
 		return err
 	}
-	childIds, err := selectResourceIds(
-		c, api, relatedResourceName, jsopenapi, true, true,
-	)
-	if err != nil {
-		return err
+	var childIds []string
+	if jsopenapi.Resources[relatedResourceName].Operations.GetMany != nil {
+		childIds, err = selectResourceIds(
+			c, api, relatedResourceName, jsopenapi, true, true,
+		)
+		if err != nil {
+			return err
+		}
+	} else {
+		childIds = strings.Split(c.String("ids"), ",")
 	}
 	var children []*jsonapi.Resource
 	for _, childId := range childIds {
@@ -883,7 +930,7 @@ func cliCmdCreateOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t
 	return nil
 }
 
-func cliCmdUploadResourceStringsAsyncUpload(c *cli.Context,  resourceName string, jsopenapi *jsopenapi_t) error {
+func cliCmdUploadResourceStringsAsyncUpload(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
 	api, err := getApi(c)
 	if err != nil {
 		return err

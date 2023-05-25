@@ -167,7 +167,7 @@
             }
           }
         },
-        "matinainers": {
+        "maintainers": {
           "resource": "users",
           "operations": {
             "get": {

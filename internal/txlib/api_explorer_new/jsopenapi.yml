@@ -105,7 +105,7 @@ resources:
             summary: Remove languages from project
           reset:
             summary: Reset project languages
-      matinainers:
+      maintainers:
         resource: users
         operations:
           get:
