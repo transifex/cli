@@ -22,9 +22,11 @@ import (
 
 type jsopenapi_t struct {
 	Resources map[string]struct {
-		Upload     bool `json:"upload"`
-		Download   bool `json:"download"`
-		Operations struct {
+		SingularName string `json:"singular_name"`
+		PluralName   string `json:"plural_name"`
+		Upload       bool   `json:"upload"`
+		Download     bool   `json:"download"`
+		Operations   struct {
 			GetMany *struct {
 				Summary string `json:"summary"`
 				Filters map[string]struct {
@@ -90,7 +92,8 @@ func Cmd() *cli.Command {
 	}
 
 	result := cli.Command{
-		Name: "api",
+		Name:  "api",
+		Usage: "Transifex API explorer",
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "pager", EnvVars: []string{"PAGER"}},
 			&cli.StringFlag{Name: "editor", EnvVars: []string{"EDITOR"}},
@@ -202,12 +205,18 @@ func Cmd() *cli.Command {
 	}
 
 	for resourceName, resource := range jsopenapi.Resources {
+		if resource.PluralName == "" {
+			resource.PluralName = resourceName
+		}
+		if resource.SingularName == "" {
+			resource.SingularName = resource.PluralName[:len(resource.PluralName)-1]
+		}
 		resourceNameCopy := resourceName
 
 		if resource.Operations.GetMany != nil {
 			subcommand := getOrCreateSubcommand(&result, "get")
 			operation := cli.Command{
-				Name:  resourceName,
+				Name:  resource.PluralName,
 				Usage: resource.Operations.GetMany.Summary,
 				Action: func(c *cli.Context) error {
 					return cliCmdGetMany(c, resourceNameCopy, &jsopenapi)
@@ -220,7 +229,7 @@ func Cmd() *cli.Command {
 		if resource.Operations.GetOne != nil && !resource.Upload && !resource.Download {
 			subcommand := getOrCreateSubcommand(&result, "get")
 			operation := cli.Command{
-				Name:  resourceName[:len(resourceName)-1],
+				Name:  resource.SingularName,
 				Usage: resource.Operations.GetOne.Summary,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -243,7 +252,7 @@ func Cmd() *cli.Command {
 		if resource.Operations.EditOne != nil {
 			subcommand := getOrCreateSubcommand(&result, "edit")
 			operation := cli.Command{
-				Name:  resourceName[:len(resourceName)-1],
+				Name:  resource.SingularName,
 				Usage: resource.Operations.EditOne.Summary,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -266,7 +275,7 @@ func Cmd() *cli.Command {
 		if resource.Operations.CreateOne != nil && !resource.Upload && !resource.Download {
 			subcommand := getOrCreateSubcommand(&result, "create")
 			operation := cli.Command{
-				Name:  resourceName[:len(resourceName)-1],
+				Name:  resource.SingularName,
 				Usage: resource.Operations.CreateOne.Summary,
 				Action: func(c *cli.Context) error {
 					return cliCmdCreateOne(c, resourceNameCopy, &jsopenapi)
@@ -278,7 +287,7 @@ func Cmd() *cli.Command {
 		if resource.Operations.Delete != nil {
 			subcommand := getOrCreateSubcommand(&result, "delete")
 			operation := cli.Command{
-				Name:  resourceName[:len(resourceName)-1],
+				Name:  resource.SingularName,
 				Usage: resource.Operations.Delete.Summary,
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "id"},
@@ -292,7 +301,7 @@ func Cmd() *cli.Command {
 		if resource.Download {
 			subcommand := getOrCreateSubcommand(&result, "download")
 			operation := cli.Command{
-				Name:  resourceName[:len(resourceName)-1],
+				Name:  resource.SingularName,
 				Usage: resource.Operations.GetOne.Summary,
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "output", Aliases: []string{"o"}},
@@ -303,7 +312,7 @@ func Cmd() *cli.Command {
 					},
 				},
 				Action: func(c *cli.Context) error {
-					return cliCmdDownloadResourceStringsAsyncDownload(c, resourceNameCopy, &jsopenapi)
+					return cliCmdDownload(c, resourceNameCopy, &jsopenapi)
 				},
 			}
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
@@ -311,10 +320,8 @@ func Cmd() *cli.Command {
 		if resource.Operations.GetMany != nil {
 			subcommand := getOrCreateSubcommand(&result, "select")
 			operation := cli.Command{
-				Name: resourceName[:len(resourceName)-1],
-				Usage: fmt.Sprintf(
-					"Save %s to session file", resourceName[:len(resourceName)-1],
-				),
+				Name:  resource.SingularName,
+				Usage: fmt.Sprintf("Save %s to session file", resource.SingularName),
 				Action: func(c *cli.Context) error {
 					return cliCmdSelect(c, resourceNameCopy, &jsopenapi)
 				},
@@ -324,10 +331,8 @@ func Cmd() *cli.Command {
 		if resource.Operations.GetMany != nil {
 			subcommand := getOrCreateSubcommand(&result, "clear")
 			operation := cli.Command{
-				Name: resourceName[:len(resourceName)-1],
-				Usage: fmt.Sprintf(
-					"Clear %s from session file", resourceName[:len(resourceName)-1],
-				),
+				Name:  resource.SingularName,
+				Usage: fmt.Sprintf("Clear %s from session file", resource.SingularName),
 				Action: func(c *cli.Context) error {
 					return cliCmdClear(c, resourceNameCopy, &jsopenapi)
 				},
@@ -337,7 +342,7 @@ func Cmd() *cli.Command {
 		if resource.Upload {
 			subcommand := getOrCreateSubcommand(&result, "upload")
 			operation := cli.Command{
-				Name:  resourceName[:len(resourceName)-1],
+				Name:  resource.SingularName,
 				Usage: resource.Operations.CreateOne.Summary,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -362,9 +367,7 @@ func Cmd() *cli.Command {
 			relationshipNameCopy := relationshipName
 			if relationship.Operations.Change != nil {
 				subcommand := getOrCreateSubcommand(&result, "change")
-				parent := getOrCreateSubcommand(
-					subcommand, resourceName[:len(resourceName)-1],
-				)
+				parent := getOrCreateSubcommand(subcommand, resource.SingularName)
 				if !flagExists(parent.Flags, "id") {
 					parent.Flags = append(parent.Flags, &cli.StringFlag{
 						Name: "id",
@@ -391,9 +394,7 @@ func Cmd() *cli.Command {
 
 			if relationship.Operations.Get != nil {
 				subcommand := getOrCreateSubcommand(&result, "get")
-				parent := getOrCreateSubcommand(
-					subcommand, resourceName[:len(resourceName)-1],
-				)
+				parent := getOrCreateSubcommand(subcommand, resource.SingularName)
 				addFilterTags(parent, resourceName, &jsopenapi, true)
 				operation := cli.Command{
 					Name:  relationshipName,
@@ -409,9 +410,7 @@ func Cmd() *cli.Command {
 
 			if relationship.Operations.Add != nil {
 				subcommand := getOrCreateSubcommand(&result, "add")
-				parent := getOrCreateSubcommand(
-					subcommand, resourceName[:len(resourceName)-1],
-				)
+				parent := getOrCreateSubcommand(subcommand, resource.SingularName)
 				addFilterTags(parent, resourceName, &jsopenapi, true)
 				operation := cli.Command{
 					Name:  relationshipName,
@@ -437,9 +436,7 @@ func Cmd() *cli.Command {
 
 			if relationship.Operations.Remove != nil {
 				subcommand := getOrCreateSubcommand(&result, "remove")
-				parent := getOrCreateSubcommand(
-					subcommand, resourceName[:len(resourceName)-1],
-				)
+				parent := getOrCreateSubcommand(subcommand, resource.SingularName)
 				addFilterTags(parent, resourceName, &jsopenapi, true)
 				operation := cli.Command{
 					Name:  relationshipName,
@@ -465,9 +462,7 @@ func Cmd() *cli.Command {
 
 			if relationship.Operations.Reset != nil {
 				subcommand := getOrCreateSubcommand(&result, "reset")
-				parent := getOrCreateSubcommand(
-					subcommand, resourceName[:len(resourceName)-1],
-				)
+				parent := getOrCreateSubcommand(subcommand, resource.SingularName)
 				addFilterTags(parent, resourceName, &jsopenapi, true)
 				operation := cli.Command{
 					Name:  relationshipName,
@@ -629,6 +624,7 @@ func cliCmdChange(
 }
 
 func cliCmdDelete(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
+	resource := jsopenapi.Resources[resourceName]
 	api, err := getApi(c)
 	if err != nil {
 		return err
@@ -641,19 +637,19 @@ func cliCmdDelete(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 		}
 		resourceId = resourceIds[0]
 	}
-	fmt.Printf("About to delete %s: %s, are you sure (y/N)? ", resourceName[:len(resourceName)-1], resourceId)
+	fmt.Printf("About to delete %s: %s, are you sure (y/N)? ", resource.SingularName, resourceId)
 	reader := bufio.NewReader(os.Stdin)
 	answer, err := reader.ReadString('\n')
 	if err != nil {
 		return err
 	}
 	if strings.TrimSpace(strings.ToLower(answer)) == "y" {
-		resource := jsonapi.Resource{API: api, Type: resourceName, Id: resourceId}
-		err = resource.Delete()
+		obj := jsonapi.Resource{API: api, Type: resourceName, Id: resourceId}
+		err = obj.Delete()
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Deleted %s: %s\n", resourceName[:len(resourceName)-1], resourceId)
+		fmt.Printf("Deleted %s: %s\n", resource.SingularName, resourceId)
 	} else {
 		fmt.Printf("Deletion aborted\n")
 	}
@@ -691,6 +687,7 @@ func cliCmdGetRelated(
 }
 
 func cliCmdSelect(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
+	resource := jsopenapi.Resources[resourceName]
 	api, err := getApi(c)
 	if err != nil {
 		return err
@@ -700,25 +697,26 @@ func cliCmdSelect(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 		return err
 	}
 	resourceId := resourceIds[0]
-	err = save(resourceName[:len(resourceName)-1], resourceId)
+	err = save(resource.SingularName, resourceId)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Saved %s: %s\n", resourceName[:len(resourceName)-1], resourceId)
+	fmt.Printf("Saved %s: %s\n", resource.SingularName, resourceId)
 	return nil
 }
 
 func cliCmdClear(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
-	resourceId, err := load(resourceName[:len(resourceName)-1])
+	resource := jsopenapi.Resources[resourceName]
+	resourceId, err := load(resource.SingularName)
 	if err != nil {
 		return err
 	}
 	if resourceId == "" {
-		fmt.Printf("Key %s has no entry in .tx/api_explorer_session.json\n", resourceName[:len(resourceName)-1])
+		fmt.Printf("Key %s has no entry in .tx/api_explorer_session.json\n", resource.SingularName)
 		return nil
 	}
 
-	return clear(resourceName[:len(resourceName)-1])
+	return clear(resource.SingularName)
 }
 
 func cliCmdAdd(
@@ -872,6 +870,7 @@ func cliCmdReset(
 }
 
 func cliCmdCreateOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
+	resource := jsopenapi.Resources[resourceName]
 	type resourceInfo struct {
 		id           string
 		resourceName string
@@ -913,28 +912,28 @@ func cliCmdCreateOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t
 	if err != nil {
 		return err
 	}
-	resource := jsonapi.Resource{
+	obj := jsonapi.Resource{
 		API:        api,
 		Type:       resourceName,
 		Attributes: attributes,
 	}
 	for relationshipName, resourceInfo := range requiredRelationships {
-		resource.SetRelated(relationshipName, &jsonapi.Resource{
+		obj.SetRelated(relationshipName, &jsonapi.Resource{
 			Type: resourceInfo.resourceName,
 			Id:   requiredRelationships[relationshipName].id,
 		})
 	}
 	for relationshipName, resourceInfo := range optionalRelationships {
-		resource.SetRelated(
+		obj.SetRelated(
 			relationshipName,
 			&jsonapi.Resource{Type: resourceInfo.resourceName, Id: resourceInfo.id},
 		)
 	}
-	err = resource.Save(nil)
+	err = obj.Save(nil)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Created %s: %s\n", resourceName[:len(resourceName)-1], resource.Id)
+	fmt.Printf("Created %s: %s\n", resource.SingularName, obj.Id)
 	return nil
 }
 
@@ -1052,7 +1051,7 @@ func cliCmdUpload(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 	return nil
 }
 
-func cliCmdDownloadResourceStringsAsyncDownload(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
+func cliCmdDownload(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
 	type resourceInfo struct {
 		id           string
 		resourceName string
@@ -1116,6 +1115,17 @@ func cliCmdDownloadResourceStringsAsyncDownload(c *cli.Context, resourceName str
 		return err
 	}
 	for {
+		var downloadAttributes struct {
+			Status string `json:"status"`
+			Errors []struct {
+				Code   string `json:"code"`
+				Detail string `json:"detail"`
+			} `json:"errors"`
+		}
+		err = download.MapAttributes(&downloadAttributes)
+		if err != nil {
+			return err
+		}
 		if download.Redirect != "" {
 			response, err := http.Get(download.Redirect)
 			if err != nil {
@@ -1135,10 +1145,10 @@ func cliCmdDownloadResourceStringsAsyncDownload(c *cli.Context, resourceName str
 				os.Stdout.Write(body)
 			}
 			return nil
-		} else if download.Attributes["status"] == "failed" {
+		} else if downloadAttributes.Status == "failed" {
 			var errorsMessages []string
-			for _, err := range download.Attributes["errors"].([]map[string]string) {
-				errorsMessages = append(errorsMessages, err["detail"])
+			for _, err := range downloadAttributes.Errors {
+				errorsMessages = append(errorsMessages, err.Detail)
 			}
 			return fmt.Errorf("download failed: %s", strings.Join(errorsMessages, ", "))
 		}

@@ -16,11 +16,12 @@ func selectResourceIds(
 	required bool,
 	multi bool,
 ) ([]string, error) {
+	resource := jsopenapi.Resources[resourceName]
 	// Before we show a list of options, we need to fetch it. In order to do
 	// so, we need to see if there are any filters
 	query := jsonapi.Query{Filters: make(map[string]string)}
-	if jsopenapi.Resources[resourceName].Operations.GetMany != nil {
-		filters := jsopenapi.Resources[resourceName].Operations.GetMany.Filters
+	if resource.Operations.GetMany != nil {
+		filters := resource.Operations.GetMany.Filters
 		for filterName, filter := range filters {
 			if filter.Resource != "" {
 				filterValue, err := getResourceId(
@@ -56,7 +57,7 @@ func selectResourceIds(
 		return nil, err
 	}
 	if isEmpty && required {
-		return nil, fmt.Errorf("%s not found", resourceName[:len(resourceName)-1])
+		return nil, fmt.Errorf("%s not found", resource.SingularName)
 	}
 	if !multi && required {
 		resourceId, err := getIfOnlyOne(body)
@@ -68,10 +69,17 @@ func selectResourceIds(
 		}
 	}
 
+	var header string
+	if multi {
+		header = fmt.Sprintf("Select %s", resource.PluralName)
+	} else {
+		header = fmt.Sprintf("Select %s", resource.SingularName)
+	}
+
 	return fuzzy(
 		api,
 		body,
-		fmt.Sprintf("Select %s", resourceName[:len(resourceName)-1]),
+		header,
 		jsopenapi.Resources[resourceName].Display,
 		!required,
 		multi,
@@ -85,11 +93,12 @@ func getResourceId(
 	jsopenapi *jsopenapi_t,
 	required bool,
 ) (string, error) {
-	resourceId := c.String(fmt.Sprintf("%s-id", resourceName[:len(resourceName)-1]))
+	resource := jsopenapi.Resources[resourceName]
+	resourceId := c.String(fmt.Sprintf("%s-id", resource.SingularName))
 	if resourceId != "" {
 		return resourceId, nil
 	}
-	resourceId, err := load(resourceName[:len(resourceName)-1])
+	resourceId, err := load(resource.SingularName)
 	if err != nil {
 		return "", err
 	}

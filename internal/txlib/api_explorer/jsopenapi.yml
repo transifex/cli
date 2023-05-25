@@ -667,3 +667,24 @@ resources:
             language: languages
       get_one:
         summary: Get resource activity report download status
+  resource_language_leverage:
+    plural_name: resource_language_leverages
+    operations:
+      get_many:
+        summary: Get resource language leverage collection
+        filters:
+          project:
+            description: Filter results by a project
+            required: true
+            resource: projects
+          resource:
+            description: Filter results by a resource
+            required: false
+            resource: resources
+          language:
+            description: Filter results by a language
+            required: false
+            resource: languages
+      get_one:
+        summary: Get the  leverage for a resource - language pair
+    display: '{{.Relationships.resource.DataSingular.Id}} - {{.Relationships.language.DataSingular.Id}}, 0-59: {{.Attributes.tm_group_0_59_wordcound}}, , 60-74: {{.Attributes.tm_group_60_74_wordcound}}, 75-94: {{.Attributes.tm_group_75_94_wordcound}}, 95-99: {{.Attributes.tm_group_95_99_wordcound}}, 100: {{.Attributes.tm_group_100_wordcound}}'
