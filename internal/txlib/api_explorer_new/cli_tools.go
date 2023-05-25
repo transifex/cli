@@ -54,3 +54,12 @@ func flagExists(flags []cli.Flag, name string) bool {
 	}
 	return false
 }
+
+func getOrCreateSubcommand(parent *cli.Command, name string) *cli.Command {
+	subcommand := findSubcommand(parent.Subcommands, name)
+	if subcommand == nil {
+		subcommand = &cli.Command{Name: name}
+		parent.Subcommands = append(parent.Subcommands, subcommand)
+	}
+	return subcommand
+}

@@ -199,11 +199,7 @@ func Cmd() *cli.Command {
 		resourceNameCopy := resourceName
 
 		if resource.Operations.GetMany != nil {
-			subcommand := findSubcommand(result.Subcommands, "get")
-			if subcommand == nil {
-				subcommand = &cli.Command{Name: "get"}
-				result.Subcommands = append(result.Subcommands, subcommand)
-			}
+			subcommand := getOrCreateSubcommand(&result, "get")
 			operation := cli.Command{
 				Name:  resourceName,
 				Usage: resource.Operations.GetMany.Summary,
@@ -216,11 +212,7 @@ func Cmd() *cli.Command {
 		}
 
 		if resource.Operations.GetOne != nil {
-			subcommand := findSubcommand(result.Subcommands, "get")
-			if subcommand == nil {
-				subcommand = &cli.Command{Name: "get"}
-				result.Subcommands = append(result.Subcommands, subcommand)
-			}
+			subcommand := getOrCreateSubcommand(&result, "get")
 			operation := cli.Command{
 				Name:  resourceName[:len(resourceName)-1],
 				Usage: resource.Operations.GetOne.Summary,
@@ -243,11 +235,7 @@ func Cmd() *cli.Command {
 		}
 
 		if resource.Operations.EditOne != nil {
-			subcommand := findSubcommand(result.Subcommands, "edit")
-			if subcommand == nil {
-				subcommand = &cli.Command{Name: "edit"}
-				result.Subcommands = append(result.Subcommands, subcommand)
-			}
+			subcommand := getOrCreateSubcommand(&result, "edit")
 			operation := cli.Command{
 				Name:  resourceName[:len(resourceName)-1],
 				Usage: resource.Operations.EditOne.Summary,
@@ -270,11 +258,7 @@ func Cmd() *cli.Command {
 		}
 
 		if resource.Operations.CreateOne != nil {
-			subcommand := findSubcommand(result.Subcommands, "create")
-			if subcommand == nil {
-				subcommand = &cli.Command{Name: "create"}
-				result.Subcommands = append(result.Subcommands, subcommand)
-			}
+			subcommand := getOrCreateSubcommand(&result, "create")
 			operation := cli.Command{
 				Name:  resourceName[:len(resourceName)-1],
 				Usage: resource.Operations.CreateOne.Summary,
@@ -286,11 +270,7 @@ func Cmd() *cli.Command {
 		}
 
 		if resource.Operations.Delete != nil {
-			subcommand := findSubcommand(result.Subcommands, "delete")
-			if subcommand == nil {
-				subcommand = &cli.Command{Name: "delete"}
-				result.Subcommands = append(result.Subcommands, subcommand)
-			}
+			subcommand := getOrCreateSubcommand(&result, "delete")
 			operation := cli.Command{
 				Name:  resourceName[:len(resourceName)-1],
 				Usage: resource.Operations.Delete.Summary,
@@ -304,11 +284,7 @@ func Cmd() *cli.Command {
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
 		}
 		if resource.Operations.Select != nil {
-			subcommand := findSubcommand(result.Subcommands, "select")
-			if subcommand == nil {
-				subcommand = &cli.Command{Name: "select"}
-				result.Subcommands = append(result.Subcommands, subcommand)
-			}
+			subcommand := getOrCreateSubcommand(&result, "select")
 			operation := cli.Command{
 				Name:  resourceName[:len(resourceName)-1],
 				Usage: resource.Operations.Select.Summary,
@@ -319,11 +295,7 @@ func Cmd() *cli.Command {
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
 		}
 		if resource.Operations.Clear != nil {
-			subcommand := findSubcommand(result.Subcommands, "clear")
-			if subcommand == nil {
-				subcommand = &cli.Command{Name: "clear"}
-				result.Subcommands = append(result.Subcommands, subcommand)
-			}
+			subcommand := getOrCreateSubcommand(&result, "clear")
 			operation := cli.Command{
 				Name:  resourceName[:len(resourceName)-1],
 				Usage: resource.Operations.Clear.Summary,
@@ -336,29 +308,19 @@ func Cmd() *cli.Command {
 		for relationshipName, relationship := range resource.Relationships {
 			relationshipNameCopy := relationshipName
 			if relationship.Operations.Change != nil {
-				subcommand := findSubcommand(result.Subcommands, "change")
-				if subcommand == nil {
-					subcommand = &cli.Command{Name: "change"}
-					result.Subcommands = append(result.Subcommands, subcommand)
-				}
-				parent := findSubcommand(
-					subcommand.Subcommands, resourceName[:len(resourceName)-1],
+				subcommand := getOrCreateSubcommand(&result, "change")
+				parent := getOrCreateSubcommand(
+					subcommand, resourceName[:len(resourceName)-1],
 				)
-				if parent == nil {
-					parent = &cli.Command{
-						Name: resourceName[:len(resourceName)-1],
-						Flags: []cli.Flag{
-							&cli.StringFlag{
-								Name: "id",
-								// If we want to `get something` and the `somethings`
-								// resource does not support `get_many`, then the user
-								// won't be able to fuzzy-select the something and
-								// `--id` should be required
-								Required: resource.Operations.GetMany == nil,
-							},
-						},
-					}
-					subcommand.Subcommands = append(subcommand.Subcommands, parent)
+				if !flagExists(parent.Flags, "id") {
+					parent.Flags = append(parent.Flags, &cli.StringFlag{
+						Name: "id",
+						// If we want to `get something` and the `somethings`
+						// resource does not support `get_many`, then the user
+						// won't be able to fuzzy-select the something and
+						// `--id` should be required
+						Required: resource.Operations.GetMany == nil,
+					})
 				}
 				addFilterTags(parent, resourceName, &jsopenapi)
 				operation := cli.Command{
@@ -375,18 +337,10 @@ func Cmd() *cli.Command {
 			}
 
 			if relationship.Operations.Get != nil {
-				subcommand := findSubcommand(result.Subcommands, "get")
-				if subcommand == nil {
-					subcommand = &cli.Command{Name: "get"}
-					result.Subcommands = append(result.Subcommands, subcommand)
-				}
-				parent := findSubcommand(
-					subcommand.Subcommands, resourceName[:len(resourceName)-1],
+				subcommand := getOrCreateSubcommand(&result, "get")
+				parent := getOrCreateSubcommand(
+					subcommand, resourceName[:len(resourceName)-1],
 				)
-				if parent == nil {
-					parent = &cli.Command{Name: resourceName[:len(resourceName)-1]}
-					subcommand.Subcommands = append(subcommand.Subcommands, parent)
-				}
 				addFilterTags(parent, resourceName, &jsopenapi)
 				operation := cli.Command{
 					Name:  relationshipName,
@@ -401,18 +355,10 @@ func Cmd() *cli.Command {
 			}
 
 			if relationship.Operations.Add != nil {
-				subcommand := findSubcommand(result.Subcommands, "add")
-				if subcommand == nil {
-					subcommand = &cli.Command{Name: "add"}
-					result.Subcommands = append(result.Subcommands, subcommand)
-				}
-				parent := findSubcommand(
-					subcommand.Subcommands, resourceName[:len(resourceName)-1],
+				subcommand := getOrCreateSubcommand(&result, "add")
+				parent := getOrCreateSubcommand(
+					subcommand, resourceName[:len(resourceName)-1],
 				)
-				if parent == nil {
-					parent = &cli.Command{Name: resourceName[:len(resourceName)-1]}
-					subcommand.Subcommands = append(subcommand.Subcommands, parent)
-				}
 				addFilterTags(parent, resourceName, &jsopenapi)
 				operation := cli.Command{
 					Name:  relationshipName,
@@ -427,18 +373,10 @@ func Cmd() *cli.Command {
 			}
 
 			if relationship.Operations.Remove != nil {
-				subcommand := findSubcommand(result.Subcommands, "remove")
-				if subcommand == nil {
-					subcommand = &cli.Command{Name: "remove"}
-					result.Subcommands = append(result.Subcommands, subcommand)
-				}
-				parent := findSubcommand(
-					subcommand.Subcommands, resourceName[:len(resourceName)-1],
+				subcommand := getOrCreateSubcommand(&result, "remove")
+				parent := getOrCreateSubcommand(
+					subcommand, resourceName[:len(resourceName)-1],
 				)
-				if parent == nil {
-					parent = &cli.Command{Name: resourceName[:len(resourceName)-1]}
-					subcommand.Subcommands = append(subcommand.Subcommands, parent)
-				}
 				addFilterTags(parent, resourceName, &jsopenapi)
 				operation := cli.Command{
 					Name:  relationshipName,
@@ -453,18 +391,10 @@ func Cmd() *cli.Command {
 			}
 
 			if relationship.Operations.Reset != nil {
-				subcommand := findSubcommand(result.Subcommands, "reset")
-				if subcommand == nil {
-					subcommand = &cli.Command{Name: "reset"}
-					result.Subcommands = append(result.Subcommands, subcommand)
-				}
-				parent := findSubcommand(
-					subcommand.Subcommands, resourceName[:len(resourceName)-1],
+				subcommand := getOrCreateSubcommand(&result, "reset")
+				parent := getOrCreateSubcommand(
+					subcommand, resourceName[:len(resourceName)-1],
 				)
-				if parent == nil {
-					parent = &cli.Command{Name: resourceName[:len(resourceName)-1]}
-					subcommand.Subcommands = append(subcommand.Subcommands, parent)
-				}
 				addFilterTags(parent, resourceName, &jsopenapi)
 				operation := cli.Command{
 					Name:  relationshipName,
