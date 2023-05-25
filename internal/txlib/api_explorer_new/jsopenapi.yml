@@ -341,3 +341,12 @@ resources:
       get_one:
         summary: Get resource language stats
     display: '{{.Relationships.resource.DataSingular.Id}} - {{.Relationships.language.DataSingular.Id}} ({{.Attributes.translated_strings}}/{{.Attributes.total_strings}})'
+  resource_strings_async_uploads:
+    operations:
+      upload:
+        summary: Upload a new source file for a resource.
+        attributes:
+          required: []
+          optional: [callback_url, replace_edited_strings]
+        relationships:
+          resource: resources

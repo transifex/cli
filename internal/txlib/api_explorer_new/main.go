@@ -3,20 +3,35 @@ package api_explorer_new
 import (
 	"bufio"
 	_ "embed"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
+	"unicode/utf8"
 
 	"os"
 	"strings"
 
 	"github.com/transifex/cli/pkg/jsonapi"
+	"github.com/transifex/cli/pkg/txapi"
 	"github.com/urfave/cli/v2"
 )
 
 type jsopenapi_t struct {
 	Resources map[string]struct {
 		Operations struct {
+      Upload *struct {
+        Summary string `json:"summary"`
+				Attributes *struct {
+					Required []string `json:"required"`
+					Optional []string `json:"optional"`
+				} `json:"attributes"`
+				Relationships *struct {
+					Required map[string]string `json:"required"`
+					Optional map[string]string `json:"optional"`
+				} `json:"relationships"`
+      } `json:"upload"`
 			GetMany *struct {
 				Summary string `json:"summary"`
 				Filters map[string]struct {
@@ -195,6 +210,34 @@ func Cmd() *cli.Command {
 
 	for resourceName, resource := range jsopenapi.Resources {
 		resourceNameCopy := resourceName
+
+    if resource.Operations.Upload != nil {
+			subcommand := findSubcommand(result.Subcommands, "upload")
+			if subcommand == nil {
+				subcommand = &cli.Command{Name: "upload"}
+				result.Subcommands = append(result.Subcommands, subcommand)
+			}
+			operation := cli.Command{
+				Name:  resourceName[:len(resourceName)-1],
+				Usage: resource.Operations.Upload.Summary,
+        Flags: []cli.Flag{
+          &cli.StringFlag{
+            Name:     "input",
+            Aliases:  []string{"i"},
+            Required: true,
+          },
+          &cli.IntFlag{
+            Name:    "interval",
+            Aliases: []string{"t"},
+            Value:   2,
+          },
+        },
+				Action: func(c *cli.Context) error {
+					return cliCmdUploadResourceStringsAsyncUpload(c, resourceNameCopy, &jsopenapi)
+				},
+			}
+			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
+    }
 
 		if resource.Operations.GetMany != nil {
 			subcommand := getOrCreateSubcommand(&result, "get")
@@ -837,5 +880,77 @@ func cliCmdCreateOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t
 		return err
 	}
 	fmt.Printf("Created %s: %s\n", resourceName[:len(resourceName)-1], resource.Id)
+	return nil
+}
+
+func cliCmdUploadResourceStringsAsyncUpload(c *cli.Context,  resourceName string, jsopenapi *jsopenapi_t) error {
+	api, err := getApi(c)
+	if err != nil {
+		return err
+	}
+	resourceId, err := getResourceId(c, api, "resources", jsopenapi, true)
+	if err != nil {
+		return err
+	}
+
+	operation := jsopenapi.Resources[resourceName].Operations.Upload
+	attributes, err := create(
+		c.String("editor"),
+		operation.Attributes.Required,
+		operation.Attributes.Optional,
+	)
+	if err != nil {
+		return err
+	}
+	body, err := os.ReadFile(c.String("input"))
+	if err != nil {
+		return err
+	}
+	if utf8.Valid(body) {
+		attributes["content"] = string(body)
+		attributes["content_encoding"] = "text"
+	} else {
+		attributes["content"] = base64.StdEncoding.EncodeToString(body)
+		attributes["content_encoding"] = "base64"
+	}
+	upload := jsonapi.Resource{
+		API:        api,
+		Type:       resourceName,
+		Attributes: attributes,
+	}
+	upload.SetRelated("resource", &jsonapi.Resource{Type: "resources", Id: resourceId})
+	err = upload.Save(nil)
+	if err != nil {
+		return err
+	}
+	var uploadAttributes txapi.ResourceStringAsyncUploadAttributes
+	for {
+		err = upload.MapAttributes(&uploadAttributes)
+		if err != nil {
+			return err
+		}
+		if uploadAttributes.Status == "failed" {
+			var errorsMessages []string
+			for _, err := range upload.Attributes["errors"].([]map[string]string) {
+				errorsMessages = append(errorsMessages, err["detail"])
+			}
+			return fmt.Errorf("upload failed: %s", strings.Join(errorsMessages, ", "))
+		} else if uploadAttributes.Status == "succeeded" {
+			break
+		}
+		time.Sleep(time.Duration(c.Int("interval")) * time.Second)
+		err = upload.Reload()
+		if err != nil {
+			return err
+		}
+	}
+	fmt.Printf(
+		"Upload succeeded; created: %d, deleted: %d, skipped: %d, updated: %d "+
+			"strings\n",
+		uploadAttributes.Details.StringsCreated,
+		uploadAttributes.Details.StringsDeleted,
+		uploadAttributes.Details.StringsSkipped,
+		uploadAttributes.Details.StringsUpdated,
+	)
 	return nil
 }
