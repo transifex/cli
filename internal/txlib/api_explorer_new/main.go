@@ -20,18 +20,8 @@ import (
 
 type jsopenapi_t struct {
 	Resources map[string]struct {
+    Upload bool `json:"upload"`
 		Operations struct {
-			Upload *struct {
-				Summary    string `json:"summary"`
-				Attributes *struct {
-					Required []string `json:"required"`
-					Optional []string `json:"optional"`
-				} `json:"attributes"`
-				Relationships *struct {
-					Required map[string]string `json:"required"`
-					Optional map[string]string `json:"optional"`
-				} `json:"relationships"`
-			} `json:"upload"`
 			GetMany *struct {
 				Summary string `json:"summary"`
 				Filters map[string]struct {
@@ -211,34 +201,6 @@ func Cmd() *cli.Command {
 	for resourceName, resource := range jsopenapi.Resources {
 		resourceNameCopy := resourceName
 
-		if resource.Operations.Upload != nil {
-			subcommand := findSubcommand(result.Subcommands, "upload")
-			if subcommand == nil {
-				subcommand = &cli.Command{Name: "upload"}
-				result.Subcommands = append(result.Subcommands, subcommand)
-			}
-			operation := cli.Command{
-				Name:  resourceName[:len(resourceName)-1],
-				Usage: resource.Operations.Upload.Summary,
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "input",
-						Aliases:  []string{"i"},
-						Required: true,
-					},
-					&cli.IntFlag{
-						Name:    "interval",
-						Aliases: []string{"t"},
-						Value:   2,
-					},
-				},
-				Action: func(c *cli.Context) error {
-					return cliCmdUploadResourceStringsAsyncUpload(c, resourceNameCopy, &jsopenapi)
-				},
-			}
-			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
-		}
-
 		if resource.Operations.GetMany != nil {
 			subcommand := getOrCreateSubcommand(&result, "get")
 			operation := cli.Command{
@@ -252,7 +214,7 @@ func Cmd() *cli.Command {
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
 		}
 
-		if resource.Operations.GetOne != nil {
+		if resource.Operations.GetOne != nil && !resource.Upload {
 			subcommand := getOrCreateSubcommand(&result, "get")
 			operation := cli.Command{
 				Name:  resourceName[:len(resourceName)-1],
@@ -298,7 +260,7 @@ func Cmd() *cli.Command {
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
 		}
 
-		if resource.Operations.CreateOne != nil {
+		if resource.Operations.CreateOne != nil && !resource.Upload {
 			subcommand := getOrCreateSubcommand(&result, "create")
 			operation := cli.Command{
 				Name:  resourceName[:len(resourceName)-1],
@@ -350,6 +312,30 @@ func Cmd() *cli.Command {
 			}
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
 		}
+    if resource.Upload {
+      subcommand := getOrCreateSubcommand(&result, "upload")
+      operation := cli.Command{
+        Name:  resourceName[:len(resourceName)-1],
+        Usage: resource.Operations.CreateOne.Summary,
+        Flags: []cli.Flag{
+          &cli.StringFlag{
+            Name:     "input",
+            Aliases:  []string{"i"},
+            Required: true,
+          },
+          &cli.IntFlag{
+            Name:    "interval",
+            Aliases: []string{"t"},
+            Value:   2,
+          },
+        },
+        Action: func(c *cli.Context) error {
+          return cliCmdUploadResourceStringsAsyncUpload(c, resourceNameCopy, &jsopenapi)
+        },
+      }
+      subcommand.Subcommands = append(subcommand.Subcommands, &operation)
+    }
+
 		for relationshipName, relationship := range resource.Relationships {
 			relationshipNameCopy := relationshipName
 			if relationship.Operations.Change != nil {
@@ -930,20 +916,51 @@ func cliCmdCreateOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t
 	return nil
 }
 
-func cliCmdUploadResourceStringsAsyncUpload(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
+func cliCmdUploadResourceStringsAsyncUpload(c *cli.Context,  resourceName string, jsopenapi *jsopenapi_t) error {
+	type resourceInfo struct {
+		id           string
+		resourceName string
+	}
+
+	requiredRelationships := make(map[string]*resourceInfo)
+	optionalRelationships := make(map[string]*resourceInfo)
+
 	api, err := getApi(c)
 	if err != nil {
 		return err
 	}
-	resourceId, err := getResourceId(c, api, "resources", jsopenapi, true)
-	if err != nil {
-		return err
+
+	operation := jsopenapi.Resources[resourceName].Operations.CreateOne
+	for relationhipName, resourceName := range operation.Relationships.Required {
+		resourceIds, err := selectResourceIds(c, api, resourceName, jsopenapi, true, false)
+		if err != nil {
+			return err
+		}
+		resourceId := resourceIds[0]
+		requiredRelationships[relationhipName] = &resourceInfo{id: resourceId, resourceName: resourceName}
 	}
 
-	operation := jsopenapi.Resources[resourceName].Operations.Upload
+	for relationshipName, resourceName := range operation.Relationships.Optional {
+		resourceIds, err := selectResourceIds(c, api, resourceName, jsopenapi, false, false)
+		if err != nil {
+			return err
+		}
+		resourceId := resourceIds[0]
+		if resourceId != "" {
+			optionalRelationships[relationshipName] = &resourceInfo{id: resourceId, resourceName: resourceName}
+		}
+	}
+
+  filteredRequiredAttrs := make([]string, len(operation.Attributes.Required)-2)
+  for _, required := range operation.Attributes.Required {
+    if required != "content" && required != "content_encoding"{
+      filteredRequiredAttrs = append(filteredRequiredAttrs, required)
+    }
+  }
+
 	attributes, err := create(
 		c.String("editor"),
-		operation.Attributes.Required,
+		filteredRequiredAttrs,
 		operation.Attributes.Optional,
 	)
 	if err != nil {
@@ -965,7 +982,18 @@ func cliCmdUploadResourceStringsAsyncUpload(c *cli.Context, resourceName string,
 		Type:       resourceName,
 		Attributes: attributes,
 	}
-	upload.SetRelated("resource", &jsonapi.Resource{Type: "resources", Id: resourceId})
+	for relationshipName, resourceInfo := range requiredRelationships {
+		upload.SetRelated(relationshipName, &jsonapi.Resource{
+			Type: resourceInfo.resourceName,
+			Id:   requiredRelationships[relationshipName].id,
+		})
+	}
+	for relationshipName, resourceInfo := range optionalRelationships {
+		upload.SetRelated(
+			relationshipName,
+			&jsonapi.Resource{Type: resourceInfo.resourceName, Id: resourceInfo.id},
+		)
+	}
 	err = upload.Save(nil)
 	if err != nil {
 		return err

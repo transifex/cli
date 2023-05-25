@@ -561,19 +561,28 @@
       "display": "{{.Relationships.resource.DataSingular.Id}} - {{.Relationships.language.DataSingular.Id}} ({{.Attributes.translated_strings}}/{{.Attributes.total_strings}})"
     },
     "resource_strings_async_uploads": {
+      "upload": true,
       "operations": {
-        "upload": {
+        "create_one": {
           "summary": "Upload a new source file for a resource.",
           "attributes": {
-            "required": [],
+            "required": [
+              "content",
+              "content_encoding"
+            ],
             "optional": [
               "callback_url",
               "replace_edited_strings"
             ]
           },
           "relationships": {
-            "resource": "resources"
+            "required": {
+              "resource": "resources"
+            }
           }
+        },
+        "get_one": {
+          "summary": "Get resource strings async upload detail"
         }
       }
     },
