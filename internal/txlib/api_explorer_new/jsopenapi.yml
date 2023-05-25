@@ -362,11 +362,38 @@ resources:
       create_one:
         summary: Download resource
         attributes:
-          required: []
-          optional: [content_encoding, file_type, pseudo, pseudo_length_increase, callback_url]
+          optional: [content_encoding, file_type, pseudo,
+                     pseudo_length_increase, callback_url]
         relationships:
           required:
             resource: resources
+  resource_translations_async_uploads:
+    upload: true
+    operations:
+      create_one:
+        summary: Create a new resource translation upload
+        attributes:
+          required: [content, content_encoding, file_type]
+          optional: [callback_url]
+        relationships:
+          required:
+            resource: resources
+            language: languages
+      get_one:
+        summary: Get resource translation async upload
+  resource_translations_async_downloads:
+    download: true
+    operations:
+      create_one:
+        summary: Create a translation file download action
+        attributes:
+          optional: [content_encoding, file_type, mode, pseudo, callback_url]
+        relationships:
+          required:
+            resource: resources
+            language: languages
+      get_one:
+        summary: Get translation download status
   resource_strings:
     operations:
       get_many:
@@ -547,4 +574,96 @@ resources:
       get_one:
         summary: Get resource merge status
     display: '{{.Relationships.base.DataSingular.Id}} -> {{.Relationships.head.DataSingular.Id}}: {{.Attributes.status}}, {{.Attributes.conflict_resolution}}'
-
+  tmx_async_uploads:
+    upload: true
+    operations:
+      create_one:
+        summary: Create new TMX file upload.
+        attributes:
+          required: [content, content_encoding]
+          optional: [override, callback_url]
+        relationships:
+          required:
+            project: projects
+          optional:
+            language: languages
+      get_one:
+        summary: Get a TMX async upload status
+  tmx_async_downloads:
+    download: true
+    operations:
+      create_one:
+        summary: Create a tmx file download action
+        attributes:
+          optional: [include_untranslated, include_context, callback_url, email]
+        relationships:
+          required:
+            project: projects
+          optional:
+            language: languages
+      get_one:
+        summary: Get tmx file download status
+  organization_activity_reports_async_downloads:
+    download: true
+    operations:
+      create_one:
+        summary: Create an organization activity report file download action
+        attributes:
+          required: [date_from]
+          optional: [date_to]
+        relationships:
+          required:
+            organization: organizations
+          optional:
+            user: users
+            language: languages
+      get_one:
+        summary: Get organization activity report download status
+  team_activity_reports_async_downloads:
+    download: true
+    operations:
+      create_one:
+        summary: Create an team activity report file download action
+        attributes:
+          required: [date_from]
+          optional: [date_to]
+        relationships:
+          required:
+            team: teams
+          optional:
+            user: users
+            language: languages
+      get_one:
+        summary: Get team activity report download status
+  project_activity_reports_async_downloads:
+    download: true
+    operations:
+      create_one:
+        summary: Create an project activity report file download action
+        attributes:
+          required: [date_from]
+          optional: [date_to]
+        relationships:
+          required:
+            project: projects
+          optional:
+            user: users
+            language: languages
+      get_one:
+        summary: Get project activity report download status
+  resource_activity_reports_async_downloads:
+    download: true
+    operations:
+      create_one:
+        summary: Create an resource activity report file download action
+        attributes:
+          required: [date_from]
+          optional: [date_to]
+        relationships:
+          required:
+            resource: resources
+          optional:
+            user: users
+            language: languages
+      get_one:
+        summary: Get resource activity report download status
