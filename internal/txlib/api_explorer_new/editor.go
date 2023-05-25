@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"reflect"
 
+	"github.com/google/shlex"
 	"github.com/transifex/cli/pkg/jsonapi"
 )
 
@@ -27,7 +28,12 @@ func invokeEditor(input []byte, editor string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	cmd := exec.Command(editor, tempFile.Name())
+	editorArgs, err := shlex.Split(editor)
+	if err != nil {
+		return nil, err
+	}
+	editorArgs = append(editorArgs, tempFile.Name())
+	cmd := exec.Command(editorArgs[0], editorArgs[1:]...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	err = cmd.Run()
