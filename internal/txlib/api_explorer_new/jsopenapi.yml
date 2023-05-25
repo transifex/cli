@@ -129,6 +129,17 @@ resources:
     display: '{} ({{.Attributes.slug}})'
   resources:
     operations:
+      get_many:
+        summary: List resources
+        filters:
+          project:
+            description: Filter results by a project
+            resource: projects
+            required: true
+          slug:
+            description: Filter results by slug
+          name:
+            description: Filter results by name
       create_one:
         summary: Create a Resource
         attributes:
@@ -140,9 +151,10 @@ resources:
         relationships:
           required:
             project: projects
-            i18n_format: 
+            i18n_format: i18n_formats
           optional:
             base: resources
+    display: '{{.Attributes.name}} ({{.Attributes.slug}})'
   i18n_formats:
     operations:
       get_many:
@@ -154,3 +166,4 @@ resources:
             required: true
           name:
             description: Filter results by name
+    display: '{{.Attributes.name}}'
