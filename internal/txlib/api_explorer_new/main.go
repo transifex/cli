@@ -869,7 +869,7 @@ func cliCmdCreateOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t
 			return err
 		}
 		resourceId := resourceIds[0]
-		if resourceId != "<empty>" {
+		if resourceId != "" {
 			optionalRelationships[relationshipName] = &resourceInfo{id: resourceId, resourceName: resourceName}
 		}
 	}
