@@ -283,6 +283,7 @@ func Cmd() *cli.Command {
 					return cliCmdSelect(c, resourceNameCopy, &jsopenapi)
 				},
 			}
+			addFilterTags(operation, resourceName, &jsopenapi, true)
 			subcommand.Subcommands = append(subcommand.Subcommands, operation)
 
 			subcommand = getOrCreateSubcommand(&result, "clear")
@@ -383,127 +384,34 @@ func Cmd() *cli.Command {
 			}
 
 			for relationshipName, relationship := range resource.Relationships {
-				relationshipNameCopy := relationshipName
-
 				if relationship.Operations.Get != nil {
-					subcommand := getOrCreateSubcommand(&result, "get")
-					parent := getOrCreateSubcommand(subcommand, resource.SingularName)
-					addFilterTags(parent, resourceName, &jsopenapi, true)
-					operation := &cli.Command{
-						Name:  relationshipName,
-						Usage: relationship.Operations.Get.Summary,
-						Action: func(c *cli.Context) error {
-							return cliCmdGetRelated(
-								c, resourceNameCopy, relationshipNameCopy, &jsopenapi,
-							)
-						},
-					}
-					parent.Subcommands = append(parent.Subcommands, operation)
+					addRelationshipCommand(
+						&result, "get", resourceName, relationshipName, &jsopenapi,
+					)
 				}
 
 				if relationship.Operations.Change != nil {
-					subcommand := getOrCreateSubcommand(&result, "change")
-					parent := getOrCreateSubcommand(subcommand, resource.SingularName)
-					if !flagExists(parent.Flags, "id") {
-						parent.Flags = append(parent.Flags, &cli.StringFlag{
-							Name: "id",
-							// If we want to `get something` and the `somethings`
-							// resource does not support `get_many`, then the user
-							// won't be able to fuzzy-select the something and
-							// `--id` should be required
-							Required: resource.Operations.GetMany == nil,
-						})
-					}
-					addFilterTags(parent, resourceName, &jsopenapi, true)
-					operation := &cli.Command{
-						Name:  relationshipName,
-						Usage: relationship.Operations.Change.Summary,
-						Action: func(c *cli.Context) error {
-							return cliCmdChange(
-								c, resourceNameCopy, relationshipNameCopy, &jsopenapi,
-							)
-						},
-					}
-					addFilterTags(operation, relationship.Resource, &jsopenapi, true)
-					parent.Subcommands = append(parent.Subcommands, operation)
+					addRelationshipCommand(
+						&result, "change", resourceName, relationshipName, &jsopenapi,
+					)
 				}
 
 				if relationship.Operations.Add != nil {
-					subcommand := getOrCreateSubcommand(&result, "add")
-					parent := getOrCreateSubcommand(subcommand, resource.SingularName)
-					addFilterTags(parent, resourceName, &jsopenapi, true)
-					operation := &cli.Command{
-						Name:  relationshipName,
-						Usage: relationship.Operations.Add.Summary,
-						Action: func(c *cli.Context) error {
-							return cliCmdAdd(
-								c, resourceNameCopy, relationshipNameCopy, &jsopenapi,
-							)
-						},
-					}
-					relatedResource := jsopenapi.Resources[relationship.Resource]
-					if relatedResource.Operations.GetMany == nil {
-						operation.Flags = []cli.Flag{
-							&cli.StringFlag{
-								Name:     "ids",
-								Usage:    "Comma-separated IDs to use for the relationship",
-								Required: true,
-							},
-						}
-					}
-					parent.Subcommands = append(parent.Subcommands, operation)
+					addRelationshipCommand(
+						&result, "add", resourceName, relationshipName, &jsopenapi,
+					)
 				}
 
 				if relationship.Operations.Remove != nil {
-					subcommand := getOrCreateSubcommand(&result, "remove")
-					parent := getOrCreateSubcommand(subcommand, resource.SingularName)
-					addFilterTags(parent, resourceName, &jsopenapi, true)
-					operation := &cli.Command{
-						Name:  relationshipName,
-						Usage: relationship.Operations.Remove.Summary,
-						Action: func(c *cli.Context) error {
-							return cliCmdRemove(
-								c, resourceNameCopy, relationshipNameCopy, &jsopenapi,
-							)
-						},
-					}
-					relatedResource := jsopenapi.Resources[relationship.Resource]
-					if relatedResource.Operations.GetMany == nil {
-						operation.Flags = []cli.Flag{
-							&cli.StringFlag{
-								Name:     "ids",
-								Usage:    "Comma-separated IDs to use for the relationship",
-								Required: true,
-							},
-						}
-					}
-					parent.Subcommands = append(parent.Subcommands, operation)
+					addRelationshipCommand(
+						&result, "remove", resourceName, relationshipName, &jsopenapi,
+					)
 				}
 
 				if relationship.Operations.Reset != nil {
-					subcommand := getOrCreateSubcommand(&result, "reset")
-					parent := getOrCreateSubcommand(subcommand, resource.SingularName)
-					addFilterTags(parent, resourceName, &jsopenapi, true)
-					operation := &cli.Command{
-						Name:  relationshipName,
-						Usage: relationship.Operations.Reset.Summary,
-						Action: func(c *cli.Context) error {
-							return cliCmdReset(
-								c, resourceNameCopy, relationshipNameCopy, &jsopenapi,
-							)
-						},
-					}
-					relatedResource := jsopenapi.Resources[relationship.Resource]
-					if relatedResource.Operations.GetMany == nil {
-						operation.Flags = []cli.Flag{
-							&cli.StringFlag{
-								Name:     "ids",
-								Usage:    "Comma-separated IDs to use for the relationship",
-								Required: true,
-							},
-						}
-					}
-					parent.Subcommands = append(parent.Subcommands, operation)
+					addRelationshipCommand(
+						&result, "reset", resourceName, relationshipName, &jsopenapi,
+					)
 				}
 			}
 		}

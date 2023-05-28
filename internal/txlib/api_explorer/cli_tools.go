@@ -65,3 +65,68 @@ func getOrCreateSubcommand(parent *cli.Command, name string) *cli.Command {
 	}
 	return subcommand
 }
+
+func addRelationshipCommand(
+	cmd *cli.Command, verb, resourceName, relationshipName string, jsopenapi *jsopenapi_t,
+) {
+	resource := jsopenapi.Resources[resourceName]
+	relationship := resource.Relationships[relationshipName]
+
+	var cliFunc func(*cli.Context, string, string, *jsopenapi_t) error
+	var summary string
+	if verb == "get" {
+		cliFunc = cliCmdGetRelated
+		summary = relationship.Operations.Get.Summary
+	} else if verb == "change" {
+		cliFunc = cliCmdChange
+		summary = relationship.Operations.Change.Summary
+	} else if verb == "add" {
+		cliFunc = cliCmdAdd
+		summary = relationship.Operations.Add.Summary
+	} else if verb == "remove" {
+		cliFunc = cliCmdRemove
+		summary = relationship.Operations.Remove.Summary
+	} else if verb == "reset" {
+		cliFunc = cliCmdReset
+		summary = relationship.Operations.Reset.Summary
+	} else {
+		panic("Wrong verb")
+	}
+
+	subcommand := getOrCreateSubcommand(cmd, verb)
+	parent := getOrCreateSubcommand(subcommand, resource.SingularName)
+	if !flagExists(parent.Flags, "id") {
+		parent.Flags = append(parent.Flags, &cli.StringFlag{
+			Name: "id",
+			// If we want to `get something` and the `somethings`
+			// resource does not support `get_many`, then the user
+			// won't be able to fuzzy-select the something and
+			// `--id` should be required
+			Required: resource.Operations.GetMany == nil,
+		})
+	}
+	addFilterTags(parent, resourceName, jsopenapi, true)
+	operation := &cli.Command{
+		Name:  relationshipName,
+		Usage: summary,
+		Action: func(c *cli.Context) error {
+			return cliFunc(c, resourceName, relationshipName, jsopenapi)
+		},
+	}
+
+	if verb != "get" {
+		relatedResource := jsopenapi.Resources[relationship.Resource]
+		addFilterTags(operation, relationship.Resource, jsopenapi, true)
+		if relatedResource.Operations.GetMany == nil {
+			operation.Flags = []cli.Flag{
+				&cli.StringFlag{
+					Name:     "ids",
+					Usage:    "Comma-separated IDs to use for the relationship",
+					Required: true,
+				},
+			}
+		}
+	}
+
+	parent.Subcommands = append(parent.Subcommands, operation)
+}
