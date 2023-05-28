@@ -220,141 +220,13 @@ func Cmd() *cli.Command {
 	}
 
 	for resourceName, resource := range jsopenapi.Resources {
+		// Make sure the closure functions have access to the correct variable
 		resourceNameCopy := resourceName
 
-		if resource.Operations.GetMany != nil {
-			subcommand := getOrCreateSubcommand(&result, "get")
-			operation := cli.Command{
-				Name:  resource.PluralName,
-				Usage: resource.Operations.GetMany.Summary,
-				Action: func(c *cli.Context) error {
-					return cliCmdGetMany(c, resourceNameCopy, &jsopenapi)
-				},
-			}
-			addFilterTags(&operation, resourceName, &jsopenapi, false)
-			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
-		}
-
-		if resource.Operations.GetOne != nil && !resource.Upload && !resource.Download {
-			subcommand := getOrCreateSubcommand(&result, "get")
-			operation := cli.Command{
-				Name:  resource.SingularName,
-				Usage: resource.Operations.GetOne.Summary,
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name: "id",
-						// If we want to `get something` and the `somethings`
-						// resource does not support `get_many`, then the user
-						// won't be able to fuzzy-select the something and
-						// `--id` should be required
-						Required: resource.Operations.GetMany == nil,
-					},
-				},
-				Action: func(c *cli.Context) error {
-					return cliCmdGetOne(c, resourceNameCopy, &jsopenapi)
-				},
-			}
-			addFilterTags(&operation, resourceName, &jsopenapi, true)
-			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
-		}
-
-		if resource.Operations.EditOne != nil {
-			subcommand := getOrCreateSubcommand(&result, "edit")
-			operation := cli.Command{
-				Name:  resource.SingularName,
-				Usage: resource.Operations.EditOne.Summary,
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name: "id",
-						// If we want to `get something` and the `somethings`
-						// resource does not support `get_many`, then the user
-						// won't be able to fuzzy-select the something and
-						// `--id` should be required
-						Required: resource.Operations.GetMany == nil,
-					},
-				},
-				Action: func(c *cli.Context) error {
-					return cliCmdEditOne(c, resourceNameCopy, &jsopenapi)
-				},
-			}
-			addFilterTags(&operation, resourceName, &jsopenapi, true)
-			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
-		}
-
-		if resource.Operations.CreateOne != nil &&
-			!resource.Upload &&
-			!resource.Download {
-			subcommand := getOrCreateSubcommand(&result, "create")
-			operation := cli.Command{
-				Name:  resource.SingularName,
-				Usage: resource.Operations.CreateOne.Summary,
-				Action: func(c *cli.Context) error {
-					return cliCmdCreateOne(c, resourceNameCopy, &jsopenapi)
-				},
-			}
-			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
-		}
-
-		if resource.Operations.Delete != nil {
-			subcommand := getOrCreateSubcommand(&result, "delete")
-			operation := cli.Command{
-				Name:  resource.SingularName,
-				Usage: resource.Operations.Delete.Summary,
-				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "id"},
-				},
-				Action: func(c *cli.Context) error {
-					return cliCmdDelete(c, resourceNameCopy, &jsopenapi)
-				},
-			}
-			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
-		}
-		if resource.Download {
-			subcommand := getOrCreateSubcommand(&result, "download")
-			operation := cli.Command{
-				Name:  resource.SingularName,
-				Usage: resource.Operations.GetOne.Summary,
-				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "output", Aliases: []string{"o"}},
-					&cli.IntFlag{
-						Name:    "interval",
-						Aliases: []string{"t"},
-						Value:   2,
-					},
-				},
-				Action: func(c *cli.Context) error {
-					return cliCmdDownload(c, resourceNameCopy, &jsopenapi)
-				},
-			}
-			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
-		}
-		if resource.Operations.GetMany != nil {
-			subcommand := getOrCreateSubcommand(&result, "select")
-			operation := cli.Command{
-				Name:  resource.SingularName,
-				Usage: fmt.Sprintf("Save %s to session file", resource.SingularName),
-				Flags: []cli.Flag{&cli.StringFlag{Name: "id"}},
-				Action: func(c *cli.Context) error {
-					return cliCmdSelect(c, resourceNameCopy, &jsopenapi)
-				},
-			}
-			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
-		}
-		if resource.Operations.GetMany != nil {
-			subcommand := getOrCreateSubcommand(&result, "clear")
-			operation := cli.Command{
-				Name:  resource.SingularName,
-				Usage: fmt.Sprintf("Clear %s from session file", resource.SingularName),
-				Action: func(c *cli.Context) error {
-					return cliCmdClear(c, resourceNameCopy, &jsopenapi)
-				},
-			}
-			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
-		}
 		if resource.Upload {
 			subcommand := getOrCreateSubcommand(&result, "upload")
 			operation := cli.Command{
-				Name:  resource.SingularName,
+				Name:  strings.TrimSuffix(resource.SingularName, "_async_upload"),
 				Usage: resource.Operations.CreateOne.Summary,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -373,129 +245,259 @@ func Cmd() *cli.Command {
 				},
 			}
 			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
-		}
-
-		for relationshipName, relationship := range resource.Relationships {
-			relationshipNameCopy := relationshipName
-			if relationship.Operations.Change != nil {
-				subcommand := getOrCreateSubcommand(&result, "change")
-				parent := getOrCreateSubcommand(subcommand, resource.SingularName)
-				if !flagExists(parent.Flags, "id") {
-					parent.Flags = append(parent.Flags, &cli.StringFlag{
-						Name: "id",
-						// If we want to `get something` and the `somethings`
-						// resource does not support `get_many`, then the user
-						// won't be able to fuzzy-select the something and
-						// `--id` should be required
-						Required: resource.Operations.GetMany == nil,
-					})
-				}
-				addFilterTags(parent, resourceName, &jsopenapi, true)
-				operation := cli.Command{
-					Name:  relationshipName,
-					Usage: relationship.Operations.Change.Summary,
-					Action: func(c *cli.Context) error {
-						return cliCmdChange(
-							c, resourceNameCopy, relationshipNameCopy, &jsopenapi,
-						)
+		} else if resource.Download {
+			subcommand := getOrCreateSubcommand(&result, "download")
+			operation := cli.Command{
+				Name:  strings.TrimSuffix(resource.SingularName, "_async_download"),
+				Usage: resource.Operations.GetOne.Summary,
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "output", Aliases: []string{"o"}},
+					&cli.IntFlag{
+						Name:    "interval",
+						Aliases: []string{"t"},
+						Value:   2,
 					},
-				}
-				addFilterTags(&operation, relationship.Resource, &jsopenapi, true)
-				parent.Subcommands = append(parent.Subcommands, &operation)
+				},
+				Action: func(c *cli.Context) error {
+					return cliCmdDownload(c, resourceNameCopy, &jsopenapi)
+				},
 			}
+			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
+		} else {
+			// Allow 'select' and 'clear' for all resource types; for those that
+			// don't have the 'get_many' operation, set the 'id' flag as required.
+			subcommand := getOrCreateSubcommand(&result, "select")
+			operation := &cli.Command{
+				Name:  resource.SingularName,
+				Usage: fmt.Sprintf("Save %s to session file", resource.SingularName),
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "id", Required: resource.Operations.GetMany == nil},
+				},
+				Action: func(c *cli.Context) error {
+					return cliCmdSelect(c, resourceNameCopy, &jsopenapi)
+				},
+			}
+			subcommand.Subcommands = append(subcommand.Subcommands, operation)
 
-			if relationship.Operations.Get != nil {
+			subcommand = getOrCreateSubcommand(&result, "clear")
+			operation = &cli.Command{
+				Name:  resource.SingularName,
+				Usage: fmt.Sprintf("Clear %s from session file", resource.SingularName),
+				Action: func(c *cli.Context) error {
+					return cliCmdClear(c, resourceNameCopy, &jsopenapi)
+				},
+			}
+			subcommand.Subcommands = append(subcommand.Subcommands, operation)
+
+			if resource.Operations.GetMany != nil {
 				subcommand := getOrCreateSubcommand(&result, "get")
-				parent := getOrCreateSubcommand(subcommand, resource.SingularName)
-				addFilterTags(parent, resourceName, &jsopenapi, true)
-				operation := cli.Command{
-					Name:  relationshipName,
-					Usage: relationship.Operations.Get.Summary,
+				operation := &cli.Command{
+					Name:  resource.PluralName,
+					Usage: resource.Operations.GetMany.Summary,
 					Action: func(c *cli.Context) error {
-						return cliCmdGetRelated(
-							c, resourceNameCopy, relationshipNameCopy, &jsopenapi,
-						)
+						return cliCmdGetMany(c, resourceNameCopy, &jsopenapi)
 					},
 				}
-				parent.Subcommands = append(parent.Subcommands, &operation)
+				addFilterTags(operation, resourceName, &jsopenapi, false)
+				subcommand.Subcommands = append(subcommand.Subcommands, operation)
 			}
 
-			if relationship.Operations.Add != nil {
-				subcommand := getOrCreateSubcommand(&result, "add")
-				parent := getOrCreateSubcommand(subcommand, resource.SingularName)
-				addFilterTags(parent, resourceName, &jsopenapi, true)
-				operation := cli.Command{
-					Name:  relationshipName,
-					Usage: relationship.Operations.Add.Summary,
+			if resource.Operations.GetOne != nil {
+				subcommand := getOrCreateSubcommand(&result, "get")
+				operation := &cli.Command{
+					Name:  resource.SingularName,
+					Usage: resource.Operations.GetOne.Summary,
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name: "id",
+							// If we want to `get something` and the `somethings`
+							// resource does not support `get_many`, then the user
+							// won't be able to fuzzy-select the something and
+							// `--id` should be required
+							Required: resource.Operations.GetMany == nil,
+						},
+					},
 					Action: func(c *cli.Context) error {
-						return cliCmdAdd(
-							c, resourceNameCopy, relationshipNameCopy, &jsopenapi,
-						)
+						return cliCmdGetOne(c, resourceNameCopy, &jsopenapi)
 					},
 				}
-				relatedResource := jsopenapi.Resources[relationship.Resource]
-				if relatedResource.Operations.GetMany == nil {
-					operation.Flags = []cli.Flag{
-						&cli.StringFlag{
-							Name:     "ids",
-							Usage:    "Comma-separated IDs to use for the relationship",
-							Required: true,
-						},
-					}
-				}
-				parent.Subcommands = append(parent.Subcommands, &operation)
+				addFilterTags(operation, resourceName, &jsopenapi, true)
+				subcommand.Subcommands = append(subcommand.Subcommands, operation)
 			}
 
-			if relationship.Operations.Remove != nil {
-				subcommand := getOrCreateSubcommand(&result, "remove")
-				parent := getOrCreateSubcommand(subcommand, resource.SingularName)
-				addFilterTags(parent, resourceName, &jsopenapi, true)
-				operation := cli.Command{
-					Name:  relationshipName,
-					Usage: relationship.Operations.Remove.Summary,
+			if resource.Operations.EditOne != nil {
+				subcommand := getOrCreateSubcommand(&result, "edit")
+				operation := &cli.Command{
+					Name:  resource.SingularName,
+					Usage: resource.Operations.EditOne.Summary,
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name: "id",
+							// If we want to `get something` and the `somethings`
+							// resource does not support `get_many`, then the user
+							// won't be able to fuzzy-select the something and
+							// `--id` should be required
+							Required: resource.Operations.GetMany == nil,
+						},
+					},
 					Action: func(c *cli.Context) error {
-						return cliCmdRemove(
-							c, resourceNameCopy, relationshipNameCopy, &jsopenapi,
-						)
+						return cliCmdEditOne(c, resourceNameCopy, &jsopenapi)
 					},
 				}
-				relatedResource := jsopenapi.Resources[relationship.Resource]
-				if relatedResource.Operations.GetMany == nil {
-					operation.Flags = []cli.Flag{
-						&cli.StringFlag{
-							Name:     "ids",
-							Usage:    "Comma-separated IDs to use for the relationship",
-							Required: true,
-						},
-					}
-				}
-				parent.Subcommands = append(parent.Subcommands, &operation)
+				addFilterTags(operation, resourceName, &jsopenapi, true)
+				subcommand.Subcommands = append(subcommand.Subcommands, operation)
 			}
 
-			if relationship.Operations.Reset != nil {
-				subcommand := getOrCreateSubcommand(&result, "reset")
-				parent := getOrCreateSubcommand(subcommand, resource.SingularName)
-				addFilterTags(parent, resourceName, &jsopenapi, true)
-				operation := cli.Command{
-					Name:  relationshipName,
-					Usage: relationship.Operations.Reset.Summary,
+			if resource.Operations.CreateOne != nil {
+				subcommand := getOrCreateSubcommand(&result, "create")
+				operation := &cli.Command{
+					Name:  resource.SingularName,
+					Usage: resource.Operations.CreateOne.Summary,
 					Action: func(c *cli.Context) error {
-						return cliCmdReset(
-							c, resourceNameCopy, relationshipNameCopy, &jsopenapi,
-						)
+						return cliCmdCreateOne(c, resourceNameCopy, &jsopenapi)
 					},
 				}
-				relatedResource := jsopenapi.Resources[relationship.Resource]
-				if relatedResource.Operations.GetMany == nil {
-					operation.Flags = []cli.Flag{
-						&cli.StringFlag{
-							Name:     "ids",
-							Usage:    "Comma-separated IDs to use for the relationship",
-							Required: true,
+				subcommand.Subcommands = append(subcommand.Subcommands, operation)
+			}
+
+			if resource.Operations.Delete != nil {
+				subcommand := getOrCreateSubcommand(&result, "delete")
+				operation := &cli.Command{
+					Name:  resource.SingularName,
+					Usage: resource.Operations.Delete.Summary,
+					Flags: []cli.Flag{
+						&cli.StringFlag{Name: "id"},
+					},
+					Action: func(c *cli.Context) error {
+						return cliCmdDelete(c, resourceNameCopy, &jsopenapi)
+					},
+				}
+				subcommand.Subcommands = append(subcommand.Subcommands, operation)
+			}
+
+			for relationshipName, relationship := range resource.Relationships {
+				relationshipNameCopy := relationshipName
+
+				if relationship.Operations.Get != nil {
+					subcommand := getOrCreateSubcommand(&result, "get")
+					parent := getOrCreateSubcommand(subcommand, resource.SingularName)
+					addFilterTags(parent, resourceName, &jsopenapi, true)
+					operation := &cli.Command{
+						Name:  relationshipName,
+						Usage: relationship.Operations.Get.Summary,
+						Action: func(c *cli.Context) error {
+							return cliCmdGetRelated(
+								c, resourceNameCopy, relationshipNameCopy, &jsopenapi,
+							)
 						},
 					}
+					parent.Subcommands = append(parent.Subcommands, operation)
 				}
-				parent.Subcommands = append(parent.Subcommands, &operation)
+
+				if relationship.Operations.Change != nil {
+					subcommand := getOrCreateSubcommand(&result, "change")
+					parent := getOrCreateSubcommand(subcommand, resource.SingularName)
+					if !flagExists(parent.Flags, "id") {
+						parent.Flags = append(parent.Flags, &cli.StringFlag{
+							Name: "id",
+							// If we want to `get something` and the `somethings`
+							// resource does not support `get_many`, then the user
+							// won't be able to fuzzy-select the something and
+							// `--id` should be required
+							Required: resource.Operations.GetMany == nil,
+						})
+					}
+					addFilterTags(parent, resourceName, &jsopenapi, true)
+					operation := &cli.Command{
+						Name:  relationshipName,
+						Usage: relationship.Operations.Change.Summary,
+						Action: func(c *cli.Context) error {
+							return cliCmdChange(
+								c, resourceNameCopy, relationshipNameCopy, &jsopenapi,
+							)
+						},
+					}
+					addFilterTags(operation, relationship.Resource, &jsopenapi, true)
+					parent.Subcommands = append(parent.Subcommands, operation)
+				}
+
+				if relationship.Operations.Add != nil {
+					subcommand := getOrCreateSubcommand(&result, "add")
+					parent := getOrCreateSubcommand(subcommand, resource.SingularName)
+					addFilterTags(parent, resourceName, &jsopenapi, true)
+					operation := &cli.Command{
+						Name:  relationshipName,
+						Usage: relationship.Operations.Add.Summary,
+						Action: func(c *cli.Context) error {
+							return cliCmdAdd(
+								c, resourceNameCopy, relationshipNameCopy, &jsopenapi,
+							)
+						},
+					}
+					relatedResource := jsopenapi.Resources[relationship.Resource]
+					if relatedResource.Operations.GetMany == nil {
+						operation.Flags = []cli.Flag{
+							&cli.StringFlag{
+								Name:     "ids",
+								Usage:    "Comma-separated IDs to use for the relationship",
+								Required: true,
+							},
+						}
+					}
+					parent.Subcommands = append(parent.Subcommands, operation)
+				}
+
+				if relationship.Operations.Remove != nil {
+					subcommand := getOrCreateSubcommand(&result, "remove")
+					parent := getOrCreateSubcommand(subcommand, resource.SingularName)
+					addFilterTags(parent, resourceName, &jsopenapi, true)
+					operation := &cli.Command{
+						Name:  relationshipName,
+						Usage: relationship.Operations.Remove.Summary,
+						Action: func(c *cli.Context) error {
+							return cliCmdRemove(
+								c, resourceNameCopy, relationshipNameCopy, &jsopenapi,
+							)
+						},
+					}
+					relatedResource := jsopenapi.Resources[relationship.Resource]
+					if relatedResource.Operations.GetMany == nil {
+						operation.Flags = []cli.Flag{
+							&cli.StringFlag{
+								Name:     "ids",
+								Usage:    "Comma-separated IDs to use for the relationship",
+								Required: true,
+							},
+						}
+					}
+					parent.Subcommands = append(parent.Subcommands, operation)
+				}
+
+				if relationship.Operations.Reset != nil {
+					subcommand := getOrCreateSubcommand(&result, "reset")
+					parent := getOrCreateSubcommand(subcommand, resource.SingularName)
+					addFilterTags(parent, resourceName, &jsopenapi, true)
+					operation := &cli.Command{
+						Name:  relationshipName,
+						Usage: relationship.Operations.Reset.Summary,
+						Action: func(c *cli.Context) error {
+							return cliCmdReset(
+								c, resourceNameCopy, relationshipNameCopy, &jsopenapi,
+							)
+						},
+					}
+					relatedResource := jsopenapi.Resources[relationship.Resource]
+					if relatedResource.Operations.GetMany == nil {
+						operation.Flags = []cli.Flag{
+							&cli.StringFlag{
+								Name:     "ids",
+								Usage:    "Comma-separated IDs to use for the relationship",
+								Required: true,
+							},
+						}
+					}
+					parent.Subcommands = append(parent.Subcommands, operation)
+				}
 			}
 		}
 	}
