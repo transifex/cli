@@ -333,6 +333,7 @@ func Cmd() *cli.Command {
 			operation := cli.Command{
 				Name:  resource.SingularName,
 				Usage: fmt.Sprintf("Save %s to session file", resource.SingularName),
+				Flags: []cli.Flag{&cli.StringFlag{Name: "id"}},
 				Action: func(c *cli.Context) error {
 					return cliCmdSelect(c, resourceNameCopy, &jsopenapi)
 				},
@@ -709,11 +710,14 @@ func cliCmdSelect(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 	if err != nil {
 		return err
 	}
-	resourceIds, err := selectResourceIds(c, api, resourceName, jsopenapi, true, false)
-	if err != nil {
-		return err
+	resourceId := c.String("id")
+	if resourceId == "" {
+		resourceIds, err := selectResourceIds(c, api, resourceName, jsopenapi, true, false)
+		if err != nil {
+			return err
+		}
+		resourceId = resourceIds[0]
 	}
-	resourceId := resourceIds[0]
 	err = save(resource.SingularName, resourceId)
 	if err != nil {
 		return err
