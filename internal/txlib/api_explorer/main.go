@@ -3,14 +3,12 @@ package api_explorer
 import (
 	"bufio"
 	_ "embed"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
-	"unicode/utf8"
 
 	"os"
 	"strings"
@@ -231,7 +229,7 @@ func Cmd() *cli.Command {
 
 		if resource.Upload {
 			subcommand := getOrCreateSubcommand(&result, "upload")
-			operation := cli.Command{
+			operation := &cli.Command{
 				Name:  strings.TrimSuffix(resource.SingularName, "_async_upload"),
 				Usage: resource.Operations.CreateOne.Summary,
 				Flags: []cli.Flag{
@@ -250,10 +248,11 @@ func Cmd() *cli.Command {
 					return cliCmdUpload(c, resourceNameCopy, &jsopenapi)
 				},
 			}
-			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
+			addCreateFlags(operation, resourceName, &jsopenapi)
+			subcommand.Subcommands = append(subcommand.Subcommands, operation)
 		} else if resource.Download {
 			subcommand := getOrCreateSubcommand(&result, "download")
-			operation := cli.Command{
+			operation := &cli.Command{
 				Name:  strings.TrimSuffix(resource.SingularName, "_async_download"),
 				Usage: resource.Operations.GetOne.Summary,
 				Flags: []cli.Flag{
@@ -268,7 +267,8 @@ func Cmd() *cli.Command {
 					return cliCmdDownload(c, resourceNameCopy, &jsopenapi)
 				},
 			}
-			subcommand.Subcommands = append(subcommand.Subcommands, &operation)
+			addCreateFlags(operation, resourceName, &jsopenapi)
+			subcommand.Subcommands = append(subcommand.Subcommands, operation)
 		} else {
 			// Allow 'select' and 'clear' for all resource types; for those that
 			// don't have the 'get_many' operation, set the 'id' flag as required.
@@ -364,6 +364,7 @@ func Cmd() *cli.Command {
 						return cliCmdCreateOne(c, resourceNameCopy, &jsopenapi)
 					},
 				}
+				addCreateFlags(operation, resourceName, &jsopenapi)
 				subcommand.Subcommands = append(subcommand.Subcommands, operation)
 			}
 
@@ -818,75 +819,7 @@ func cliCmdCreateOne(
 	c *cli.Context, resourceName string, jsopenapi *jsopenapi_t,
 ) error {
 	resource := jsopenapi.Resources[resourceName]
-	type resourceInfo struct {
-		id           string
-		resourceName string
-	}
-
-	requiredRelationships := make(map[string]*resourceInfo)
-	optionalRelationships := make(map[string]*resourceInfo)
-
-	api, err := getApi(c)
-	if err != nil {
-		return err
-	}
-
-	operation := jsopenapi.Resources[resourceName].Operations.CreateOne
-	for relationshipName, resourceName := range operation.Relationships.Required {
-		resourceIds, err := selectResourceIds(
-			c, api, resourceName, relationshipName, jsopenapi, true, false,
-		)
-		if err != nil {
-			return err
-		}
-		resourceId := resourceIds[0]
-		requiredRelationships[relationshipName] = &resourceInfo{
-			id:           resourceId,
-			resourceName: resourceName,
-		}
-	}
-	for relationshipName, resourceName := range operation.Relationships.Optional {
-		resourceIds, err := selectResourceIds(
-			c, api, resourceName, relationshipName, jsopenapi, false, false,
-		)
-		if err != nil {
-			return err
-		}
-		resourceId := resourceIds[0]
-		if resourceId != "" {
-			optionalRelationships[relationshipName] = &resourceInfo{
-				id:           resourceId,
-				resourceName: resourceName,
-			}
-		}
-	}
-
-	attributes, err := create(
-		c.String("editor"),
-		operation.Attributes.Required,
-		operation.Attributes.Optional,
-	)
-	if err != nil {
-		return err
-	}
-	obj := jsonapi.Resource{
-		API:        api,
-		Type:       resourceName,
-		Attributes: attributes,
-	}
-	for relationshipName, resourceInfo := range requiredRelationships {
-		obj.SetRelated(relationshipName, &jsonapi.Resource{
-			Type: resourceInfo.resourceName,
-			Id:   requiredRelationships[relationshipName].id,
-		})
-	}
-	for relationshipName, resourceInfo := range optionalRelationships {
-		obj.SetRelated(
-			relationshipName,
-			&jsonapi.Resource{Type: resourceInfo.resourceName, Id: resourceInfo.id},
-		)
-	}
-	err = obj.Save(nil)
+	obj, err := createObject(c, resourceName, jsopenapi, false)
 	if err != nil {
 		return err
 	}
@@ -895,94 +828,7 @@ func cliCmdCreateOne(
 }
 
 func cliCmdUpload(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
-	type resourceInfo struct {
-		id           string
-		resourceName string
-	}
-
-	requiredRelationships := make(map[string]*resourceInfo)
-	optionalRelationships := make(map[string]*resourceInfo)
-
-	api, err := getApi(c)
-	if err != nil {
-		return err
-	}
-
-	operation := jsopenapi.Resources[resourceName].Operations.CreateOne
-	for relationshipName, resourceName := range operation.Relationships.Required {
-		resourceIds, err := selectResourceIds(
-			c, api, resourceName, relationshipName, jsopenapi, true, false,
-		)
-		if err != nil {
-			return err
-		}
-		resourceId := resourceIds[0]
-		requiredRelationships[relationshipName] = &resourceInfo{
-			id:           resourceId,
-			resourceName: resourceName,
-		}
-	}
-
-	for relationshipName, resourceName := range operation.Relationships.Optional {
-		resourceIds, err := selectResourceIds(
-			c, api, resourceName, relationshipName, jsopenapi, false, false,
-		)
-		if err != nil {
-			return err
-		}
-		resourceId := resourceIds[0]
-		if resourceId != "" {
-			optionalRelationships[relationshipName] = &resourceInfo{
-				id:           resourceId,
-				resourceName: resourceName,
-			}
-		}
-	}
-
-	filteredRequiredAttrs := make([]string, 0, len(operation.Attributes.Required)-2)
-	for _, required := range operation.Attributes.Required {
-		if required != "content" && required != "content_encoding" {
-			filteredRequiredAttrs = append(filteredRequiredAttrs, required)
-		}
-	}
-
-	attributes, err := create(
-		c.String("editor"),
-		filteredRequiredAttrs,
-		operation.Attributes.Optional,
-	)
-	if err != nil {
-		return err
-	}
-	body, err := os.ReadFile(c.String("input"))
-	if err != nil {
-		return err
-	}
-	if utf8.Valid(body) {
-		attributes["content"] = string(body)
-		attributes["content_encoding"] = "text"
-	} else {
-		attributes["content"] = base64.StdEncoding.EncodeToString(body)
-		attributes["content_encoding"] = "base64"
-	}
-	upload := jsonapi.Resource{
-		API:        api,
-		Type:       resourceName,
-		Attributes: attributes,
-	}
-	for relationshipName, resourceInfo := range requiredRelationships {
-		upload.SetRelated(relationshipName, &jsonapi.Resource{
-			Type: resourceInfo.resourceName,
-			Id:   requiredRelationships[relationshipName].id,
-		})
-	}
-	for relationshipName, resourceInfo := range optionalRelationships {
-		upload.SetRelated(
-			relationshipName,
-			&jsonapi.Resource{Type: resourceInfo.resourceName, Id: resourceInfo.id},
-		)
-	}
-	err = upload.Save(nil)
+	upload, err := createObject(c, resourceName, jsopenapi, true)
 	if err != nil {
 		return err
 	}
@@ -1027,75 +873,7 @@ func cliCmdUpload(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 }
 
 func cliCmdDownload(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
-	type resourceInfo struct {
-		id           string
-		resourceName string
-	}
-
-	requiredRelationships := make(map[string]*resourceInfo)
-	optionalRelationships := make(map[string]*resourceInfo)
-
-	api, err := getApi(c)
-	if err != nil {
-		return err
-	}
-
-	operation := jsopenapi.Resources[resourceName].Operations.CreateOne
-	for relationshipName, resourceName := range operation.Relationships.Required {
-		resourceIds, err := selectResourceIds(
-			c, api, resourceName, relationshipName, jsopenapi, true, false,
-		)
-		if err != nil {
-			return err
-		}
-		resourceId := resourceIds[0]
-		requiredRelationships[relationshipName] = &resourceInfo{
-			id:           resourceId,
-			resourceName: resourceName,
-		}
-	}
-	for relationshipName, resourceName := range operation.Relationships.Optional {
-		resourceIds, err := selectResourceIds(
-			c, api, resourceName, relationshipName, jsopenapi, false, false,
-		)
-		if err != nil {
-			return err
-		}
-		resourceId := resourceIds[0]
-		if resourceId != "" {
-			optionalRelationships[relationshipName] = &resourceInfo{
-				id:           resourceId,
-				resourceName: resourceName,
-			}
-		}
-	}
-
-	attributes, err := create(
-		c.String("editor"),
-		operation.Attributes.Required,
-		operation.Attributes.Optional,
-	)
-	if err != nil {
-		return err
-	}
-	download := &jsonapi.Resource{
-		API:        api,
-		Type:       resourceName,
-		Attributes: attributes,
-	}
-	for relationshipName, resourceInfo := range requiredRelationships {
-		download.SetRelated(relationshipName, &jsonapi.Resource{
-			Type: resourceInfo.resourceName,
-			Id:   requiredRelationships[relationshipName].id,
-		})
-	}
-	for relationshipName, resourceInfo := range optionalRelationships {
-		download.SetRelated(
-			relationshipName,
-			&jsonapi.Resource{Type: resourceInfo.resourceName, Id: resourceInfo.id},
-		)
-	}
-	err = download.Save(nil)
+	download, err := createObject(c, resourceName, jsopenapi, false)
 	if err != nil {
 		return err
 	}

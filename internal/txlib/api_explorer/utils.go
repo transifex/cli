@@ -2,11 +2,13 @@ package api_explorer
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"text/template"
+	"unicode/utf8"
 
 	"github.com/ktr0731/go-fuzzyfinder"
 	"github.com/transifex/cli/internal/txlib"
@@ -187,4 +189,120 @@ func stringSliceContains(haystack []string, needle string) bool {
 		}
 	}
 	return false
+}
+
+func createObject(
+	c *cli.Context, resourceName string, jsopenapi *jsopenapi_t, hasContent bool,
+) (*jsonapi.Resource, error) {
+	api, err := getApi(c)
+	if err != nil {
+		return nil, err
+	}
+
+	requiredRelationships := make(map[string]*jsonapi.Resource)
+	operation := jsopenapi.Resources[resourceName].Operations.CreateOne
+	for relationshipName, resourceName := range operation.Relationships.Required {
+		resourceId := c.String(fmt.Sprintf("%s-id", relationshipName))
+		if resourceId == "" {
+			resourceIds, err := selectResourceIds(
+				c, api, resourceName, relationshipName, jsopenapi, true, false,
+			)
+			if err != nil {
+				return nil, err
+			}
+			resourceId = resourceIds[0]
+		}
+		requiredRelationships[relationshipName] = &jsonapi.Resource{
+			Id:   resourceId,
+			Type: resourceName,
+		}
+	}
+
+	optionalRelationships := make(map[string]*jsonapi.Resource)
+	for relationshipName, resourceName := range operation.Relationships.Optional {
+		resourceId := c.String(fmt.Sprintf("%s-id", relationshipName))
+		if resourceId == "" {
+			resourceIds, err := selectResourceIds(
+				c, api, resourceName, relationshipName, jsopenapi, false, false,
+			)
+			if err != nil {
+				return nil, err
+			}
+			resourceId = resourceIds[0]
+		}
+		if resourceId != "" {
+			optionalRelationships[relationshipName] = &jsonapi.Resource{
+				Id:   resourceId,
+				Type: resourceName,
+			}
+		}
+	}
+
+	attributes := make(map[string]interface{})
+	var requiredAttributeNames []string
+	for _, attributeName := range operation.Attributes.Required {
+		if hasContent && (attributeName == "content" || attributeName == "content_encoding") {
+			continue
+		}
+		value := c.String(attributeName)
+		if value != "" {
+			attributes[attributeName] = value
+		} else {
+			requiredAttributeNames = append(requiredAttributeNames, attributeName)
+		}
+	}
+	var optionalAttributeNames []string
+	for _, attributeName := range operation.Attributes.Optional {
+		if hasContent && (attributeName == "content" || attributeName == "content_encoding") {
+			continue
+		}
+		value := c.String(attributeName)
+		if value != "" {
+			attributes[attributeName] = value
+		} else {
+			optionalAttributeNames = append(optionalAttributeNames, attributeName)
+		}
+	}
+
+	userSuppliedAttributes, err := create(
+		c.String("editor"), requiredAttributeNames, optionalAttributeNames,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	for key, value := range userSuppliedAttributes {
+		attributes[key] = value
+	}
+
+	if hasContent {
+		body, err := os.ReadFile(c.String("input"))
+		if err != nil {
+			return nil, err
+		}
+		if utf8.Valid(body) {
+			attributes["content"] = string(body)
+			attributes["content_encoding"] = "text"
+		} else {
+			attributes["content"] = base64.StdEncoding.EncodeToString(body)
+			attributes["content_encoding"] = "base64"
+		}
+	}
+
+	obj := &jsonapi.Resource{
+		API:        api,
+		Type:       resourceName,
+		Attributes: attributes,
+	}
+	for relationshipName, resourceInfo := range requiredRelationships {
+		obj.SetRelated(relationshipName, resourceInfo)
+	}
+	for relationshipName, resourceInfo := range optionalRelationships {
+		obj.SetRelated(relationshipName, resourceInfo)
+	}
+	err = obj.Save(nil)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
 }

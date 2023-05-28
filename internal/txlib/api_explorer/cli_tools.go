@@ -130,3 +130,27 @@ func addRelationshipCommand(
 
 	parent.Subcommands = append(parent.Subcommands, operation)
 }
+
+func addCreateFlags(operation *cli.Command, resourceName string, jsopenapi *jsopenapi_t) {
+	resource := jsopenapi.Resources[resourceName]
+	for _, attribute := range resource.Operations.CreateOne.Attributes.Required {
+		operation.Flags = append(operation.Flags, &cli.StringFlag{Name: attribute})
+	}
+	for _, attribute := range resource.Operations.CreateOne.Attributes.Optional {
+		operation.Flags = append(operation.Flags, &cli.StringFlag{Name: attribute})
+	}
+	requiredRelationships := resource.Operations.CreateOne.Relationships.Required
+	for relationshipName := range requiredRelationships {
+		operation.Flags = append(
+			operation.Flags,
+			&cli.StringFlag{Name: fmt.Sprintf("%s-id", relationshipName)},
+		)
+	}
+	optionalRelationships := resource.Operations.CreateOne.Relationships.Optional
+	for relationshipName := range optionalRelationships {
+		operation.Flags = append(
+			operation.Flags,
+			&cli.StringFlag{Name: fmt.Sprintf("%s-id", relationshipName)},
+		)
+	}
+}
