@@ -16,20 +16,29 @@ import (
 )
 
 func getApi(c *cli.Context) (*jsonapi.Connection, error) {
-	cfg, err := config.LoadFromPaths(
-		c.String("root-config"),
-		c.String("config"),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("error loading configuration: %s", err)
-	}
-	hostname, token, err := txlib.GetHostAndToken(
-		&cfg,
-		c.String("hostname"),
-		c.String("token"),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("error getting API token: %s", err)
+	token := c.String("token")
+	var hostname string
+	if token != "" {
+		hostname = c.String("hostname")
+		if hostname == "" {
+			hostname = "https://rest.api.transifex.com"
+		}
+	} else {
+		cfg, err := config.LoadFromPaths(
+			c.String("root-config"),
+			c.String("config"),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error loading configuration: %s", err)
+		}
+		hostname, token, err = txlib.GetHostAndToken(
+			&cfg,
+			c.String("hostname"),
+			c.String("token"),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error getting API token: %s", err)
+		}
 	}
 
 	client, err := txlib.GetClient(c.String("cacert"))
