@@ -1,7 +1,7 @@
 - [x] Add filters as flags for delete/select/add/remove/reset
+- [x] Fuzzy prompt for relationships should use the relationship name, not the
+      resource name. For example, when creating a resource it should say
+      "select base" not "select resource"
 - [ ] Provide relationships and/or attributes as flags for
       create/upload/download
 - [ ] Use schema to provide better defaults during create/upload/download
-- [ ] Fuzzy prompt for relationships should use the relationship name, not the
-      resource name. For example, when creating a resource it should say
-      "select base" not "select resource"

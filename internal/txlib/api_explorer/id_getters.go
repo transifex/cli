@@ -12,6 +12,7 @@ func selectResourceIds(
 	c *cli.Context,
 	api *jsonapi.Connection,
 	resourceName string,
+	relationshipName string,
 	jsopenapi *jsopenapi_t,
 	required bool,
 	multi bool,
@@ -70,7 +71,9 @@ func selectResourceIds(
 	}
 
 	var header string
-	if multi {
+	if relationshipName != "" {
+		header = fmt.Sprintf("Select %s", relationshipName)
+	} else if multi {
 		header = fmt.Sprintf("Select %s", resource.PluralName)
 	} else {
 		header = fmt.Sprintf("Select %s", resource.SingularName)
@@ -104,7 +107,7 @@ func getResourceId(
 	}
 	if resourceId == "" {
 		resourceIds, err := selectResourceIds(
-			c, api, resourceName, jsopenapi, required, false,
+			c, api, resourceName, "", jsopenapi, required, false,
 		)
 		if err != nil {
 			return "", err

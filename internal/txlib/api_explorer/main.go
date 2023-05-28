@@ -531,6 +531,7 @@ func cliCmdChange(
 		c,
 		api,
 		jsopenapi.Resources[resourceName].Relationships[relationshipName].Resource,
+		relationshipName,
 		jsopenapi,
 		true,
 		false,
@@ -561,7 +562,7 @@ func cliCmdDelete(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 	resourceId := c.String("id")
 	if resourceId == "" {
 		resourceIds, err := selectResourceIds(
-			c, api, resourceName, jsopenapi, true, false,
+			c, api, resourceName, "", jsopenapi, true, false,
 		)
 		if err != nil {
 			return err
@@ -629,7 +630,9 @@ func cliCmdSelect(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 	}
 	resourceId := c.String("id")
 	if resourceId == "" {
-		resourceIds, err := selectResourceIds(c, api, resourceName, jsopenapi, true, false)
+		resourceIds, err := selectResourceIds(
+			c, api, resourceName, "", jsopenapi, true, false,
+		)
 		if err != nil {
 			return err
 		}
@@ -685,7 +688,7 @@ func cliCmdAdd(
 	var childIds []string
 	if jsopenapi.Resources[relatedResourceName].Operations.GetMany != nil {
 		childIds, err = selectResourceIds(
-			c, api, relatedResourceName, jsopenapi, true, true,
+			c, api, relatedResourceName, relationshipName, jsopenapi, true, true,
 		)
 		if err != nil {
 			return err
@@ -789,7 +792,7 @@ func cliCmdReset(
 	var childIds []string
 	if jsopenapi.Resources[relatedResourceName].Operations.GetMany != nil {
 		childIds, err = selectResourceIds(
-			c, api, relatedResourceName, jsopenapi, true, true,
+			c, api, relatedResourceName, relationshipName, jsopenapi, true, true,
 		)
 		if err != nil {
 			return err
@@ -829,22 +832,22 @@ func cliCmdCreateOne(
 	}
 
 	operation := jsopenapi.Resources[resourceName].Operations.CreateOne
-	for relationhipName, resourceName := range operation.Relationships.Required {
+	for relationshipName, resourceName := range operation.Relationships.Required {
 		resourceIds, err := selectResourceIds(
-			c, api, resourceName, jsopenapi, true, false,
+			c, api, resourceName, relationshipName, jsopenapi, true, false,
 		)
 		if err != nil {
 			return err
 		}
 		resourceId := resourceIds[0]
-		requiredRelationships[relationhipName] = &resourceInfo{
+		requiredRelationships[relationshipName] = &resourceInfo{
 			id:           resourceId,
 			resourceName: resourceName,
 		}
 	}
 	for relationshipName, resourceName := range operation.Relationships.Optional {
 		resourceIds, err := selectResourceIds(
-			c, api, resourceName, jsopenapi, false, false,
+			c, api, resourceName, relationshipName, jsopenapi, false, false,
 		)
 		if err != nil {
 			return err
@@ -906,15 +909,15 @@ func cliCmdUpload(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 	}
 
 	operation := jsopenapi.Resources[resourceName].Operations.CreateOne
-	for relationhipName, resourceName := range operation.Relationships.Required {
+	for relationshipName, resourceName := range operation.Relationships.Required {
 		resourceIds, err := selectResourceIds(
-			c, api, resourceName, jsopenapi, true, false,
+			c, api, resourceName, relationshipName, jsopenapi, true, false,
 		)
 		if err != nil {
 			return err
 		}
 		resourceId := resourceIds[0]
-		requiredRelationships[relationhipName] = &resourceInfo{
+		requiredRelationships[relationshipName] = &resourceInfo{
 			id:           resourceId,
 			resourceName: resourceName,
 		}
@@ -922,7 +925,7 @@ func cliCmdUpload(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 
 	for relationshipName, resourceName := range operation.Relationships.Optional {
 		resourceIds, err := selectResourceIds(
-			c, api, resourceName, jsopenapi, false, false,
+			c, api, resourceName, relationshipName, jsopenapi, false, false,
 		)
 		if err != nil {
 			return err
@@ -1038,22 +1041,22 @@ func cliCmdDownload(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t)
 	}
 
 	operation := jsopenapi.Resources[resourceName].Operations.CreateOne
-	for relationhipName, resourceName := range operation.Relationships.Required {
+	for relationshipName, resourceName := range operation.Relationships.Required {
 		resourceIds, err := selectResourceIds(
-			c, api, resourceName, jsopenapi, true, false,
+			c, api, resourceName, relationshipName, jsopenapi, true, false,
 		)
 		if err != nil {
 			return err
 		}
 		resourceId := resourceIds[0]
-		requiredRelationships[relationhipName] = &resourceInfo{
+		requiredRelationships[relationshipName] = &resourceInfo{
 			id:           resourceId,
 			resourceName: resourceName,
 		}
 	}
 	for relationshipName, resourceName := range operation.Relationships.Optional {
 		resourceIds, err := selectResourceIds(
-			c, api, resourceName, jsopenapi, false, false,
+			c, api, resourceName, relationshipName, jsopenapi, false, false,
 		)
 		if err != nil {
 			return err
