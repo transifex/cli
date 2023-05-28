@@ -169,11 +169,15 @@ func Cmd() *cli.Command {
 						Name:  "session",
 						Usage: "Get current session",
 						Action: func(c *cli.Context) error {
-							_, err := os.Stat(".tx/api_explorer_session.json")
+							sessionPath, err := getSessionPath()
 							if err != nil {
 								return err
 							}
-							body, err := os.ReadFile(".tx/api_explorer_session.json")
+							_, err = os.Stat(sessionPath)
+							if err != nil {
+								return err
+							}
+							body, err := os.ReadFile(sessionPath)
 							if err != nil {
 								return err
 							}
@@ -190,13 +194,15 @@ func Cmd() *cli.Command {
 						Name:  "session",
 						Usage: "Clear session file",
 						Action: func(c *cli.Context) error {
-							err := os.Remove(".tx/api_explorer_session.json")
+							sessionPath, err := getSessionPath()
 							if err != nil {
 								return err
 							}
-							fmt.Printf(
-								"Removed .tx/api_explorer_session.json successfully\n",
-							)
+							err = os.Remove(sessionPath)
+							if err != nil {
+								return err
+							}
+							fmt.Printf("Removed %s successfully\n", sessionPath)
 							return nil
 						},
 					},
@@ -372,6 +378,7 @@ func Cmd() *cli.Command {
 						return cliCmdDelete(c, resourceNameCopy, &jsopenapi)
 					},
 				}
+				addFilterTags(operation, resourceName, &jsopenapi, true)
 				subcommand.Subcommands = append(subcommand.Subcommands, operation)
 			}
 
@@ -734,11 +741,12 @@ func cliCmdClear(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) er
 	if err != nil {
 		return err
 	}
+	sessionPath, err := getSessionPath()
+	if err != nil {
+		return err
+	}
 	if resourceId == "" {
-		fmt.Printf(
-			"Key %s has no entry in .tx/api_explorer_session.json\n",
-			resource.SingularName,
-		)
+		fmt.Printf("Key %s has no entry in %s\n", resource.SingularName, sessionPath)
 		return nil
 	}
 

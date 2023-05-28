@@ -4,29 +4,28 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"os/user"
+	"path/filepath"
 )
 
 func save(key, value string) error {
-	if _, err := os.Stat(".tx"); os.IsNotExist(err) {
-		err := os.Mkdir(".tx", 0755)
-		if err != nil {
-			return err
-		}
+	sessionPath, err := getSessionPath()
+	if err != nil {
+		return err
 	}
 	var body []byte
-	if _, err := os.Stat(".tx/api_explorer_session.json"); err == nil {
-		body, err = os.ReadFile(".tx/api_explorer_session.json")
+	if _, err := os.Stat(sessionPath); err == nil {
+		body, err = os.ReadFile(sessionPath)
 		if err != nil {
 			return err
 		}
 	} else if errors.Is(err, os.ErrNotExist) {
 		body = []byte("{}")
-
 	} else {
 		return err
 	}
 	var data map[string]string
-	err := json.Unmarshal(body, &data)
+	err = json.Unmarshal(body, &data)
 	if err != nil {
 		return err
 	}
@@ -35,7 +34,7 @@ func save(key, value string) error {
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(".tx/api_explorer_session.json", body, 0644)
+	err = os.WriteFile(sessionPath, body, 0644)
 	if err != nil {
 		return err
 	}
@@ -43,13 +42,17 @@ func save(key, value string) error {
 }
 
 func load(key string) (string, error) {
-	_, err := os.Stat(".tx/api_explorer_session.json")
+	sessionPath, err := getSessionPath()
+	if err != nil {
+		return "", err
+	}
+	_, err = os.Stat(sessionPath)
 	if errors.Is(err, os.ErrNotExist) {
 		return "", nil
 	} else if err != nil {
 		return "", err
 	}
-	body, err := os.ReadFile(".tx/api_explorer_session.json")
+	body, err := os.ReadFile(sessionPath)
 	if err != nil {
 		return "", err
 	}
@@ -66,13 +69,17 @@ func load(key string) (string, error) {
 }
 
 func clear(key string) error {
-	_, err := os.Stat(".tx/api_explorer_session.json")
+	sessionPath, err := getSessionPath()
+	if err != nil {
+		return err
+	}
+	_, err = os.Stat(sessionPath)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
 	} else if err != nil {
 		return err
 	}
-	body, err := os.ReadFile(".tx/api_explorer_session.json")
+	body, err := os.ReadFile(sessionPath)
 	if err != nil {
 		return err
 	}
@@ -86,9 +93,29 @@ func clear(key string) error {
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(".tx/api_explorer_session.json", body, 0644)
+	err = os.WriteFile(sessionPath, body, 0644)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func getSessionPath() (string, error) {
+	base := os.Getenv("XDG_STATE_HOME")
+	if base == "" {
+		homeDir := os.Getenv("HOME")
+		if homeDir == "" {
+			usr, err := user.Current()
+			if err != nil {
+				return "", err
+			}
+			homeDir = usr.HomeDir
+		}
+		base = filepath.Join(homeDir, ".local", "state")
+	}
+	err := os.MkdirAll(filepath.Join(base, "tx"), 0755)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(base, "tx", "api_explorer_session.json"), nil
 }
