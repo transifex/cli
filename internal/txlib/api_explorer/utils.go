@@ -241,13 +241,18 @@ func createObject(
 	attributes := make(map[string]interface{})
 	var requiredAttributeNames []string
 	for _, attributeName := range operation.Attributes.Required {
-		if hasContent && (attributeName == "content" || attributeName == "content_encoding") {
-			continue
-		}
 		value := c.String(attributeName)
 		if value != "" {
 			attributes[attributeName] = value
 		} else {
+			if hasContent && (attributeName == "content" || attributeName == "content_encoding") {
+				continue
+			}
+			if c.Bool("no-interactive") {
+				return nil, fmt.Errorf(
+					"%s not set, use the --%s flag", attributeName, attributeName,
+				)
+			}
 			requiredAttributeNames = append(requiredAttributeNames, attributeName)
 		}
 	}
@@ -264,15 +269,17 @@ func createObject(
 		}
 	}
 
-	userSuppliedAttributes, err := create(
-		c.String("editor"), requiredAttributeNames, optionalAttributeNames,
-	)
-	if err != nil {
-		return nil, err
-	}
+	if !c.Bool("no-interactive") {
+		userSuppliedAttributes, err := create(
+			c.String("editor"), requiredAttributeNames, optionalAttributeNames,
+		)
+		if err != nil {
+			return nil, err
+		}
 
-	for key, value := range userSuppliedAttributes {
-		attributes[key] = value
+		for key, value := range userSuppliedAttributes {
+			attributes[key] = value
+		}
 	}
 
 	if hasContent {

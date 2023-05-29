@@ -47,8 +47,9 @@ type jsopenapi_t struct {
 				} `json:"relationships"`
 			} `json:"create_one"`
 			EditOne *struct {
-				Summary string   `json:"summary"`
-				Fields  []string `json:"fields"`
+				Summary       string   `json:"summary"`
+				Attributes    []string `json:"attributes"`
+				Relationships []string `json:"relationships"`
 			} `json:"edit_one"`
 			Delete *struct {
 				Summary string `json:"summary"`
@@ -94,6 +95,7 @@ func Cmd() *cli.Command {
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "pager", EnvVars: []string{"PAGER"}},
 			&cli.StringFlag{Name: "editor", EnvVars: []string{"EDITOR"}},
+			&cli.BoolFlag{Name: "no-interactive"},
 		},
 		Subcommands: []*cli.Command{
 			{
@@ -352,6 +354,11 @@ func Cmd() *cli.Command {
 					},
 				}
 				addFilterTags(operation, resourceName, &jsopenapi, true)
+				for _, field := range resource.Operations.EditOne.Attributes {
+					operation.Flags = append(
+						operation.Flags, &cli.StringFlag{Name: fmt.Sprintf("set-%s", field)},
+					)
+				}
 				subcommand.Subcommands = append(subcommand.Subcommands, operation)
 			}
 
@@ -485,6 +492,7 @@ func cliCmdGetOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 }
 
 func cliCmdEditOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
+	resource := jsopenapi.Resources[resourceName]
 	api, err := getApi(c)
 	if err != nil {
 		return err
@@ -496,15 +504,30 @@ func cliCmdEditOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) 
 			return err
 		}
 	}
-	resource, err := api.Get(resourceName, resourceId)
+	obj, err := api.Get(resourceName, resourceId)
 	if err != nil {
 		return err
 	}
-	err = edit(
-		c.String("editor"),
-		&resource,
-		jsopenapi.Resources[resourceName].Operations.EditOne.Fields,
-	)
+	if c.Bool("no-interactive") {
+		var changedFields []string
+		for _, field := range resource.Operations.EditOne.Attributes {
+			value := c.String(fmt.Sprintf("set-%s", field))
+			if value != "" {
+				obj.Attributes[field] = value
+				changedFields = append(changedFields, field)
+			}
+		}
+		if len(changedFields) == 0 {
+			return errors.New("nothing changed")
+		}
+		err = obj.Save(changedFields)
+	} else {
+		err = edit(
+			c.String("editor"),
+			&obj,
+			jsopenapi.Resources[resourceName].Operations.EditOne.Attributes,
+		)
+	}
 	if err != nil {
 		return err
 	}
@@ -528,19 +551,22 @@ func cliCmdChange(
 			return err
 		}
 	}
-	childIds, err := selectResourceIds(
-		c,
-		api,
-		jsopenapi.Resources[resourceName].Relationships[relationshipName].Resource,
-		relationshipName,
-		jsopenapi,
-		true,
-		false,
-	)
-	if err != nil {
-		return err
+	childId := c.String("related-id")
+	if childId == "" {
+		childIds, err := selectResourceIds(
+			c,
+			api,
+			jsopenapi.Resources[resourceName].Relationships[relationshipName].Resource,
+			relationshipName,
+			jsopenapi,
+			true,
+			false,
+		)
+		if err != nil {
+			return err
+		}
+		childId = childIds[0]
 	}
-	childId := childIds[0]
 
 	parent, err := api.Get(resourceName, parentId)
 	if err != nil {
@@ -570,26 +596,28 @@ func cliCmdDelete(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 		}
 		resourceId = resourceIds[0]
 	}
-	fmt.Printf(
-		"About to delete %s: %s, are you sure (y/N)? ",
-		resource.SingularName,
-		resourceId,
-	)
-	reader := bufio.NewReader(os.Stdin)
-	answer, err := reader.ReadString('\n')
-	if err != nil {
-		return err
-	}
-	if strings.TrimSpace(strings.ToLower(answer)) == "y" {
-		obj := jsonapi.Resource{API: api, Type: resourceName, Id: resourceId}
-		err = obj.Delete()
+
+	if !c.Bool("no-interactive") {
+		fmt.Printf(
+			"About to delete %s: %s, are you sure (y/N)? ",
+			resource.SingularName,
+			resourceId,
+		)
+		reader := bufio.NewReader(os.Stdin)
+		answer, err := reader.ReadString('\n')
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Deleted %s: %s\n", resource.SingularName, resourceId)
-	} else {
-		fmt.Printf("Deletion aborted\n")
+		if strings.TrimSpace(strings.ToLower(answer)) != "y" {
+			return errors.New("deletion aborted")
+		}
 	}
+	obj := jsonapi.Resource{API: api, Type: resourceName, Id: resourceId}
+	err = obj.Delete()
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Deleted %s: %s\n", resource.SingularName, resourceId)
 	return nil
 }
 
@@ -670,6 +698,7 @@ func cliCmdAdd(
 ) error {
 	resource := jsopenapi.Resources[resourceName]
 	relatedResourceName := resource.Relationships[relationshipName].Resource
+	relatedResource := jsopenapi.Resources[relatedResourceName]
 
 	api, err := getApi(c)
 	if err != nil {
@@ -687,15 +716,22 @@ func cliCmdAdd(
 		return err
 	}
 	var childIds []string
-	if jsopenapi.Resources[relatedResourceName].Operations.GetMany != nil {
+	if c.String("ids") != "" {
+		childIds = strings.Split(c.String("ids"), ",")
+	} else if relatedResource.Operations.GetMany == nil {
+		return fmt.Errorf("cannot fetch %s to select", relatedResource.PluralName)
+	} else if c.Bool("no-interactive") {
+		return fmt.Errorf(
+			"cannot select %s with --no-interactive, use the --ids flag",
+			relatedResource.PluralName,
+		)
+	} else {
 		childIds, err = selectResourceIds(
 			c, api, relatedResourceName, relationshipName, jsopenapi, true, true,
 		)
 		if err != nil {
 			return err
 		}
-	} else {
-		childIds = strings.Split(c.String("ids"), ",")
 	}
 	var children []*jsonapi.Resource
 	for _, childId := range childIds {
@@ -716,6 +752,7 @@ func cliCmdRemove(
 ) error {
 	resource := jsopenapi.Resources[resourceName]
 	relatedResourceName := resource.Relationships[relationshipName].Resource
+	relatedResource := jsopenapi.Resources[relatedResourceName]
 
 	api, err := getApi(c)
 	if err != nil {
@@ -734,9 +771,20 @@ func cliCmdRemove(
 	}
 
 	var childIds []string
-	if jsopenapi.Resources[relatedResourceName].Operations.GetMany != nil {
-		url := parent.Relationships[relationshipName].Links.Related
-		body, err := api.ListBodyFromPath(url)
+	relatedUrl := parent.Relationships[relationshipName].Links.Related
+	if c.String("ids") != "" {
+		childIds = strings.Split(c.String("ids"), ",")
+	} else if c.Bool("no-interactive") {
+		return fmt.Errorf(
+			"cannot select %s with --no-interactive, use the --ids flag",
+			relatedResource.PluralName,
+		)
+	} else if relatedUrl == "" {
+		return fmt.Errorf(
+			"cannot fetch %s to select", relatedResource.PluralName,
+		)
+	} else {
+		body, err := api.ListBodyFromPath(relatedUrl)
 		if err != nil {
 			return err
 		}
@@ -751,8 +799,6 @@ func cliCmdRemove(
 		if err != nil {
 			return err
 		}
-	} else {
-		childIds = strings.Split(c.String("ids"), ",")
 	}
 
 	var children []*jsonapi.Resource
@@ -774,6 +820,7 @@ func cliCmdReset(
 ) error {
 	resource := jsopenapi.Resources[resourceName]
 	relatedResourceName := resource.Relationships[relationshipName].Resource
+	relatedResource := jsopenapi.Resources[relatedResourceName]
 
 	api, err := getApi(c)
 	if err != nil {
@@ -791,15 +838,22 @@ func cliCmdReset(
 		return err
 	}
 	var childIds []string
-	if jsopenapi.Resources[relatedResourceName].Operations.GetMany != nil {
+	if c.String("ids") != "" {
+		childIds = strings.Split(c.String("ids"), ",")
+	} else if relatedResource.Operations.GetMany == nil {
+		return fmt.Errorf("cannot fetch %s to select", relatedResource.PluralName)
+	} else if c.Bool("no-interactive") {
+		return fmt.Errorf(
+			"cannot select %s with --no-interactive, use the --ids flag",
+			relatedResource.PluralName,
+		)
+	} else {
 		childIds, err = selectResourceIds(
 			c, api, relatedResourceName, relationshipName, jsopenapi, true, true,
 		)
 		if err != nil {
 			return err
 		}
-	} else {
-		childIds = strings.Split(c.String("ids"), ",")
 	}
 	var children []*jsonapi.Resource
 	for _, childId := range childIds {

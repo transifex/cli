@@ -83,9 +83,11 @@ resources:
             team: teams
       edit_one:
         summary: Update a Project
-        fields: [name, tags, description, long_description, private, archived,
-                 translation_memory_fillup, machine_translation_fillup,
-                 homepage_url, repository_url, instructions_url, license, team]
+        attributes: [name, tags, description, long_description, private,
+                     archived, translation_memory_fillup,
+                     machine_translation_fillup, homepage_url, repository_url,
+                     instructions_url, license]
+        relationships: [team]
     relationships:
       team:
         resource: teams
@@ -142,7 +144,7 @@ resources:
         summary: Get team detail
       edit_one:
         summary: Update a team
-        fields: [name, auto_join, cla_required, cla]
+        attributes: [name, auto_join, cla_required, cla]
       delete:
         summary: Delete team
     relationships:
@@ -187,8 +189,8 @@ resources:
         summary: Get resource details
       edit_one:
         summary: Update resource
-        fields: [name, slug, priority, accept_translations, categories,
-                 mp4_url, ogg_url, webm_url, youtube_url]
+        attributes: [name, slug, priority, accept_translations, categories,
+                     mp4_url, ogg_url, webm_url, youtube_url]
       delete:
         summary: Delete resource
     display: '{{.Attributes.name}} ({{.Attributes.slug}})'
@@ -216,7 +218,7 @@ resources:
         summary: Get resource metadata details
       edit_one:
         summary: Update resource metadata
-        fields: [value]
+        attributes: [value]
     display: '{{.Attributes.namespace}}:{{.Attributes.name}} = {{.Attributes.value}}'
   i18n_formats:
     operations:
@@ -255,7 +257,7 @@ resources:
         summary: Get the details of a Project Webhook
       edit_one:
         summary: Update project webhook
-        fields: [event_type, active, callback_url, secret_key]
+        attributes: [event_type, active, callback_url, secret_key]
       delete:
         summary: Delete project webhook
     display: '{{.Attributes.name}} ({{.Attributes.slug}})'
@@ -297,7 +299,7 @@ resources:
         summary: Delete team membership
       edit_one:
         summary: Update a membership's role
-        fields: [role]
+        attributes: [role]
     display: '{{.Relationships.user.DataSingular.Id}} - {{.Relationships.team.DataSingular.Id}} - {{.Relationships.language.DataSingular.Id}} ({{.Attributes.role}})'
   discussions:
     operations:
@@ -339,7 +341,7 @@ resources:
         summary: Delete Discussion
       edit_one:
         summary: Update a discussion.
-        fields: [title, content]
+        attributes: [title, content]
     relationships:
       replies:
         resource: discussions
@@ -455,8 +457,8 @@ resources:
         summary: Get resource string details
       edit_one:
         summary: Update resource string
-        fields: [tags, instructions, character_limit, appearance_order,
-                 occurrences, developer_comment, strings]
+        attributes: [tags, instructions, character_limit, appearance_order,
+                     occurrences, developer_comment, strings]
       delete:
         summary: Delete resource string
     display: '{{.Attributes.strings.other}}'
@@ -522,7 +524,7 @@ resources:
         summary: Get a Resource Translation details
       edit_one:
         summary: Update a Resource Translation
-        fields: [strings, reviewed, proofread]
+        attributes: [strings, reviewed, proofread]
     display: '{{.Attributes.strings.other}}'
   resource_string_comments:
     operations:
@@ -571,7 +573,7 @@ resources:
         summary: Get resource string comment
       edit_one:
         summary: Update resource string comment
-        fields: [category, message, priority, status]
+        attributes: [category, message, priority, status]
       delete:
         summary: Delete resource string comment
     display: '{{.Attributes.message}}'

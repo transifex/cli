@@ -115,16 +115,20 @@ func addRelationshipCommand(
 	}
 
 	if verb != "get" {
-		relatedResource := jsopenapi.Resources[relationship.Resource]
 		addFilterTags(operation, relationship.Resource, jsopenapi, true)
-		if relatedResource.Operations.GetMany == nil {
-			operation.Flags = []cli.Flag{
+		if verb == "change" {
+			operation.Flags = append(
+				operation.Flags,
+				&cli.StringFlag{Name: "related-id", Usage: "ID to use for the relationship"},
+			)
+		} else {
+			operation.Flags = append(
+				operation.Flags,
 				&cli.StringFlag{
-					Name:     "ids",
-					Usage:    "Comma-separated IDs to use for the relationship",
-					Required: true,
+					Name:  "ids",
+					Usage: "Comma-separated IDs to use for the relationship",
 				},
-			}
+			)
 		}
 	}
 

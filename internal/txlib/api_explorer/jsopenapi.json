@@ -121,7 +121,7 @@
         },
         "edit_one": {
           "summary": "Update a Project",
-          "fields": [
+          "attributes": [
             "name",
             "tags",
             "description",
@@ -133,7 +133,9 @@
             "homepage_url",
             "repository_url",
             "instructions_url",
-            "license",
+            "license"
+          ],
+          "relationships": [
             "team"
           ]
         }
@@ -228,7 +230,7 @@
         },
         "edit_one": {
           "summary": "Update a team",
-          "fields": [
+          "attributes": [
             "name",
             "auto_join",
             "cla_required",
@@ -311,7 +313,7 @@
         },
         "edit_one": {
           "summary": "Update resource",
-          "fields": [
+          "attributes": [
             "name",
             "slug",
             "priority",
@@ -366,7 +368,7 @@
         },
         "edit_one": {
           "summary": "Update resource metadata",
-          "fields": [
+          "attributes": [
             "value"
           ]
         }
@@ -431,7 +433,7 @@
         },
         "edit_one": {
           "summary": "Update project webhook",
-          "fields": [
+          "attributes": [
             "event_type",
             "active",
             "callback_url",
@@ -497,7 +499,7 @@
         },
         "edit_one": {
           "summary": "Update a membership's role",
-          "fields": [
+          "attributes": [
             "role"
           ]
         }
@@ -558,7 +560,7 @@
         },
         "edit_one": {
           "summary": "Update a discussion.",
-          "fields": [
+          "attributes": [
             "title",
             "content"
           ]
@@ -763,7 +765,7 @@
         },
         "edit_one": {
           "summary": "Update resource string",
-          "fields": [
+          "attributes": [
             "tags",
             "instructions",
             "character_limit",
@@ -860,7 +862,7 @@
         },
         "edit_one": {
           "summary": "Update a Resource Translation",
-          "fields": [
+          "attributes": [
             "strings",
             "reviewed",
             "proofread"
@@ -940,7 +942,7 @@
         },
         "edit_one": {
           "summary": "Update resource string comment",
-          "fields": [
+          "attributes": [
             "category",
             "message",
             "priority",

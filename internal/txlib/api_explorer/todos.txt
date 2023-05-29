@@ -4,4 +4,5 @@
       "select base" not "select resource"
 - [x] Provide relationships and/or attributes as flags for
       create/upload/download
+- [x] No interactive mode (for scripts)
 - [ ] Use schema to provide better defaults during create/upload/download

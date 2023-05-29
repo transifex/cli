@@ -70,6 +70,17 @@ func selectResourceIds(
 		}
 	}
 
+	if c.Bool("no-interactive") {
+		if required {
+			return nil, fmt.Errorf(
+				"more than one %s found, cannot proceed with --no-interactive",
+				resource.PluralName,
+			)
+		} else {
+			return []string{""}, nil
+		}
+	}
+
 	var header string
 	if relationshipName != "" {
 		header = fmt.Sprintf("Select %s", relationshipName)
