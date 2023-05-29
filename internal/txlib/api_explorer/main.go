@@ -51,9 +51,9 @@ type jsopenapi_t struct {
 				Attributes    []string `json:"attributes"`
 				Relationships []string `json:"relationships"`
 			} `json:"edit_one"`
-			Delete *struct {
+			DeleteOne *struct {
 				Summary string `json:"summary"`
-			} `json:"delete"`
+			} `json:"delete_one"`
 		} `json:"operations"`
 		Relationships map[string]struct {
 			Resource   string `json:"resource"`
@@ -375,11 +375,11 @@ func Cmd() *cli.Command {
 				subcommand.Subcommands = append(subcommand.Subcommands, operation)
 			}
 
-			if resource.Operations.Delete != nil {
+			if resource.Operations.DeleteOne != nil {
 				subcommand := getOrCreateSubcommand(&result, "delete")
 				operation := &cli.Command{
 					Name:  resource.SingularName,
-					Usage: resource.Operations.Delete.Summary,
+					Usage: resource.Operations.DeleteOne.Summary,
 					Flags: []cli.Flag{
 						&cli.StringFlag{Name: "id"},
 					},

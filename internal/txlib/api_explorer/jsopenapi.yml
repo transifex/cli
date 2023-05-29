@@ -1,311 +1,31 @@
 ---
 
 resources:
-  users:
-    operations:
-      get_one:
-        summary: Get the details of a User
-    display: '{{.Attributes.username}}'
-  languages:
-    description:
-      Languages objects represent each available language in
-      Transifex.
-    operations:
-      get_many:
-        summary: List languages
-        filters:
-          code:
-            description: The code of the language to get details
-          code__any:
-            description:
-              A list of codes of the languages to get details. This
-              will fetch any available.
-      get_one:
-        summary: Get language
-    display: '{{.Attributes.name}} ({{.Attributes.code}})'
-  organizations:
-    description:
-      Represents Transifex's organizations. Every user can be a member of one
-      or multiple organizations. Only the organizations the authenticated user
-      belongs to will appear here.
-    operations:
-      get_many:
-        summary: List organizations
-        filters:
-          slug:
-            description: Filter results by slug
-      get_one:
-        summary: Get organization
-    relationships:
-      administrators:
-        resource: users
-        operations:
-          get:
-            summary: Get organization administrators
-          add:
-            summary: Add administrators to organization
-          remove:
-            summary: Remove administrators from organization
-          reset:
-            summary: Update organization administrators
-    display: '{{.Attributes.name}} ({{.Attributes.slug}})'
-  projects:
-    operations:
-      get_many:
-        summary: List projects
-        filters:
-          organization:
-            description: Filter results by an organization
-            resource: organizations
-            required: true
-          slug:
-            description: Filter results by slug
-          name:
-            description: Filter results by name
-      get_one:
-        summary: Get project
-      delete:
-        summary: Delete project
-      create_one:
-        summary: Create a Project
-        attributes:
-          required: [name, slug, private]
-          optional: [
-            type, tags, description, long_description,
-            translation_memory_fillup, machine_translation_fillup,
-            homepage_url, instructions_url, repository_url, license
-          ]
-        relationships:
-          required:
-            organization: organizations
-            source_language: languages
-          optional:
-            team: teams
-      edit_one:
-        summary: Update a Project
-        attributes: [name, tags, description, long_description, private,
-                     archived, translation_memory_fillup,
-                     machine_translation_fillup, homepage_url, repository_url,
-                     instructions_url, license]
-        relationships: [team]
-    relationships:
-      team:
-        resource: teams
-        operations:
-          get:
-            summary: Get project team
-          change:
-            summary: Update team relationship
-      languages:
-        resource: languages
-        operations:
-          get:
-            summary: List project languages
-          add:
-            summary: Add languages to project
-          remove:
-            summary: Remove languages from project
-          reset:
-            summary: Reset project languages
-      maintainers:
-        resource: users
-        operations:
-          get:
-            summary: Get project maintainers
-          add:
-            summary: Add maintainers to project
-          remove:
-            summary: Remove maintainers from project
-          reset:
-            summary: Update project maintainers
-    display: '{{.Attributes.name}} ({{.Attributes.slug}})'
-  teams:
-    operations:
-      get_many:
-        summary: List teams
-        filters:
-          organization:
-            description: Filter results by an organization
-            resource: organizations
-            required: true
-          slug:
-            description: Filter results by slug
-          name:
-            description: Filter results by name
-      create_one:
-        summary: Create a Team
-        attributes:
-          required: [name]
-          optional: [auto_join, cla, cla_required]
-        relationships:
-          required:
-            organization: organizations
-      get_one:
-        summary: Get team detail
-      edit_one:
-        summary: Update a team
-        attributes: [name, auto_join, cla_required, cla]
-      delete:
-        summary: Delete team
-    relationships:
-      managers:
-        resource: users
-        operations:
-          get:
-            summary: Get team managers
-          add:
-            summary: Add managers to team
-          remove:
-            summary: Remove managers from team
-          reset:
-            summary: Update team managers
-    display: '{{.Attributes.name}} ({{.Attributes.slug}})'
-  resources:
-    operations:
-      get_many:
-        summary: List resources
-        filters:
-          project:
-            description: Filter results by a project
-            resource: projects
-            required: true
-          slug:
-            description: Filter results by slug
-          name:
-            description: Filter results by name
-      create_one:
-        summary: Create a Resource
-        attributes:
-          required: [slug, name]
-          optional: [priority, accept_translations, categories, i18n_options,
-                     mp4_url, ogg_url, webm_url, youtube_url]
-        relationships:
-          required:
-            project: projects
-            i18n_format: i18n_formats
-          optional:
-            base: resources
-      get_one:
-        summary: Get resource details
-      edit_one:
-        summary: Update resource
-        attributes: [name, slug, priority, accept_translations, categories,
-                     mp4_url, ogg_url, webm_url, youtube_url]
-      delete:
-        summary: Delete resource
-    display: '{{.Attributes.name}} ({{.Attributes.slug}})'
-  resource_metadata:
-    plural_name: resource_metadatas
-    operations:
-      get_many:
-        summary: List resource metadata
-        filters:
-          resource:
-            description: Filter results by a resource
-            required: true
-            resource: resources
-          namespace:
-            description: Filter results by a namespace
-            required: false
-      create_one:
-        summary: Create new resource metadata
-        attributes:
-          required: [namespace, name, value]
-        relationships:
-          required:
-            resource: resources
-      get_one:
-        summary: Get resource metadata details
-      edit_one:
-        summary: Update resource metadata
-        attributes: [value]
-    display: '{{.Attributes.namespace}}:{{.Attributes.name}} = {{.Attributes.value}}'
-  i18n_formats:
-    operations:
-      get_many:
-        summary: List i18n formats
-        filters:
-          organization:
-            description: Filter results by an organization
-            resource: organizations
-            required: true
-          name:
-            description: Filter results by name
-    display: '{{.Attributes.name}}'
-  project_webhooks:
-    operations:
-      get_many:
-        summary: List project webhooks.
-        filters:
-          organization:
-            description: Filter results by an organization
-            required: true
-            resource: organizations
-          project:
-            description: Filter results by a project
-            required: false
-            resource: projects
-      create_one:
-        summary: Create a Project Webhook
-        attributes:
-          required: [event_type, active, callback_url]
-          optional: [secret_key]
-        relationships:
-          required:
-            project: projects
-      get_one:
-        summary: Get the details of a Project Webhook
-      edit_one:
-        summary: Update project webhook
-        attributes: [event_type, active, callback_url, secret_key]
-      delete:
-        summary: Delete project webhook
-    display: '{{.Attributes.name}} ({{.Attributes.slug}})'
-  team_memberships:
-    operations:
-      get_many:
-        summary: List team memberships
-        filters:
-          organization:
-            description: Filter results by an organization
-            required: true
-            resource: organizations
-          team:
-            description: Filter results by a team
-            required: false
-            resource: teams
-          language:
-            description: Filter results by a language
-            required: false
-            resource: languages
-          user:
-            description: Filter results by a user
-            required: false
-            resource: users
-          role:
-            description: Filter results by role
-      create_one:
-        summary: Create a new team membership
-        attributes:
-          required: [role]
-        relationships:
-          required:
-            team: teams
-            language: languages
-            user: users
-      get_one:
-        summary: Get single team membership
-      delete:
-        summary: Delete team membership
-      edit_one:
-        summary: Update a membership's role
-        attributes: [role]
-    display: '{{.Relationships.user.DataSingular.Id}} - {{.Relationships.team.DataSingular.Id}} - {{.Relationships.language.DataSingular.Id}} ({{.Attributes.role}})'
   discussions:
+    display: '{{.Attributes.title}}'
     operations:
+      create_one:
+        attributes:
+          required: [title, content]
+        relationships:
+          optional:
+            organization: organizations
+            project: projects
+        summary: Create new Discussion
+      delete_one:
+        summary: Delete Discussion
+      edit_one:
+        attributes: [title, content]
+        summary: Update a discussion.
       get_many:
-        summary: List discussions
         filters:
+          author__any:
+            description: Filter results by discussion/reply author
+            required: false
+          datetime_created__gte:
+            required: false
+          datetime_created__lt:
+            required: false
           organization:
             description: Filter results by an organization
             required: true
@@ -320,216 +40,112 @@ resources:
               `global` to fetch organization level discussions and `project`
               for project level discussions.
             required: false
-          datetime_created__gte:
-            required: false
-          datetime_created__lt:
-            required: false
-          author__any:
-            description: Filter results by discussion/reply author
-            required: false
-      create_one:
-        summary: Create new Discussion
-        attributes:
-          required: [title, content]
-        relationships:
-          optional:
-            organization: organizations
-            project: projects
+        summary: List discussions
       get_one:
         summary: Get Discussion detail
-      delete:
-        summary: Delete Discussion
-      edit_one:
-        summary: Update a discussion.
-        attributes: [title, content]
     relationships:
       replies:
-        resource: discussions
         operations:
           get:
             summary: List Replies
-    display: '{{.Attributes.title}}'
-  resource_language_stats:
+        resource: discussions
+  i18n_formats:
+    display: '{{.Attributes.name}}'
     operations:
       get_many:
-        summary: Get resource language stats collection
         filters:
-          project:
-            description: Filter results by a project
+          name:
+            description: Filter results by name
+          organization:
+            description: Filter results by an organization
             required: true
-            resource: projects
-          resource:
-            description: Filter results by a resource
-            required: false
-            resource: resources
-          language:
-            description: Filter results by a language
-            required: false
-            resource: languages
-      get_one:
-        summary: Get resource language stats
-    display: '{{.Relationships.resource.DataSingular.Id}} - {{.Relationships.language.DataSingular.Id}} ({{.Attributes.translated_strings}}/{{.Attributes.total_strings}})'
-  resource_strings_async_uploads:
-    upload: true
+            resource: organizations
+        summary: List i18n formats
+  languages:
+    display: '{{.Attributes.name}} ({{.Attributes.code}})'
     operations:
-      create_one:
-        summary: Upload a new source file for a resource.
-        attributes:
-          required: [content, content_encoding]
-          optional: [callback_url, replace_edited_strings]
-        relationships:
-          required:
-            resource: resources
+      get_many:
+        filters:
+          code:
+            description: The code of the language to get details
+          code__any:
+            description:
+              A list of codes of the languages to get details. This
+              will fetch any available.
+        summary: List languages
       get_one:
-        summary: Get resource strings async upload detail
-  resource_strings_async_downloads:
-    download: true
-    operations:
-      get_one:
-        summary: Get resource strings async download details
-      create_one:
-        summary: Download resource
-        attributes:
-          optional: [content_encoding, file_type, pseudo,
-                     pseudo_length_increase, callback_url]
-        relationships:
-          required:
-            resource: resources
-  resource_translations_async_uploads:
-    upload: true
-    operations:
-      create_one:
-        summary: Create a new resource translation upload
-        attributes:
-          required: [content, content_encoding, file_type]
-          optional: [callback_url]
-        relationships:
-          required:
-            resource: resources
-            language: languages
-      get_one:
-        summary: Get resource translation async upload
-  resource_translations_async_downloads:
+        summary: Get language details
+  organization_activity_reports_async_downloads:
     download: true
     operations:
       create_one:
-        summary: Create a translation file download action
         attributes:
-          optional: [content_encoding, file_type, mode, pseudo, callback_url]
+          optional: [date_to]
+          required: [date_from]
         relationships:
-          required:
-            resource: resources
+          optional:
             language: languages
+            user: users
+          required:
+            organization: organizations
+        summary: Create an organization activity report file download action
       get_one:
-        summary: Get translation download status
-  resource_strings:
+        summary: Get organization activity report download status
+  organizations:
+    display: '{{.Attributes.name}} ({{.Attributes.slug}})'
     operations:
       get_many:
-        summary: Get resource strings collection
         filters:
-          resource:
-            description: Filter results by a resource
-            required: true
-            resource: resources
-          strings_date_modified__gte:
-            required: false
-          strings_date_modified__lte:
-            required: false
-          key:
-            description:
-              Exact match for the key of the resource string. This filter is
-              case sensitive.
-            required: false
-          tags__all:
-            description:
-              Retrieve source strings containing all of the query tags.
-            required: false
+          slug:
+            description: Filter results by slug
+        summary: List organizations
+      get_one:
+        summary: Get organization
+    relationships:
+      administrators:
+        operations:
+          add:
+            summary: Add administrators to organization
+          get:
+            summary: Get organization administrators
+          remove:
+            summary: Remove administrators from organization
+          reset:
+            summary: Update organization administrators
+        resource: users
+  project_activity_reports_async_downloads:
+    download: true
+    operations:
       create_one:
-        summary: Create resource string
         attributes:
-          required: [key, context, strings]
-          optional: [appearance_order, tags, occurrences, developer_comment,
-                     instructions, character_limit, pluralized]
+          optional: [date_to]
+          required: [date_from]
+        relationships:
+          optional:
+            language: languages
+            user: users
+          required:
+            project: projects
+        summary: Create an project activity report file download action
+      get_one:
+        summary: Get project activity report download status
+  project_webhooks:
+    display: '{{.Attributes.name}} ({{.Attributes.slug}})'
+    operations:
+      create_one:
+        attributes:
+          optional: [secret_key]
+          required: [event_type, active, callback_url]
         relationships:
           required:
-            resource: resources
-      get_one:
-        summary: Get resource string details
+            project: projects
+        summary: Create a Project Webhook
+      delete_one:
+        summary: Delete project webhook
       edit_one:
-        summary: Update resource string
-        attributes: [tags, instructions, character_limit, appearance_order,
-                     occurrences, developer_comment, strings]
-      delete:
-        summary: Delete resource string
-    display: '{{.Attributes.strings.other}}'
-  resource_strings_revisions:
-    operations:
+        attributes: [event_type, active, callback_url, secret_key]
+        summary: Update project webhook
       get_many:
-        summary: Get revisions of resource strings
-        filters:
-          resource_string__resource:
-            description: Filter results by a resource
-            required: true
-          resource_string__key:
-            required: false
-            description:
-              Exact match for the key of the resource string. This filter is
-              case sensitive.
-          resource_string__tags__all:
-            description:
-              Retrieve source strings revisions containing all of the query
-              tags.
-            required: false
-    display: '{{.Attributes.strings.other}} ({{.Attributes.date_created}})'
-  resource_translations:
-    operations:
-      get_many:
-        summary: Get a Resource Translations collection
-        filters:
-          resource:
-            description: Filter results by a resource
-            required: true
-            resource: resources
-          language:
-            description: Filter results by a language
-            required: true
-            resource: languages
-          date_translated__gt:
-            required: false
-          date_translated__lt:
-            required: false
-          resource_string__key:
-            required: false
-          resource_string__date_modified__gte:
-            required: false
-          resource_string__date_modified__lte:
-            required: false
-          translated:
-            required: false
-          reviewed:
-            required: false
-          proofread:
-            required: false
-          finalized:
-            required: false
-          translator:
-            required: false
-          origin:
-            required: false
-          resource_string__tags__all:
-            description:
-              Retrieve translation strings containing all of the query tags.
-            required: false
-      get_one:
-        summary: Get a Resource Translation details
-      edit_one:
-        summary: Update a Resource Translation
-        attributes: [strings, reviewed, proofread]
-    display: '{{.Attributes.strings.other}}'
-  resource_string_comments:
-    operations:
-      get_many:
-        summary: List resource string comments
         filters:
           organization:
             description: Filter results by an organization
@@ -539,17 +155,213 @@ resources:
             description: Filter results by a project
             required: false
             resource: projects
-          category:
+        summary: List project webhooks.
+      get_one:
+        summary: Get the details of a Project Webhook
+  projects:
+    display: '{{.Attributes.name}} ({{.Attributes.slug}})'
+    operations:
+      create_one:
+        attributes:
+          optional: [
+            type, tags, description, long_description,
+            translation_memory_fillup, machine_translation_fillup,
+            homepage_url, instructions_url, repository_url, license
+          ]
+          required: [name, slug, private]
+        relationships:
+          optional:
+            team: teams
+          required:
+            organization: organizations
+            source_language: languages
+        summary: Create a Project
+      delete_one:
+        summary: Delete project
+      edit_one:
+        attributes: [name, tags, description, long_description, private,
+                     archived, translation_memory_fillup,
+                     machine_translation_fillup, homepage_url, repository_url,
+                     instructions_url, license]
+        relationships: [team]
+        summary: Update a Project
+      get_many:
+        filters:
+          name:
+            description: Filter results by name
+          organization:
+            description: Filter results by an organization
+            required: true
+            resource: organizations
+          slug:
+            description: Filter results by slug
+        summary: List projects
+      get_one:
+        summary: Get project
+    relationships:
+      languages:
+        operations:
+          add:
+            summary: Add languages to project
+          get:
+            summary: List project languages
+          remove:
+            summary: Remove languages from project
+          reset:
+            summary: Reset project languages
+        resource: languages
+      maintainers:
+        operations:
+          add:
+            summary: Add maintainers to project
+          get:
+            summary: Get project maintainers
+          remove:
+            summary: Remove maintainers from project
+          reset:
+            summary: Update project maintainers
+        resource: users
+      team:
+        operations:
+          change:
+            summary: Update team relationship
+          get:
+            summary: Get project team
+        resource: teams
+  resource_activity_reports_async_downloads:
+    download: true
+    operations:
+      create_one:
+        attributes:
+          optional: [date_to]
+          required: [date_from]
+        relationships:
+          optional:
+            language: languages
+            user: users
+          required:
+            resource: resources
+        summary: Create an resource activity report file download action
+      get_one:
+        summary: Get resource activity report download status
+  resource_async_merges:
+    display: '{{.Relationships.base.DataSingular.Id}} -> {{.Relationships.head.DataSingular.Id}}: {{.Attributes.status}}, {{.Attributes.conflict_resolution}}'
+    operations:
+      create_one:
+        attributes:
+          optional: [callback_url, force]
+          required: [conflict_resolution]
+        relationships:
+          required:
+            resource: resources
+        summary: Create new resources merge
+      get_one:
+        summary: Get resource merge status
+  resource_language_leverage:
+    display: '{{.Relationships.resource.DataSingular.Id}} - {{.Relationships.language.DataSingular.Id}}, 0-59: {{.Attributes.tm_group_0_59_wordcound}}, , 60-74: {{.Attributes.tm_group_60_74_wordcound}}, 75-94: {{.Attributes.tm_group_75_94_wordcound}}, 95-99: {{.Attributes.tm_group_95_99_wordcound}}, 100: {{.Attributes.tm_group_100_wordcound}}'
+    operations:
+      get_many:
+        filters:
+          language:
+            description: Filter results by a language
             required: false
+            resource: languages
+          project:
+            description: Filter results by a project
+            required: true
+            resource: projects
+          resource:
+            description: Filter results by a resource
+            required: false
+            resource: resources
+        summary: Get resource language leverage collection
+      get_one:
+        summary: Get the  leverage for a resource - language pair
+    plural_name: resource_language_leverages
+  resource_language_stats:
+    display: '{{.Relationships.resource.DataSingular.Id}} - {{.Relationships.language.DataSingular.Id}} ({{.Attributes.translated_strings}}/{{.Attributes.total_strings}})'
+    operations:
+      get_many:
+        filters:
+          language:
+            description: Filter results by a language
+            required: false
+            resource: languages
+          project:
+            description: Filter results by a project
+            required: true
+            resource: projects
+          resource:
+            description: Filter results by a resource
+            required: false
+            resource: resources
+        summary: Get resource language stats collection
+      get_one:
+        summary: Get resource language stats
+  resource_metadata:
+    display: '{{.Attributes.namespace}}:{{.Attributes.name}} = {{.Attributes.value}}'
+    operations:
+      create_one:
+        attributes:
+          required: [namespace, name, value]
+        relationships:
+          required:
+            resource: resources
+        summary: Create new resource metadata
+      edit_one:
+        attributes: [value]
+        summary: Update resource metadata
+      get_many:
+        filters:
+          namespace:
+            description: Filter results by a namespace
+            required: false
+          resource:
+            description: Filter results by a resource
+            required: true
+            resource: resources
+        summary: List resource metadata
+      get_one:
+        summary: Get resource metadata details
+    plural_name: resource_metadatas
+  resource_string_comments:
+    display: '{{.Attributes.message}}'
+    operations:
+      create_one:
+        attributes:
+          optional: [category, priority]
+          required: [message, type]
+        relationships:
+          required:
+            language: languages
+            resource_string: resource_strings
+        summary: Create resource string comments
+      delete_one:
+        summary: Delete resource string comment
+      edit_one:
+        attributes: [category, message, priority, status]
+        summary: Update resource string comment
+      get_many:
+        filters:
           author:
             required: false
             resource: users
+          category:
+            required: false
           datetime_created__gte:
             required: false
           datetime_created__lt:
             required: false
+          organization:
+            description: Filter results by an organization
+            required: true
+            resource: organizations
           priority:
             required: false
+          project:
+            description: Filter results by a project
+            required: false
+            resource: projects
           resource:
             required: false
             resource: resources
@@ -560,159 +372,340 @@ resources:
             required: false
           type:
             required: false
-      create_one:
-        summary: Create resource string comments
-        attributes:
-          required: [message, type]
-          optional: [category, priority]
-        relationships:
-          required:
-            language: languages
-            resource_string: resource_strings
+        summary: List resource string comments
       get_one:
         summary: Get resource string comment
+  resource_strings:
+    display: '{{.Attributes.strings.other}}'
+    operations:
+      create_one:
+        attributes:
+          optional: [appearance_order, tags, occurrences, developer_comment,
+                     instructions, character_limit, pluralized]
+          required: [key, context, strings]
+        relationships:
+          required:
+            resource: resources
+        summary: Create resource string
+      delete_one:
+        summary: Delete resource string
       edit_one:
-        summary: Update resource string comment
-        attributes: [category, message, priority, status]
-      delete:
-        summary: Delete resource string comment
-    display: '{{.Attributes.message}}'
-  unique_identifiers:
-    operations:
+        attributes: [tags, instructions, character_limit, appearance_order,
+                     occurrences, developer_comment, strings]
+        summary: Update resource string
       get_many:
-        summary: List unique identifiers
         filters:
-          resource_type:
+          key:
+            description:
+              Exact match for the key of the resource string. This filter is
+              case sensitive.
+            required: false
+          resource:
+            description: Filter results by a resource
             required: true
-          resource_id:
-            required: true
+            resource: resources
+          strings_date_modified__gte:
+            required: false
+          strings_date_modified__lte:
+            required: false
+          tags__all:
+            description:
+              Retrieve source strings containing all of the query tags.
+            required: false
+        summary: Get resource strings collection
       get_one:
-        summary: Get unique identifier
-    display: '{{.Id}}'
-  resource_async_merges:
+        summary: Get resource string details
+  resource_strings_async_downloads:
+    download: true
     operations:
       create_one:
-        summary: Create new resources merge
         attributes:
-          required: [conflict_resolution]
-          optional: [callback_url, force]
+          optional: [content_encoding, file_type, pseudo,
+                     pseudo_length_increase, callback_url]
         relationships:
           required:
             resource: resources
+        summary: Download resource
       get_one:
-        summary: Get resource merge status
-    display: '{{.Relationships.base.DataSingular.Id}} -> {{.Relationships.head.DataSingular.Id}}: {{.Attributes.status}}, {{.Attributes.conflict_resolution}}'
-  tmx_async_uploads:
-    upload: true
+        summary: Get resource strings async download details
+  resource_strings_async_uploads:
     operations:
       create_one:
-        summary: Create new TMX file upload.
         attributes:
+          optional: [callback_url, replace_edited_strings]
           required: [content, content_encoding]
-          optional: [override, callback_url]
-        relationships:
-          required:
-            project: projects
-          optional:
-            language: languages
-      get_one:
-        summary: Get a TMX async upload status
-  tmx_async_downloads:
-    download: true
-    operations:
-      create_one:
-        summary: Create a tmx file download action
-        attributes:
-          optional: [include_untranslated, include_context, callback_url, email]
-        relationships:
-          required:
-            project: projects
-          optional:
-            language: languages
-      get_one:
-        summary: Get tmx file download status
-  organization_activity_reports_async_downloads:
-    download: true
-    operations:
-      create_one:
-        summary: Create an organization activity report file download action
-        attributes:
-          required: [date_from]
-          optional: [date_to]
-        relationships:
-          required:
-            organization: organizations
-          optional:
-            user: users
-            language: languages
-      get_one:
-        summary: Get organization activity report download status
-  team_activity_reports_async_downloads:
-    download: true
-    operations:
-      create_one:
-        summary: Create an team activity report file download action
-        attributes:
-          required: [date_from]
-          optional: [date_to]
-        relationships:
-          required:
-            team: teams
-          optional:
-            user: users
-            language: languages
-      get_one:
-        summary: Get team activity report download status
-  project_activity_reports_async_downloads:
-    download: true
-    operations:
-      create_one:
-        summary: Create an project activity report file download action
-        attributes:
-          required: [date_from]
-          optional: [date_to]
-        relationships:
-          required:
-            project: projects
-          optional:
-            user: users
-            language: languages
-      get_one:
-        summary: Get project activity report download status
-  resource_activity_reports_async_downloads:
-    download: true
-    operations:
-      create_one:
-        summary: Create an resource activity report file download action
-        attributes:
-          required: [date_from]
-          optional: [date_to]
         relationships:
           required:
             resource: resources
-          optional:
-            user: users
-            language: languages
+        summary: Upload a new source file for a resource.
       get_one:
-        summary: Get resource activity report download status
-  resource_language_leverage:
-    plural_name: resource_language_leverages
+        summary: Get resource strings async upload detail
+    upload: true
+  resource_strings_revisions:
+    display: '{{.Attributes.strings.other}} ({{.Attributes.date_created}})'
     operations:
       get_many:
-        summary: Get resource language leverage collection
         filters:
+          resource_string__key:
+            description:
+              Exact match for the key of the resource string. This filter is
+              case sensitive.
+            required: false
+          resource_string__resource:
+            description: Filter results by a resource
+            required: true
+          resource_string__tags__all:
+            description:
+              Retrieve source strings revisions containing all of the query
+              tags.
+            required: false
+        summary: Get revisions of resource strings
+  resource_translations:
+    display: '{{.Attributes.strings.other}}'
+    operations:
+      edit_one:
+        attributes: [strings, reviewed, proofread]
+        summary: Update a Resource Translation
+      get_many:
+        filters:
+          date_translated__gt:
+            required: false
+          date_translated__lt:
+            required: false
+          finalized:
+            required: false
+          language:
+            description: Filter results by a language
+            required: true
+            resource: languages
+          origin:
+            required: false
+          proofread:
+            required: false
+          resource:
+            description: Filter results by a resource
+            required: true
+            resource: resources
+          resource_string__date_modified__gte:
+            required: false
+          resource_string__date_modified__lte:
+            required: false
+          resource_string__key:
+            required: false
+          resource_string__tags__all:
+            description:
+              Retrieve translation strings containing all of the query tags.
+            required: false
+          reviewed:
+            required: false
+          translated:
+            required: false
+          translator:
+            required: false
+        summary: Get a Resource Translations collection
+      get_one:
+        summary: Get a Resource Translation details
+  resource_translations_async_downloads:
+    download: true
+    operations:
+      create_one:
+        attributes:
+          optional: [content_encoding, file_type, mode, pseudo, callback_url]
+        relationships:
+          required:
+            language: languages
+            resource: resources
+        summary: Create a translation file download action
+      get_one:
+        summary: Get translation download status
+  resource_translations_async_uploads:
+    operations:
+      create_one:
+        attributes:
+          optional: [callback_url]
+          required: [content, content_encoding, file_type]
+        relationships:
+          required:
+            language: languages
+            resource: resources
+        summary: Create a new resource translation upload
+      get_one:
+        summary: Get resource translation async upload
+    upload: true
+  resources:
+    display: '{{.Attributes.name}} ({{.Attributes.slug}})'
+    operations:
+      create_one:
+        attributes:
+          required: [slug, name]
+          optional: [priority, accept_translations, categories, i18n_options,
+                     mp4_url, ogg_url, webm_url, youtube_url]
+        relationships:
+          optional:
+            base: resources
+          required:
+            i18n_format: i18n_formats
+            project: projects
+        summary: Create a Resource
+      delete_one:
+        summary: Delete resource
+      edit_one:
+        attributes: [name, slug, priority, accept_translations, categories,
+                     mp4_url, ogg_url, webm_url, youtube_url]
+        summary: Update resource
+      get_many:
+        filters:
+          name:
+            description: Filter results by name
           project:
             description: Filter results by a project
             required: true
             resource: projects
-          resource:
-            description: Filter results by a resource
-            required: false
-            resource: resources
+          slug:
+            description: Filter results by slug
+        summary: List resources
+      get_one:
+        summary: Get resource details
+  team_activity_reports_async_downloads:
+    download: true
+    operations:
+      create_one:
+        attributes:
+          optional: [date_to]
+          required: [date_from]
+        relationships:
+          optional:
+            language: languages
+            user: users
+          required:
+            team: teams
+        summary: Create an team activity report file download action
+      get_one:
+        summary: Get team activity report download status
+  team_memberships:
+    display: '{{.Relationships.user.DataSingular.Id}} - {{.Relationships.team.DataSingular.Id}} - {{.Relationships.language.DataSingular.Id}} ({{.Attributes.role}})'
+    operations:
+      create_one:
+        attributes:
+          required: [role]
+        relationships:
+          required:
+            language: languages
+            team: teams
+            user: users
+        summary: Create a new team membership
+      delete_one:
+        summary: Delete team membership
+      edit_one:
+        attributes: [role]
+        summary: Update a membership's role
+      get_many:
+        filters:
           language:
             description: Filter results by a language
             required: false
             resource: languages
+          organization:
+            description: Filter results by an organization
+            required: true
+            resource: organizations
+          role:
+            description: Filter results by role
+          team:
+            description: Filter results by a team
+            required: false
+            resource: teams
+          user:
+            description: Filter results by a user
+            required: false
+            resource: users
+        summary: List team memberships
       get_one:
-        summary: Get the  leverage for a resource - language pair
-    display: '{{.Relationships.resource.DataSingular.Id}} - {{.Relationships.language.DataSingular.Id}}, 0-59: {{.Attributes.tm_group_0_59_wordcound}}, , 60-74: {{.Attributes.tm_group_60_74_wordcound}}, 75-94: {{.Attributes.tm_group_75_94_wordcound}}, 95-99: {{.Attributes.tm_group_95_99_wordcound}}, 100: {{.Attributes.tm_group_100_wordcound}}'
+        summary: Get single team membership
+  teams:
+    display: '{{.Attributes.name}} ({{.Attributes.slug}})'
+    operations:
+      create_one:
+        attributes:
+          optional: [auto_join, cla, cla_required]
+          required: [name]
+        relationships:
+          required:
+            organization: organizations
+        summary: Create a Team
+      delete_one:
+        summary: Delete team
+      edit_one:
+        attributes: [name, auto_join, cla_required, cla]
+        summary: Update a team
+      get_many:
+        filters:
+          name:
+            description: Filter results by name
+          organization:
+            description: Filter results by an organization
+            required: true
+            resource: organizations
+          slug:
+            description: Filter results by slug
+        summary: List teams
+      get_one:
+        summary: Get team detail
+    relationships:
+      managers:
+        operations:
+          add:
+            summary: Add managers to team
+          get:
+            summary: Get team managers
+          remove:
+            summary: Remove managers from team
+          reset:
+            summary: Update team managers
+        resource: users
+  tmx_async_downloads:
+    download: true
+    operations:
+      create_one:
+        attributes:
+          optional: [include_untranslated, include_context, callback_url, email]
+        relationships:
+          optional:
+            language: languages
+          required:
+            project: projects
+        summary: Create a tmx file download action
+      get_one:
+        summary: Get tmx file download status
+  tmx_async_uploads:
+    operations:
+      create_one:
+        attributes:
+          optional: [override, callback_url]
+          required: [content, content_encoding]
+        relationships:
+          optional:
+            language: languages
+          required:
+            project: projects
+        summary: Create new TMX file upload.
+      get_one:
+        summary: Get a TMX async upload status
+    upload: true
+  unique_identifiers:
+    display: '{{.Id}}'
+    operations:
+      get_many:
+        filters:
+          resource_id:
+            required: true
+          resource_type:
+            required: true
+        summary: List unique identifiers
+      get_one:
+        summary: Get unique identifier
+  users:
+    display: '{{.Attributes.username}}'
+    operations:
+      get_one:
+        summary: Get the details of a User
