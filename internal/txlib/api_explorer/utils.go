@@ -1,6 +1,7 @@
 package api_explorer
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
@@ -312,4 +313,10 @@ func createObject(
 		return nil, err
 	}
 	return obj, nil
+}
+
+func input(prompt string) (string, error) {
+	fmt.Print(prompt)
+	reader := bufio.NewReader(os.Stdin)
+	return reader.ReadString('\n')
 }

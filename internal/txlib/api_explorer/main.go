@@ -1,7 +1,6 @@
 package api_explorer
 
 import (
-	"bufio"
 	_ "embed"
 	"encoding/json"
 	"errors"
@@ -95,7 +94,7 @@ func Cmd() *cli.Command {
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "pager", EnvVars: []string{"PAGER"}},
 			&cli.StringFlag{Name: "editor", EnvVars: []string{"EDITOR"}},
-			&cli.BoolFlag{Name: "no-interactive"},
+			&cli.BoolFlag{Name: "no-interactive", Aliases: []string{"y"}},
 		},
 		Subcommands: []*cli.Command{
 			{
@@ -603,8 +602,13 @@ func cliCmdDelete(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 			resource.SingularName,
 			resourceId,
 		)
-		reader := bufio.NewReader(os.Stdin)
-		answer, err := reader.ReadString('\n')
+		answer, err := input(
+			fmt.Sprintf(
+				"About to delete %s: %s, are you sure (y/N)? ",
+				resource.SingularName,
+				resourceId,
+			),
+		)
 		if err != nil {
 			return err
 		}
@@ -801,6 +805,24 @@ func cliCmdRemove(
 		}
 	}
 
+	if !c.Bool("no-interactive") {
+		answer, err := input(
+			fmt.Sprintf(
+				"You are about to remove the %s %s from the %s %s, Are you sure (y/N)? ",
+				strings.Join(childIds, ", "),
+				relationshipName,
+				parent.Id,
+				resource.SingularName,
+			),
+		)
+		if err != nil {
+			return err
+		}
+		if strings.TrimSpace(strings.ToLower(answer)) != "y" {
+			return errors.New("removal aborted")
+		}
+	}
+
 	var children []*jsonapi.Resource
 	for _, childId := range childIds {
 		children = append(children, &jsonapi.Resource{
@@ -855,6 +877,25 @@ func cliCmdReset(
 			return err
 		}
 	}
+
+	if !c.Bool("no-interactive") {
+		answer, err := input(
+			fmt.Sprintf(
+				"You are about to replace the %s %s's %s with %s, Are you sure (y/N)? ",
+				parent.Id,
+				resource.SingularName,
+				relationshipName,
+				strings.Join(childIds, ", "),
+			),
+		)
+		if err != nil {
+			return err
+		}
+		if strings.TrimSpace(strings.ToLower(answer)) != "y" {
+			return errors.New("removal aborted")
+		}
+	}
+
 	var children []*jsonapi.Resource
 	for _, childId := range childIds {
 		children = append(children, &jsonapi.Resource{
