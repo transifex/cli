@@ -207,6 +207,39 @@ func Cmd() *cli.Command {
 					},
 				},
 			},
+			{
+				Name: "has",
+				Subcommands: []*cli.Command{
+					{
+						Name: "next",
+						Action: func(c *cli.Context) error {
+							value, err := load("next")
+							if err != nil {
+								return err
+							}
+							if value != "" {
+								return nil
+							} else {
+								return cli.Exit("", 1)
+							}
+						},
+					},
+					{
+						Name: "previous",
+						Action: func(c *cli.Context) error {
+							value, err := load("previous")
+							if err != nil {
+								return err
+							}
+							if value != "" {
+								return nil
+							} else {
+								return cli.Exit("", 1)
+							}
+						},
+					},
+				},
+			},
 		},
 	}
 
