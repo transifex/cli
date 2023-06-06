@@ -1114,13 +1114,7 @@ func cliCmdUpload(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 		return err
 	}
 	var uploadAttributes struct {
-		Status  string `json:"status"`
-		Details struct {
-			StringsCreated int `json:"strings_created"`
-			StringsDeleted int `json:"strings_deleted"`
-			StringsSkipped int `json:"strings_skipped"`
-			StringsUpdated int `json:"strings_updated"`
-		} `json:"details"`
+		Status string `json:"status"`
 	}
 	for {
 		err = upload.MapAttributes(&uploadAttributes)
@@ -1142,15 +1136,11 @@ func cliCmdUpload(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 			return err
 		}
 	}
-	fmt.Printf(
-		"Upload succeeded; created: %d, deleted: %d, skipped: %d, updated: %d "+
-			"strings\n",
-		uploadAttributes.Details.StringsCreated,
-		uploadAttributes.Details.StringsDeleted,
-		uploadAttributes.Details.StringsSkipped,
-		uploadAttributes.Details.StringsUpdated,
-	)
-	return nil
+	body, err := json.Marshal(upload.Attributes)
+	if err != nil {
+		return err
+	}
+	return invokePager(c.String("pager"), body)
 }
 
 func cliCmdDownload(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
