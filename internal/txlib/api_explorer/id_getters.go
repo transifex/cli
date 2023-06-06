@@ -18,28 +18,50 @@ func selectResourceIds(
 	multi bool,
 ) ([]string, error) {
 	resource := jsopenapi.Resources[resourceName]
+
+	if !required && resource.Operations.GetMany == nil {
+		return []string{""}, nil
+	}
+
 	// Before we show a list of options, we need to fetch it. In order to do
 	// so, we need to see if there are any filters
-	query := jsonapi.Query{Filters: make(map[string]string)}
+	query := jsonapi.Query{
+		Filters: make(map[string]string),
+		Extras:  make(map[string]string),
+	}
 	if resource.Operations.GetMany != nil {
-		filters := resource.Operations.GetMany.Filters
-		for filterName, filter := range filters {
-			if filter.Resource != "" {
+		parameters := resource.Operations.GetMany.Parameters
+		for _, parameter := range parameters {
+			if parameter.Resource != "" {
 				filterValue, err := getResourceId(
-					c, api, filter.Resource, jsopenapi, filter.Required,
+					c, api, parameter.Resource, jsopenapi, parameter.Required,
 				)
 				if err != nil {
 					return nil, err
 				}
 				if filterValue != "" {
-					query.Filters[filterName] = filterValue
+					queryName, err := getQueryName(parameter.Name)
+					if err != nil {
+						return nil, err
+					}
+					query.Filters[queryName] = filterValue
 				}
 			} else {
-				filterValue := c.String(
-					strings.ReplaceAll(filterName, "__", "-"),
-				)
+				flagName, err := getFlagName(parameter.Name)
+				if err != nil {
+					return nil, err
+				}
+				filterValue := c.String(flagName)
 				if filterValue != "" {
-					query.Filters[filterName] = filterValue
+					if strings.HasPrefix(parameter.Name, "filter[") {
+						queryName, err := getQueryName(parameter.Name)
+						if err != nil {
+							return nil, err
+						}
+						query.Filters[queryName] = filterValue
+					} else {
+						query.Extras[parameter.Name] = filterValue
+					}
 				}
 			}
 		}

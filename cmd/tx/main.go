@@ -1049,12 +1049,17 @@ func Main() {
 					return nil
 				},
 			},
-			api_explorer.Cmd(),
 		},
 		Flags: flags,
 	}
 
-	err := app.Run(os.Args)
+	apiExplorerCnd, err := api_explorer.Cmd()
+	if err != nil {
+		panic(err)
+	}
+	app.Commands = append(app.Commands, apiExplorerCnd)
+
+	err = app.Run(os.Args)
 	if err != nil {
 		log.Fatal(err)
 	}

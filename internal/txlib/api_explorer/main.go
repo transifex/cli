@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"time"
 
 	"os"
@@ -18,74 +19,85 @@ import (
 
 type jsopenapi_t struct {
 	Resources map[string]struct {
-		SingularName string `json:"singular_name"`
-		PluralName   string `json:"plural_name"`
-		Upload       bool   `json:"upload"`
-		Download     bool   `json:"download"`
-		Operations   struct {
+		SingularName      string                   `json:"singular_name"`
+		PluralName        string                   `json:"plural_name"`
+		Upload            bool                     `json:"upload"`
+		Download          bool                     `json:"download"`
+		RequestAttributes map[string]*jsonschema_t `json:"request_attributes"`
+		Attributes        map[string]*jsonschema_t `json:"attributes"`
+		Operations        struct {
 			GetMany *struct {
-				Summary string `json:"summary"`
-				Filters map[string]struct {
+				Summary    string `json:"summary"`
+				Parameters []struct {
+					Name        string `json:"name"`
 					Description string `json:"description"`
 					Resource    string `json:"resource"`
 					Required    bool   `json:"required"`
-				} `json:"filters"`
+				} `json:"parameters"`
 			} `json:"get_many"`
+			CreateOne *struct {
+				Summary        string   `json:"summary"`
+				RequiredFields []string `json:"required_fields"`
+				OptionalFields []string `json:"optional_fields"`
+			} `json:"create_one"`
 			GetOne *struct {
 				Summary string `json:"summary"`
 			} `json:"get_one"`
-			CreateOne *struct {
-				Summary    string `json:"summary"`
-				Attributes *struct {
-					Required []string `json:"required"`
-					Optional []string `json:"optional"`
-				} `json:"attributes"`
-				Relationships *struct {
-					Required map[string]string `json:"required"`
-					Optional map[string]string `json:"optional"`
-				} `json:"relationships"`
-			} `json:"create_one"`
 			EditOne *struct {
-				Summary       string   `json:"summary"`
-				Attributes    []string `json:"attributes"`
-				Relationships []string `json:"relationships"`
+				Summary string   `json:"summary"`
+				Fields  []string `json:"fields"`
 			} `json:"edit_one"`
 			DeleteOne *struct {
 				Summary string `json:"summary"`
 			} `json:"delete_one"`
 		} `json:"operations"`
-		Relationships map[string]struct {
-			Resource   string `json:"resource"`
-			Operations struct {
-				Change *struct {
-					Summary string `json:"summary"`
-				} `json:"change"`
-				Get *struct {
-					Summary string `json:"summary"`
-				} `json:"get"`
-				Add *struct {
-					Summary string `json:"summary"`
-				} `json:"add"`
-				Remove *struct {
-					Summary string `json:"summary"`
-				} `json:"remove"`
-				Reset *struct {
-					Summary string `json:"summary"`
-				} `json:"reset"`
-			} `json:"operations"`
-		} `json:"relationships"`
-		Display string `json:"display"`
+		RequestRelationships  map[string]*relationship_t `json:"request_relationships"`
+		ResponseRelationships map[string]*relationship_t `json:"response_relationships"`
+		Relationships         map[string]*relationship_t `json:"relationships"`
+		Display               string                     `json:"display"`
 	} `json:"resources"`
+}
+
+type relationship_t struct {
+	Type       string `json:"type"`
+	Nullable   bool   `json:"nullable"`
+	Resource   string `json:"resource"`
+	Operations struct {
+		Change *struct {
+			Summary string `json:"summary"`
+		} `json:"change"`
+		Get *struct {
+			Summary string `json:"summary"`
+		} `json:"get"`
+		Add *struct {
+			Summary string `json:"summary"`
+		} `json:"add"`
+		Remove *struct {
+			Summary string `json:"summary"`
+		} `json:"remove"`
+		Reset *struct {
+			Summary string `json:"summary"`
+		} `json:"reset"`
+	} `json:"operations"`
+	Description string `json:"description"`
+}
+
+type jsonschema_t struct {
+	Type        string                 `json:"type"`
+	Required    []string               `json:"required"`
+	Properties  map[string]interface{} `json:"properties"`
+	Description string                 `json:"description"`
+	Enum        []string               `json:"enum"`
 }
 
 //go:embed jsopenapi.json
 var jsopenapi_bytes []byte
 
-func Cmd() *cli.Command {
+func Cmd() (*cli.Command, error) {
 	var jsopenapi jsopenapi_t
 	err := json.Unmarshal(jsopenapi_bytes, &jsopenapi)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	result := cli.Command{
@@ -97,116 +109,6 @@ func Cmd() *cli.Command {
 			&cli.BoolFlag{Name: "no-interactive", Aliases: []string{"y"}},
 		},
 		Subcommands: []*cli.Command{
-			{
-				Name: "get",
-				Subcommands: []*cli.Command{
-					{
-						Name:  "next",
-						Usage: "Get the next page of the last request",
-						Action: func(c *cli.Context) error {
-							api, err := getApi(c)
-							if err != nil {
-								return err
-							}
-							url, err := load("next")
-							if err != nil {
-								return err
-							}
-							if url == "" {
-								return errors.New(
-									"last request did not have a next page",
-								)
-							}
-							body, err := api.ListBodyFromPath(url)
-							if err != nil {
-								return err
-							}
-							err = handlePagination(body)
-							if err != nil {
-								return err
-							}
-							err = invokePager(c.String("pager"), body)
-							if err != nil {
-								return err
-							}
-							return nil
-						},
-					},
-					{
-						Name:  "previous",
-						Usage: "Get the previous page of the last request",
-						Action: func(c *cli.Context) error {
-							api, err := getApi(c)
-							if err != nil {
-								return err
-							}
-							url, err := load("previous")
-							if err != nil {
-								return err
-							}
-							if url == "" {
-								return errors.New(
-									"last request did not have a previous page",
-								)
-							}
-							body, err := api.ListBodyFromPath(url)
-							if err != nil {
-								return err
-							}
-							err = handlePagination(body)
-							if err != nil {
-								return err
-							}
-							err = invokePager(c.String("pager"), body)
-							if err != nil {
-								return err
-							}
-							return nil
-						},
-					},
-					{
-						Name:  "session",
-						Usage: "Get current session",
-						Action: func(c *cli.Context) error {
-							sessionPath, err := getSessionPath()
-							if err != nil {
-								return err
-							}
-							_, err = os.Stat(sessionPath)
-							if err != nil {
-								return err
-							}
-							body, err := os.ReadFile(sessionPath)
-							if err != nil {
-								return err
-							}
-							fmt.Println(string(body))
-							return nil
-						},
-					},
-				},
-			},
-			{
-				Name: "clear",
-				Subcommands: []*cli.Command{
-					{
-						Name:  "session",
-						Usage: "Clear session file",
-						Action: func(c *cli.Context) error {
-							sessionPath, err := getSessionPath()
-							if err != nil {
-								return err
-							}
-							err = os.Remove(sessionPath)
-							if err != nil {
-								return err
-							}
-							fmt.Printf("Removed %s successfully\n", sessionPath)
-							return nil
-						},
-					},
-				},
-			},
 			{
 				Name: "has",
 				Subcommands: []*cli.Command{
@@ -254,6 +156,17 @@ func Cmd() *cli.Command {
 		if resource.SingularName == "" {
 			resource.SingularName = resource.PluralName[:len(resource.PluralName)-1]
 		}
+
+		if resource.RequestAttributes == nil {
+			resource.RequestAttributes = resource.Attributes
+		}
+		if resource.RequestRelationships == nil {
+			resource.RequestRelationships = resource.Relationships
+		}
+		if resource.ResponseRelationships == nil {
+			resource.ResponseRelationships = resource.Relationships
+		}
+
 		jsopenapi.Resources[resourceName] = resource
 	}
 
@@ -282,13 +195,17 @@ func Cmd() *cli.Command {
 					return cliCmdUpload(c, resourceNameCopy, &jsopenapi)
 				},
 			}
-			addCreateFlags(operation, resourceName, &jsopenapi)
+			flags, err := getCreateFlags(resourceName, &jsopenapi, true)
+			if err != nil {
+				return nil, err
+			}
+			operation.Flags = append(operation.Flags, flags...)
 			subcommand.Subcommands = append(subcommand.Subcommands, operation)
 		} else if resource.Download {
 			subcommand := getOrCreateSubcommand(&result, "download")
 			operation := &cli.Command{
 				Name:  strings.TrimSuffix(resource.SingularName, "_async_download"),
-				Usage: resource.Operations.GetOne.Summary,
+				Usage: resource.Operations.CreateOne.Summary,
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "output", Aliases: []string{"o"}},
 					&cli.IntFlag{
@@ -301,7 +218,11 @@ func Cmd() *cli.Command {
 					return cliCmdDownload(c, resourceNameCopy, &jsopenapi)
 				},
 			}
-			addCreateFlags(operation, resourceName, &jsopenapi)
+			flags, err := getCreateFlags(resourceName, &jsopenapi, false)
+			if err != nil {
+				return nil, err
+			}
+			operation.Flags = append(operation.Flags, flags...)
 			subcommand.Subcommands = append(subcommand.Subcommands, operation)
 		} else {
 			// Allow 'select' and 'clear' for all resource types; for those that
@@ -311,13 +232,19 @@ func Cmd() *cli.Command {
 				Name:  resource.SingularName,
 				Usage: fmt.Sprintf("Save %s to session file", resource.SingularName),
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "id", Required: resource.Operations.GetMany == nil},
+					&cli.StringFlag{
+						Name:     "id",
+						Required: resource.Operations.GetMany == nil,
+					},
 				},
 				Action: func(c *cli.Context) error {
 					return cliCmdSelect(c, resourceNameCopy, &jsopenapi)
 				},
 			}
-			addFilterTags(operation, resourceName, &jsopenapi, true)
+			err := addFilterFlags(operation, resourceName, &jsopenapi, true)
+			if err != nil {
+				return nil, err
+			}
 			subcommand.Subcommands = append(subcommand.Subcommands, operation)
 
 			subcommand = getOrCreateSubcommand(&result, "clear")
@@ -339,7 +266,10 @@ func Cmd() *cli.Command {
 						return cliCmdGetMany(c, resourceNameCopy, &jsopenapi)
 					},
 				}
-				addFilterTags(operation, resourceName, &jsopenapi, false)
+				err := addFilterFlags(operation, resourceName, &jsopenapi, false)
+				if err != nil {
+					return nil, err
+				}
 				subcommand.Subcommands = append(subcommand.Subcommands, operation)
 			}
 
@@ -362,7 +292,10 @@ func Cmd() *cli.Command {
 						return cliCmdGetOne(c, resourceNameCopy, &jsopenapi)
 					},
 				}
-				addFilterTags(operation, resourceName, &jsopenapi, true)
+				err := addFilterFlags(operation, resourceName, &jsopenapi, true)
+				if err != nil {
+					return nil, err
+				}
 				subcommand.Subcommands = append(subcommand.Subcommands, operation)
 			}
 
@@ -385,11 +318,32 @@ func Cmd() *cli.Command {
 						return cliCmdEditOne(c, resourceNameCopy, &jsopenapi)
 					},
 				}
-				addFilterTags(operation, resourceName, &jsopenapi, true)
-				for _, field := range resource.Operations.EditOne.Attributes {
-					operation.Flags = append(
-						operation.Flags, &cli.StringFlag{Name: fmt.Sprintf("set-%s", field)},
-					)
+				err := addFilterFlags(operation, resourceName, &jsopenapi, true)
+				if err != nil {
+					return nil, err
+				}
+				for _, field := range resource.Operations.EditOne.Fields {
+					_, isAttribute := resource.RequestAttributes[field]
+					_, isRelationship := resource.RequestRelationships[field]
+					if isAttribute {
+						operation.Flags = append(
+							operation.Flags,
+							&cli.StringFlag{
+								Name:  fmt.Sprintf("set-%s", field),
+								Usage: resource.RequestAttributes[field].Description,
+							},
+						)
+					} else if isRelationship {
+						operation.Flags = append(
+							operation.Flags,
+							&cli.StringFlag{
+								Name:  fmt.Sprintf("set-%s-id", field),
+								Usage: resource.RequestRelationships[field].Description,
+							},
+						)
+					} else {
+						return nil, fmt.Errorf("unknown field %s of %s", field, resourceName)
+					}
 				}
 				subcommand.Subcommands = append(subcommand.Subcommands, operation)
 			}
@@ -403,7 +357,11 @@ func Cmd() *cli.Command {
 						return cliCmdCreateOne(c, resourceNameCopy, &jsopenapi)
 					},
 				}
-				addCreateFlags(operation, resourceName, &jsopenapi)
+				flags, err := getCreateFlags(resourceName, &jsopenapi, false)
+				if err != nil {
+					return nil, err
+				}
+				operation.Flags = append(operation.Flags, flags...)
 				subcommand.Subcommands = append(subcommand.Subcommands, operation)
 			}
 
@@ -419,45 +377,181 @@ func Cmd() *cli.Command {
 						return cliCmdDelete(c, resourceNameCopy, &jsopenapi)
 					},
 				}
-				addFilterTags(operation, resourceName, &jsopenapi, true)
+				err := addFilterFlags(operation, resourceName, &jsopenapi, true)
+				if err != nil {
+					return nil, err
+				}
 				subcommand.Subcommands = append(subcommand.Subcommands, operation)
 			}
 
-			for relationshipName, relationship := range resource.Relationships {
-				if relationship.Operations.Get != nil {
-					addRelationshipCommand(
-						&result, "get", resourceName, relationshipName, &jsopenapi,
-					)
+			for relationshipName, relationship := range resource.ResponseRelationships {
+				err := addRelationshipCommand(
+					&result, "get", resourceName, relationshipName, &jsopenapi,
+				)
+				if err != nil {
+					return nil, err
 				}
 
 				if relationship.Operations.Change != nil {
-					addRelationshipCommand(
+					err := addRelationshipCommand(
 						&result, "change", resourceName, relationshipName, &jsopenapi,
 					)
+					if err != nil {
+						return nil, err
+					}
 				}
 
 				if relationship.Operations.Add != nil {
-					addRelationshipCommand(
+					err := addRelationshipCommand(
 						&result, "add", resourceName, relationshipName, &jsopenapi,
 					)
+					if err != nil {
+						return nil, err
+					}
 				}
 
 				if relationship.Operations.Remove != nil {
-					addRelationshipCommand(
+					err := addRelationshipCommand(
 						&result, "remove", resourceName, relationshipName, &jsopenapi,
 					)
+					if err != nil {
+						return nil, err
+					}
 				}
 
 				if relationship.Operations.Reset != nil {
-					addRelationshipCommand(
+					err := addRelationshipCommand(
 						&result, "reset", resourceName, relationshipName, &jsopenapi,
 					)
+					if err != nil {
+						return nil, err
+					}
 				}
 			}
 		}
 	}
 
-	return &result
+	sort.Sort(cli.FlagsByName(result.Flags))
+	sort.Sort(cli.CommandsByName(result.Subcommands))
+	for _, subcommand := range result.Subcommands {
+		sort.Sort(cli.FlagsByName(subcommand.Flags))
+		sort.Sort(cli.CommandsByName(subcommand.Subcommands))
+	}
+
+	// Prepend 'get previous/next/session'
+	getSubcommand := findSubcommand(result.Subcommands, "get")
+	getSubcommand.Subcommands = append(
+		[]*cli.Command{
+			{
+				Name:  "previous",
+				Usage: "Get the previous page of the last request",
+				Action: func(c *cli.Context) error {
+					api, err := getApi(c)
+					if err != nil {
+						return err
+					}
+					url, err := load("previous")
+					if err != nil {
+						return err
+					}
+					if url == "" {
+						return errors.New(
+							"last request did not have a previous page",
+						)
+					}
+					body, err := api.ListBodyFromPath(url)
+					if err != nil {
+						return err
+					}
+					err = handlePagination(body)
+					if err != nil {
+						return err
+					}
+					err = invokePager(c.String("pager"), body)
+					if err != nil {
+						return err
+					}
+					return nil
+				},
+			}, {
+				Name:  "next",
+				Usage: "Get the next page of the last request",
+				Action: func(c *cli.Context) error {
+					api, err := getApi(c)
+					if err != nil {
+						return err
+					}
+					url, err := load("next")
+					if err != nil {
+						return err
+					}
+					if url == "" {
+						return errors.New(
+							"last request did not have a next page",
+						)
+					}
+					body, err := api.ListBodyFromPath(url)
+					if err != nil {
+						return err
+					}
+					err = handlePagination(body)
+					if err != nil {
+						return err
+					}
+					err = invokePager(c.String("pager"), body)
+					if err != nil {
+						return err
+					}
+					return nil
+				},
+			}, {
+				Name:  "session",
+				Usage: "Get current session",
+				Action: func(c *cli.Context) error {
+					sessionPath, err := getSessionPath()
+					if err != nil {
+						return err
+					}
+					_, err = os.Stat(sessionPath)
+					if err != nil {
+						return err
+					}
+					body, err := os.ReadFile(sessionPath)
+					if err != nil {
+						return err
+					}
+					fmt.Println(string(body))
+					return nil
+				},
+			}},
+		getSubcommand.Subcommands...,
+	)
+
+	// Prepend 'clear session'
+	clearSubcommand := findSubcommand(result.Subcommands, "clear")
+	clearSubcommand.Subcommands = append(
+		[]*cli.Command{
+			{
+				Name:  "session",
+				Usage: "Clear session file",
+				Action: func(c *cli.Context) error {
+					sessionPath, err := getSessionPath()
+					if err != nil {
+						return err
+					}
+					err = os.Remove(sessionPath)
+					if err != nil {
+						return err
+					}
+					fmt.Printf("Removed %s successfully\n", sessionPath)
+					return nil
+				},
+			},
+		},
+		clearSubcommand.Subcommands...,
+	)
+
+	return &result, nil
 }
 
 func cliCmdGetMany(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) error {
@@ -465,23 +559,42 @@ func cliCmdGetMany(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) 
 	if err != nil {
 		return err
 	}
-	query := jsonapi.Query{Filters: make(map[string]string)}
-	filters := jsopenapi.Resources[resourceName].Operations.GetMany.Filters
-	for filterName, filter := range filters {
-		if filter.Resource != "" {
-			filterValue, err := getResourceId(
-				c, api, filter.Resource, jsopenapi, filter.Required,
+	query := jsonapi.Query{
+		Filters: make(map[string]string),
+		Extras:  make(map[string]string),
+	}
+	parameters := jsopenapi.Resources[resourceName].Operations.GetMany.Parameters
+	for _, parameter := range parameters {
+		if parameter.Resource != "" {
+			parameterValue, err := getResourceId(
+				c, api, parameter.Resource, jsopenapi, parameter.Required,
 			)
 			if err != nil {
 				return err
 			}
-			if filterValue != "" {
-				query.Filters[filterName] = filterValue
+			if parameterValue != "" {
+				queryName, err := getQueryName(parameter.Name)
+				if err != nil {
+					return err
+				}
+				query.Filters[queryName] = parameterValue
 			}
 		} else {
-			filterValue := c.String(strings.ReplaceAll(filterName, "__", "-"))
-			if filterValue != "" {
-				query.Filters[filterName] = filterValue
+			flagName, err := getFlagName(parameter.Name)
+			if err != nil {
+				return err
+			}
+			parameterValue := c.String(flagName)
+			if parameterValue != "" {
+				if strings.HasPrefix(parameter.Name, "filter[") {
+					queryName, err := getQueryName(parameter.Name)
+					if err != nil {
+						return err
+					}
+					query.Filters[queryName] = parameterValue
+				} else {
+					query.Extras[parameter.Name] = parameterValue
+				}
 			}
 		}
 	}
@@ -540,30 +653,63 @@ func cliCmdEditOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) 
 	if err != nil {
 		return err
 	}
-	if c.Bool("no-interactive") {
-		var changedFields []string
-		for _, field := range resource.Operations.EditOne.Attributes {
-			value := c.String(fmt.Sprintf("set-%s", field))
-			if value != "" {
+
+	var fieldsChangedFromFlags []string
+	var fieldsToBeChangedFromEditor []string
+
+	for _, field := range resource.Operations.EditOne.Fields {
+		_, isAttribute := resource.RequestAttributes[field]
+		_, isRelationship := resource.RequestRelationships[field]
+		if isAttribute {
+			flagName := fmt.Sprintf("set-%s", field)
+			if c.String(flagName) != "" {
+				value, err := intepretFlag(
+					c, flagName, resource.RequestAttributes[field],
+				)
+				if err != nil {
+					return err
+				}
 				obj.Attributes[field] = value
-				changedFields = append(changedFields, field)
+				fieldsChangedFromFlags = append(fieldsChangedFromFlags, field)
+			} else {
+				fieldsToBeChangedFromEditor = append(fieldsToBeChangedFromEditor, field)
 			}
+		} else if isRelationship {
+			flagName := fmt.Sprintf("set-%s-id", field)
+			resourceId := c.String(flagName)
+			if resourceId != "" {
+				obj.SetRelated(
+					field,
+					&jsonapi.Resource{
+						Type: resource.RequestRelationships[field].Resource,
+						Id:   resourceId,
+					},
+				)
+				fieldsChangedFromFlags = append(fieldsChangedFromFlags, field)
+			}
+		} else {
+			return fmt.Errorf("unknown field %s of %s", field, resourceName)
 		}
-		if len(changedFields) == 0 {
-			return errors.New("nothing changed")
-		}
-		err = obj.Save(changedFields)
-	} else {
-		err = edit(
-			c.String("editor"),
-			&obj,
-			jsopenapi.Resources[resourceName].Operations.EditOne.Attributes,
+	}
+
+	var changedFields []string
+	changedFields = append(changedFields, fieldsChangedFromFlags...)
+	if !c.Bool("no-interactive") {
+		userSuppliedAttributes, err := edit(
+			c.String("editor"), obj.Attributes, fieldsToBeChangedFromEditor,
 		)
+		if err != nil {
+			return err
+		}
+		for attributeName, attribute := range userSuppliedAttributes {
+			obj.Attributes[attributeName] = attribute
+			changedFields = append(changedFields, attributeName)
+		}
 	}
-	if err != nil {
-		return err
+	if len(changedFields) == 0 {
+		return errors.New("nothing changed")
 	}
-	return nil
+	return obj.Save(changedFields)
 }
 
 func cliCmdChange(
@@ -588,7 +734,7 @@ func cliCmdChange(
 		childIds, err := selectResourceIds(
 			c,
 			api,
-			jsopenapi.Resources[resourceName].Relationships[relationshipName].Resource,
+			jsopenapi.Resources[resourceName].ResponseRelationships[relationshipName].Resource,
 			relationshipName,
 			jsopenapi,
 			true,
@@ -630,11 +776,6 @@ func cliCmdDelete(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 	}
 
 	if !c.Bool("no-interactive") {
-		fmt.Printf(
-			"About to delete %s: %s, are you sure (y/N)? ",
-			resource.SingularName,
-			resourceId,
-		)
 		answer, err := input(
 			fmt.Sprintf(
 				"About to delete %s: %s, are you sure (y/N)? ",
@@ -661,6 +802,7 @@ func cliCmdDelete(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 func cliCmdGetRelated(
 	c *cli.Context, resourceName, relationshipName string, jsopenapi *jsopenapi_t,
 ) error {
+	resource := jsopenapi.Resources[resourceName]
 	api, err := getApi(c)
 	if err != nil {
 		return err
@@ -672,11 +814,22 @@ func cliCmdGetRelated(
 			return err
 		}
 	}
-	parent, err := api.Get(resourceName, parentId)
-	if err != nil {
-		return err
+
+	relatedResourceName := resource.ResponseRelationships[relationshipName].Resource
+	relatedResource := jsopenapi.Resources[relatedResourceName]
+	var url string
+	if resource.ResponseRelationships[relationshipName].Operations.Get != nil {
+		url = fmt.Sprintf("/%s/%s/%s", resourceName, parentId, relationshipName)
+	} else if relatedResource.Operations.GetOne != nil {
+		parent, err := api.Get(resourceName, parentId)
+		if err != nil {
+			return err
+		}
+		url = parent.Relationships[relationshipName].Links.Related
+	} else {
+		return fmt.Errorf("%s does not support item fetching", relationshipName)
 	}
-	url := parent.Relationships[relationshipName].Links.Related
+
 	body, err := api.ListBodyFromPath(url)
 	if err != nil {
 		return err
@@ -734,7 +887,7 @@ func cliCmdAdd(
 	c *cli.Context, resourceName, relationshipName string, jsopenapi *jsopenapi_t,
 ) error {
 	resource := jsopenapi.Resources[resourceName]
-	relatedResourceName := resource.Relationships[relationshipName].Resource
+	relatedResourceName := resource.ResponseRelationships[relationshipName].Resource
 	relatedResource := jsopenapi.Resources[relatedResourceName]
 
 	api, err := getApi(c)
@@ -788,7 +941,7 @@ func cliCmdRemove(
 	c *cli.Context, resourceName, relationshipName string, jsopenapi *jsopenapi_t,
 ) error {
 	resource := jsopenapi.Resources[resourceName]
-	relatedResourceName := resource.Relationships[relationshipName].Resource
+	relatedResourceName := resource.ResponseRelationships[relationshipName].Resource
 	relatedResource := jsopenapi.Resources[relatedResourceName]
 
 	api, err := getApi(c)
@@ -874,7 +1027,7 @@ func cliCmdReset(
 	c *cli.Context, resourceName, relationshipName string, jsopenapi *jsopenapi_t,
 ) error {
 	resource := jsopenapi.Resources[resourceName]
-	relatedResourceName := resource.Relationships[relationshipName].Resource
+	relatedResourceName := resource.ResponseRelationships[relationshipName].Resource
 	relatedResource := jsopenapi.Resources[relatedResourceName]
 
 	api, err := getApi(c)

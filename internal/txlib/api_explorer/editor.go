@@ -3,14 +3,12 @@ package api_explorer
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"reflect"
 
 	"github.com/google/shlex"
-	"github.com/transifex/cli/pkg/jsonapi"
 )
 
 func invokeEditor(input []byte, editor string) ([]byte, error) {
@@ -52,12 +50,9 @@ func invokeEditor(input []byte, editor string) ([]byte, error) {
 	return output, nil
 }
 
-func edit(editor string, item *jsonapi.Resource, editable_fields []string) error {
-	var preAttributes map[string]interface{}
-	err := item.MapAttributes(&preAttributes)
-	if err != nil {
-		return err
-	}
+func edit(
+	editor string, preAttributes map[string]interface{}, editable_fields []string,
+) (map[string]interface{}, error) {
 	for field := range preAttributes {
 		if !stringSliceContains(editable_fields, field) {
 			delete(preAttributes, field)
@@ -65,54 +60,33 @@ func edit(editor string, item *jsonapi.Resource, editable_fields []string) error
 	}
 	body, err := json.MarshalIndent(preAttributes, "", "  ")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	body, err = invokeEditor(body, editor)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var postAttributes map[string]interface{}
 	err = json.Unmarshal(body, &postAttributes)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	var finalFields []string
 	for field, postValue := range postAttributes {
 		preValue, exists := preAttributes[field]
 		if !exists || reflect.DeepEqual(preValue, postValue) {
 			delete(postAttributes, field)
-		} else {
-			finalFields = append(finalFields, field)
 		}
 	}
-	if len(finalFields) == 0 {
-		return errors.New("nothing changed")
-	}
-	item.Attributes = postAttributes
-	err = item.Save(finalFields)
-	if err != nil {
-		return err
-	}
-	return nil
+	return postAttributes, nil
 }
 
 func create(
-	editor string, required_attrs, optional_attrs []string,
+	editor string, editPayload map[string]interface{}, fields []string,
 ) (map[string]interface{}, error) {
-	preAttributes := map[string]interface{}{
-		"": "A '//' in front of the attribute name implies that the key is optional. " +
-			"Remove the slashes to include the field in the request payload.",
-	}
+	editPayload[""] = "A '//' in front of the attribute name implies that the key is " +
+		"optional. Remove the slashes to include the field in the request payload."
 
-	for _, attr := range optional_attrs {
-		preAttributes[fmt.Sprintf("//%s", attr)] = ""
-	}
-
-	for _, attr := range required_attrs {
-		preAttributes[attr] = ""
-	}
-
-	body, err := json.MarshalIndent(preAttributes, "", "  ")
+	body, err := json.MarshalIndent(editPayload, "", "  ")
 	if err != nil {
 		return nil, err
 	}
@@ -125,11 +99,8 @@ func create(
 	if err != nil {
 		return nil, err
 	}
-	var validAttributes []string // Make sure it's a copy
-	validAttributes = append(validAttributes, required_attrs...)
-	validAttributes = append(validAttributes, optional_attrs...)
 	for attr := range attributes {
-		if !stringSliceContains(validAttributes, attr) {
+		if !stringSliceContains(fields, attr) {
 			delete(attributes, attr)
 		}
 	}

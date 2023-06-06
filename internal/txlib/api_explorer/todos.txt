@@ -5,4 +5,7 @@
 - [x] Provide relationships and/or attributes as flags for
       create/upload/download
 - [x] No interactive mode (for scripts)
-- [ ] Use schema to provide better defaults during create/upload/download
+- [x] Use schema to provide better defaults during create/upload/download
+- [x] Support get-related even when there is no dedicated URL (eg /teams/:id
+      instead of /projects/:id/team)
+- [ ] On upload, show raw JSON response

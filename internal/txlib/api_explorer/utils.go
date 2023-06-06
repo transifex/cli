@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
+	"strings"
 	"text/template"
 	"unicode/utf8"
 
@@ -200,89 +202,121 @@ func createObject(
 		return nil, err
 	}
 
-	requiredRelationships := make(map[string]*jsonapi.Resource)
-	operation := jsopenapi.Resources[resourceName].Operations.CreateOne
-	for relationshipName, resourceName := range operation.Relationships.Required {
-		resourceId := c.String(fmt.Sprintf("%s-id", relationshipName))
-		if resourceId == "" {
-			resourceIds, err := selectResourceIds(
-				c, api, resourceName, relationshipName, jsopenapi, true, false,
-			)
-			if err != nil {
-				return nil, err
-			}
-			resourceId = resourceIds[0]
-		}
-		requiredRelationships[relationshipName] = &jsonapi.Resource{
-			Id:   resourceId,
-			Type: resourceName,
-		}
-	}
+	resource := jsopenapi.Resources[resourceName]
+	operation := resource.Operations.CreateOne
 
-	optionalRelationships := make(map[string]*jsonapi.Resource)
-	for relationshipName, resourceName := range operation.Relationships.Optional {
-		resourceId := c.String(fmt.Sprintf("%s-id", relationshipName))
-		if resourceId == "" {
-			resourceIds, err := selectResourceIds(
-				c, api, resourceName, relationshipName, jsopenapi, false, false,
-			)
-			if err != nil {
-				return nil, err
-			}
-			resourceId = resourceIds[0]
-		}
-		if resourceId != "" {
-			optionalRelationships[relationshipName] = &jsonapi.Resource{
-				Id:   resourceId,
-				Type: resourceName,
-			}
-		}
-	}
+	// What we'll end up prompting the user to edit
+	editPayload := make(map[string]interface{})
 
+	// What we'll end up sending to the API
 	attributes := make(map[string]interface{})
-	var requiredAttributeNames []string
-	for _, attributeName := range operation.Attributes.Required {
-		value := c.String(attributeName)
-		if value != "" {
-			attributes[attributeName] = value
-		} else {
-			if hasContent && (attributeName == "content" || attributeName == "content_encoding") {
-				continue
-			}
-			if c.Bool("no-interactive") {
-				return nil, fmt.Errorf(
-					"%s not set, use the --%s flag", attributeName, attributeName,
-				)
-			}
-			requiredAttributeNames = append(requiredAttributeNames, attributeName)
-		}
-	}
-	var optionalAttributeNames []string
-	for _, attributeName := range operation.Attributes.Optional {
-		if hasContent && (attributeName == "content" || attributeName == "content_encoding") {
+	relationships := make(map[string]*jsonapi.Resource)
+
+	for _, field := range operation.RequiredFields {
+		if hasContent && (field == "content" || field == "content_encoding") {
 			continue
 		}
-		value := c.String(attributeName)
-		if value != "" {
-			attributes[attributeName] = value
+		_, isAttribute := resource.RequestAttributes[field]
+		_, isRelationship := resource.RequestRelationships[field]
+		if isAttribute {
+			if c.String(field) != "" {
+				value, err := intepretFlag(c, field, resource.RequestAttributes[field])
+				if err != nil {
+					return nil, err
+				}
+				attributes[field] = value
+			} else {
+				if c.Bool("no-interactive") {
+					return nil, fmt.Errorf("%s not set, use the --%s flag", field, field)
+				}
+				editPayload[field] = prepareEditPayload(
+					field, resource.RequestAttributes[field],
+				)
+			}
+		} else if isRelationship {
+			resourceId := c.String(fmt.Sprintf("%s-id", field))
+			if resourceId == "" {
+				resourceIds, err := selectResourceIds(
+					c,
+					api,
+					resource.RequestRelationships[field].Resource,
+					field,
+					jsopenapi,
+					true,
+					false,
+				)
+				if err != nil {
+					return nil, err
+				}
+				resourceId = resourceIds[0]
+			}
+			relationships[field] = &jsonapi.Resource{
+				Id:   resourceId,
+				Type: resource.RequestRelationships[field].Resource,
+			}
 		} else {
-			optionalAttributeNames = append(optionalAttributeNames, attributeName)
+			return nil, fmt.Errorf("unknown field %s of %s", field, resourceName)
 		}
 	}
 
-	if !c.Bool("no-interactive") {
-		userSuppliedAttributes, err := create(
-			c.String("editor"), requiredAttributeNames, optionalAttributeNames,
-		)
+	for _, field := range operation.OptionalFields {
+		if hasContent && (field == "content" || field == "content_encoding") {
+			continue
+		}
+		_, isAttribute := resource.RequestAttributes[field]
+		_, isRelationship := resource.RequestRelationships[field]
+		if isAttribute {
+			if c.String(field) != "" {
+				value, err := intepretFlag(c, field, resource.RequestAttributes[field])
+				if err != nil {
+					return nil, err
+				}
+				attributes[field] = value
+			} else {
+				editPayload[fmt.Sprintf("//%s", field)] = prepareEditPayload(
+					field, resource.RequestAttributes[field],
+				)
+			}
+		} else if isRelationship {
+			resourceId := c.String(fmt.Sprintf("%s-id", field))
+			if resourceId == "" && !c.Bool("no-interactive") {
+				resourceIds, err := selectResourceIds(
+					c,
+					api,
+					resource.RequestRelationships[field].Resource,
+					field,
+					jsopenapi,
+					false,
+					false,
+				)
+				if err != nil {
+					return nil, err
+				}
+				resourceId = resourceIds[0]
+			}
+			if resourceId != "" {
+				relationships[field] = &jsonapi.Resource{
+					Id:   resourceId,
+					Type: resource.RequestRelationships[field].Resource,
+				}
+			}
+		} else {
+			return nil, fmt.Errorf("unknown field %s of %s", field, resourceName)
+		}
+	}
+
+	if !c.Bool("no-interactive") && len(editPayload) > 0 {
+		var fields []string
+		fields = append(fields, operation.RequiredFields...)
+		fields = append(fields, operation.OptionalFields...)
+		userSuppliedAttributes, err := create(c.String("editor"), editPayload, fields)
 		if err != nil {
 			return nil, err
 		}
-
 		for key, value := range userSuppliedAttributes {
 			attributes[key] = value
 		}
 	}
-
 	if hasContent {
 		body, err := os.ReadFile(c.String("input"))
 		if err != nil {
@@ -302,11 +336,8 @@ func createObject(
 		Type:       resourceName,
 		Attributes: attributes,
 	}
-	for relationshipName, resourceInfo := range requiredRelationships {
-		obj.SetRelated(relationshipName, resourceInfo)
-	}
-	for relationshipName, resourceInfo := range optionalRelationships {
-		obj.SetRelated(relationshipName, resourceInfo)
+	for relationshipName, relationship := range relationships {
+		obj.SetRelated(relationshipName, relationship)
 	}
 	err = obj.Save(nil)
 	if err != nil {
@@ -319,4 +350,70 @@ func input(prompt string) (string, error) {
 	fmt.Print(prompt)
 	reader := bufio.NewReader(os.Stdin)
 	return reader.ReadString('\n')
+}
+
+func intepretFlag(
+	c *cli.Context, field string, jsonschema *jsonschema_t,
+) (interface{}, error) {
+	stringValue := c.String(field)
+	if jsonschema.Type == "number" {
+		return c.Int(field), nil
+	} else if jsonschema.Type == "array" ||
+		jsonschema.Type == "object" {
+		var value interface{}
+		json.Unmarshal([]byte(stringValue), &value)
+		return value, nil
+	} else if jsonschema.Type == "boolean" {
+		if stringValue == "true" {
+			return true, nil
+		} else if stringValue == "false" {
+			return false, nil
+		} else {
+			return nil, fmt.Errorf("--%s must either be 'true' or 'false'", field)
+		}
+	} else {
+		return stringValue, nil
+	}
+}
+
+func prepareEditPayload(field string, jsonschema *jsonschema_t) interface{} {
+	if jsonschema.Type == "number" {
+		return 0
+	} else if jsonschema.Type == "boolean" {
+		return false
+	} else if jsonschema.Type == "array" {
+		return []string{}
+	} else if jsonschema.Type == "object" {
+		obj := make(map[string]interface{})
+		for _, objectField := range jsonschema.Required {
+			obj[objectField] = ""
+		}
+		for objectField := range jsonschema.Properties {
+			obj[fmt.Sprintf("//%s", objectField)] = ""
+		}
+		return obj
+	} else if len(jsonschema.Enum) > 0 {
+		return strings.Join(jsonschema.Enum, "/")
+	} else {
+		return ""
+	}
+}
+
+// Turns 'a[b][c]' to a-b-c
+func getFlagName(parameterName string) (string, error) {
+	re, err := regexp.Compile(`[^\[\]]+`)
+	if err != nil {
+		return "", err
+	}
+	parts := re.FindAllString(parameterName, -1)
+	return strings.Join(parts, "-"), nil
+}
+
+func getQueryName(parameterName string) (string, error) {
+	re, err := regexp.Compile(`[^\[\]]+`)
+	if err != nil {
+		return "", err
+	}
+	parts := re.FindAllString(parameterName, -1)
+	return strings.Join(parts[1:], "__"), nil
 }
