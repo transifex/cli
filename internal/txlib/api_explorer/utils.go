@@ -244,6 +244,7 @@ func createObject(
 					jsopenapi,
 					true,
 					false,
+					nil,
 				)
 				if err != nil {
 					return nil, err
@@ -288,6 +289,7 @@ func createObject(
 					jsopenapi,
 					false,
 					false,
+					nil,
 				)
 				if err != nil {
 					return nil, err
@@ -409,11 +411,32 @@ func getFlagName(parameterName string) (string, error) {
 	return strings.Join(parts, "-"), nil
 }
 
-func getQueryName(parameterName string) (string, error) {
-	re, err := regexp.Compile(`[^\[\]]+`)
+func getQuery(
+	c *cli.Context, resourceName string, jsopenapi *jsopenapi_t,
+) (*jsonapi.Query, error) {
+	api, err := getApi(c)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	parts := re.FindAllString(parameterName, -1)
-	return strings.Join(parts[1:], "__"), nil
+	query := jsonapi.Query{Extras: make(map[string]string)}
+	parameters := jsopenapi.Resources[resourceName].Operations.GetMany.Parameters
+	for _, parameter := range parameters {
+		flagName, err := getFlagName(parameter.Name)
+		if err != nil {
+			return nil, err
+		}
+		parameterValue := c.String(flagName)
+		if parameterValue == "" && parameter.Resource != "" {
+			parameterValue, err = getResourceId(
+				c, api, parameter.Resource, jsopenapi, parameter.Required, nil,
+			)
+			if err != nil {
+				return nil, err
+			}
+		}
+		if parameterValue != "" {
+			query.Extras[parameter.Name] = parameterValue
+		}
+	}
+	return &query, nil
 }

@@ -60,7 +60,6 @@ type jsopenapi_t struct {
 
 type relationship_t struct {
 	Type       string `json:"type"`
-	Nullable   bool   `json:"nullable"`
 	Resource   string `json:"resource"`
 	Operations struct {
 		Change *struct {
@@ -520,7 +519,7 @@ func Cmd() (*cli.Command, error) {
 					if err != nil {
 						return err
 					}
-					fmt.Println(string(body))
+					invokePager(c.String("pager"), body)
 					return nil
 				},
 			}},
@@ -559,44 +558,9 @@ func cliCmdGetMany(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) 
 	if err != nil {
 		return err
 	}
-	query := jsonapi.Query{
-		Filters: make(map[string]string),
-		Extras:  make(map[string]string),
-	}
-	parameters := jsopenapi.Resources[resourceName].Operations.GetMany.Parameters
-	for _, parameter := range parameters {
-		if parameter.Resource != "" {
-			parameterValue, err := getResourceId(
-				c, api, parameter.Resource, jsopenapi, parameter.Required,
-			)
-			if err != nil {
-				return err
-			}
-			if parameterValue != "" {
-				queryName, err := getQueryName(parameter.Name)
-				if err != nil {
-					return err
-				}
-				query.Filters[queryName] = parameterValue
-			}
-		} else {
-			flagName, err := getFlagName(parameter.Name)
-			if err != nil {
-				return err
-			}
-			parameterValue := c.String(flagName)
-			if parameterValue != "" {
-				if strings.HasPrefix(parameter.Name, "filter[") {
-					queryName, err := getQueryName(parameter.Name)
-					if err != nil {
-						return err
-					}
-					query.Filters[queryName] = parameterValue
-				} else {
-					query.Extras[parameter.Name] = parameterValue
-				}
-			}
-		}
+	query, err := getQuery(c, resourceName, jsopenapi)
+	if err != nil {
+		return err
 	}
 	body, err := api.ListBody(resourceName, query.Encode())
 	if err != nil {
@@ -620,7 +584,11 @@ func cliCmdGetOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 	}
 	resourceId := c.String("id")
 	if resourceId == "" {
-		resourceId, err = getResourceId(c, api, resourceName, jsopenapi, true)
+		query, err := getQuery(c, resourceName, jsopenapi)
+		if err != nil {
+			return err
+		}
+		resourceId, err = getResourceId(c, api, resourceName, jsopenapi, true, query)
 		if err != nil {
 			return err
 		}
@@ -644,7 +612,11 @@ func cliCmdEditOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) 
 	}
 	resourceId := c.String("id")
 	if resourceId == "" {
-		resourceId, err = getResourceId(c, api, resourceName, jsopenapi, true)
+		query, err := getQuery(c, resourceName, jsopenapi)
+		if err != nil {
+			return err
+		}
+		resourceId, err = getResourceId(c, api, resourceName, jsopenapi, true, query)
 		if err != nil {
 			return err
 		}
@@ -695,8 +667,12 @@ func cliCmdEditOne(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) 
 	var changedFields []string
 	changedFields = append(changedFields, fieldsChangedFromFlags...)
 	if !c.Bool("no-interactive") {
+		preAttributes := make(map[string]interface{})
+		for key, value := range obj.Attributes {
+			preAttributes[key] = value
+		}
 		userSuppliedAttributes, err := edit(
-			c.String("editor"), obj.Attributes, fieldsToBeChangedFromEditor,
+			c.String("editor"), preAttributes, fieldsToBeChangedFromEditor,
 		)
 		if err != nil {
 			return err
@@ -724,21 +700,32 @@ func cliCmdChange(
 	}
 	parentId := c.String("id")
 	if parentId == "" {
-		parentId, err = getResourceId(c, api, resourceName, jsopenapi, true)
+		query, err := getQuery(c, resourceName, jsopenapi)
+		if err != nil {
+			return err
+		}
+		parentId, err = getResourceId(c, api, resourceName, jsopenapi, true, query)
 		if err != nil {
 			return err
 		}
 	}
 	childId := c.String("related-id")
 	if childId == "" {
+		resource := jsopenapi.Resources[resourceName]
+		relatedResourceName := resource.ResponseRelationships[relationshipName].Resource
+		query, err := getQuery(c, relatedResourceName, jsopenapi)
+		if err != nil {
+			return err
+		}
 		childIds, err := selectResourceIds(
 			c,
 			api,
-			jsopenapi.Resources[resourceName].ResponseRelationships[relationshipName].Resource,
+			relatedResourceName,
 			relationshipName,
 			jsopenapi,
 			true,
 			false,
+			query,
 		)
 		if err != nil {
 			return err
@@ -766,8 +753,12 @@ func cliCmdDelete(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 	}
 	resourceId := c.String("id")
 	if resourceId == "" {
+		query, err := getQuery(c, resourceName, jsopenapi)
+		if err != nil {
+			return err
+		}
 		resourceIds, err := selectResourceIds(
-			c, api, resourceName, "", jsopenapi, true, false,
+			c, api, resourceName, "", jsopenapi, true, false, query,
 		)
 		if err != nil {
 			return err
@@ -809,7 +800,11 @@ func cliCmdGetRelated(
 	}
 	parentId := c.String("id")
 	if parentId == "" {
-		parentId, err = getResourceId(c, api, resourceName, jsopenapi, true)
+		query, err := getQuery(c, resourceName, jsopenapi)
+		if err != nil {
+			return err
+		}
+		parentId, err = getResourceId(c, api, resourceName, jsopenapi, true, query)
 		if err != nil {
 			return err
 		}
@@ -849,8 +844,12 @@ func cliCmdSelect(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 	}
 	resourceId := c.String("id")
 	if resourceId == "" {
+		query, err := getQuery(c, resourceName, jsopenapi)
+		if err != nil {
+			return err
+		}
 		resourceIds, err := selectResourceIds(
-			c, api, resourceName, "", jsopenapi, true, false,
+			c, api, resourceName, "", jsopenapi, true, false, query,
 		)
 		if err != nil {
 			return err
@@ -896,7 +895,11 @@ func cliCmdAdd(
 	}
 	parentId := c.String("id")
 	if parentId == "" {
-		parentId, err = getResourceId(c, api, resourceName, jsopenapi, true)
+		query, err := getQuery(c, resourceName, jsopenapi)
+		if err != nil {
+			return err
+		}
+		parentId, err = getResourceId(c, api, resourceName, jsopenapi, true, query)
 		if err != nil {
 			return err
 		}
@@ -916,8 +919,12 @@ func cliCmdAdd(
 			relatedResource.PluralName,
 		)
 	} else {
+		query, err := getQuery(c, relatedResourceName, jsopenapi)
+		if err != nil {
+			return err
+		}
 		childIds, err = selectResourceIds(
-			c, api, relatedResourceName, relationshipName, jsopenapi, true, true,
+			c, api, relatedResourceName, relationshipName, jsopenapi, true, true, query,
 		)
 		if err != nil {
 			return err
@@ -950,7 +957,11 @@ func cliCmdRemove(
 	}
 	parentId := c.String("id")
 	if parentId == "" {
-		parentId, err = getResourceId(c, api, resourceName, jsopenapi, true)
+		query, err := getQuery(c, resourceName, jsopenapi)
+		if err != nil {
+			return err
+		}
+		parentId, err = getResourceId(c, api, resourceName, jsopenapi, true, query)
 		if err != nil {
 			return err
 		}
@@ -1036,7 +1047,11 @@ func cliCmdReset(
 	}
 	parentId := c.String("id")
 	if parentId == "" {
-		parentId, err = getResourceId(c, api, resourceName, jsopenapi, true)
+		query, err := getQuery(c, resourceName, jsopenapi)
+		if err != nil {
+			return err
+		}
+		parentId, err = getResourceId(c, api, resourceName, jsopenapi, true, query)
 		if err != nil {
 			return err
 		}
@@ -1056,8 +1071,12 @@ func cliCmdReset(
 			relatedResource.PluralName,
 		)
 	} else {
+		query, err := getQuery(c, relatedResourceName, jsopenapi)
+		if err != nil {
+			return err
+		}
 		childIds, err = selectResourceIds(
-			c, api, relatedResourceName, relationshipName, jsopenapi, true, true,
+			c, api, relatedResourceName, relationshipName, jsopenapi, true, true, query,
 		)
 		if err != nil {
 			return err

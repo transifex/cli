@@ -353,7 +353,6 @@ resources:
       organization:
         type: singular
         resource: organizations
-        required: true
         description:
           The `organization` whose translation activity you want to make a
           report for
@@ -681,7 +680,6 @@ resources:
       project:
         type: singular
         resource: projects
-        required: true
         description:
           The `project` whose translation activity you want to make a
           report for
@@ -948,12 +946,10 @@ resources:
     relationships:
       project:
         type: singular
-        required: true
         resource: projects
         description: The project the resource belongs to
       i18n_format:
         type: singular
-        required: true
         resource: i18n_formats
         description: The i18n format of the resource
       base:
@@ -1034,7 +1030,6 @@ resources:
       resource:
         type: singular
         resource: resources
-        required: true
         description:
           The `resource` whose translation activity you want to make a
           report for
@@ -1118,16 +1113,13 @@ resources:
       resource:
         type: singular
         resource: resources
-        required: true
     response_relationships:
       base:
         type: singular
         resource: resources
-        required: true
       head:
         type: singular
         resource: resources
-        required: true
     display: '{{.Relationships.base.DataSingular.Id}} -> {{.Relationships.head.DataSingular.Id}}: {{.Attributes.status}}, {{.Attributes.conflict_resolution}}'
   resource_language_leverage:
     plural_name: resource_language_leverages
@@ -1275,11 +1267,9 @@ resources:
       resource:
         type: singular
         resource: resources
-        required: true
       language:
         type: singular
         resource: languages
-        required: true
     display: '{{.Relationships.resource.DataSingular.Id}} - {{.Relationships.language.DataSingular.Id}} ({{.Attributes.translated_strings}}/{{.Attributes.total_strings}})'
   resource_metadata:
     plural_name: resource_metadatas
@@ -1354,7 +1344,6 @@ resources:
       resource:
         type: singular
         resource: resources
-        required: true
         description: Resource metadata relationships
     display: '{{.Attributes.namespace}}:{{.Attributes.name}} = {{.Attributes.value}}'
   resource_strings:
@@ -1574,15 +1563,12 @@ resources:
     relationships:
       language:
         type: plural
-        required: true
         resource: languages
       resource:
         type: plural
-        required: true
         resource: resources
       committer:
         type: plural
-        required: true
         resource: users
     display: '{{.Attributes.strings.other}}'
   resource_strings_async_downloads:
@@ -1936,15 +1922,12 @@ resources:
       resource_string:
         type: singular
         resource: resource_strings
-        required: true
       resource:
         type: singular
         resource: resources
-        required: true
       language:
         type: singular
         resource: languages
-        required: true
       author:
         type: singular
         resource: users
@@ -2030,32 +2013,26 @@ resources:
       resource:
         type: singular
         resource: resources
-        required: true
         description: Resource object
       language:
         type: singular
         resource: languages
-        required: true
         description: Language object
       resource_string:
         type: singular
         resource: resource_strings
-        required: true
         description: Resource String object
       translator:
         type: singular
         resource: users
-        required: true
         description: User object
       reviewer:
         type: singular
         resource: users
-        required: true
         description: User object
       proofreader:
         type: singular
         resource: users
-        required: true
         description: User object
     display: '{{.Attributes.strings.other}} ({{.Attributes.date_created}})'
   resource_translations:
@@ -2289,22 +2266,18 @@ resources:
       resource:
         type: singular
         resource: resources
-        required: true
         description: Resource object
       language:
         type: singular
         resource: languages
-        required: true
         description: Language object
       resource_string:
         type: singular
         resource: resource_strings
-        required: true
         description: Resource String object
       translator:
         type: singular
         resource: users
-        required: true
         description: User object
       reviewer:
         type: singular
@@ -2433,11 +2406,9 @@ resources:
       resource:
         type: singular
         resource: resources
-        required: true
       language:
         type: singular
         resource: languages
-        required: true
   resource_translations_async_uploads:
     upload: true
     id:
@@ -2538,12 +2509,10 @@ resources:
       resource:
         type: singular
         resource: resources
-        required: true
         description: The `resource` for which a translation file is uploaded
       language:
         type: singular
         resource: languages
-        required: true
         description: The language for which a translation file is uploaded
   teams:
     id:
@@ -2581,7 +2550,7 @@ resources:
         summary: List teams
         description: Get the list of teams that belong to a single organization
         parameters:
-          - name: 'filter[orgnanization]'
+          - name: 'filter[organization]'
             required: true
             resource: organizations
             description: Filter results by an organization
@@ -2717,7 +2686,6 @@ resources:
       team:
         type: singular
         resource: teams
-        required: true
         description:
           The `team` whose translation activity you want to make a
           report for
@@ -2901,7 +2869,6 @@ resources:
       project:
         type: singular
         resource: projects
-        required: true
       language:
         type: singular
         resource: languages
@@ -2990,7 +2957,6 @@ resources:
       project:
         type: singular
         resource: projects
-        required: true
       language:
         type: singular
         resource: languages

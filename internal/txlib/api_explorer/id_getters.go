@@ -2,7 +2,6 @@ package api_explorer
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/transifex/cli/pkg/jsonapi"
 	"github.com/urfave/cli/v2"
@@ -16,6 +15,7 @@ func selectResourceIds(
 	jsopenapi *jsopenapi_t,
 	required bool,
 	multi bool,
+	query *jsonapi.Query,
 ) ([]string, error) {
 	resource := jsopenapi.Resources[resourceName]
 
@@ -23,50 +23,32 @@ func selectResourceIds(
 		return []string{""}, nil
 	}
 
-	// Before we show a list of options, we need to fetch it. In order to do
-	// so, we need to see if there are any filters
-	query := jsonapi.Query{
-		Filters: make(map[string]string),
-		Extras:  make(map[string]string),
+	if query == nil {
+		query = &jsonapi.Query{Extras: make(map[string]string)}
 	}
-	if resource.Operations.GetMany != nil {
-		parameters := resource.Operations.GetMany.Parameters
-		for _, parameter := range parameters {
-			if parameter.Resource != "" {
-				filterValue, err := getResourceId(
-					c, api, parameter.Resource, jsopenapi, parameter.Required,
-				)
-				if err != nil {
-					return nil, err
-				}
-				if filterValue != "" {
-					queryName, err := getQueryName(parameter.Name)
-					if err != nil {
-						return nil, err
-					}
-					query.Filters[queryName] = filterValue
-				}
-			} else {
-				flagName, err := getFlagName(parameter.Name)
-				if err != nil {
-					return nil, err
-				}
-				filterValue := c.String(flagName)
-				if filterValue != "" {
-					if strings.HasPrefix(parameter.Name, "filter[") {
-						queryName, err := getQueryName(parameter.Name)
-						if err != nil {
-							return nil, err
-						}
-						query.Filters[queryName] = filterValue
-					} else {
-						query.Extras[parameter.Name] = filterValue
-					}
-				}
-			}
+	parameters := jsopenapi.Resources[resourceName].Operations.GetMany.Parameters
+	for _, parameter := range parameters {
+		if !parameter.Required || parameter.Resource == "" {
+			continue
 		}
+		_, exists := query.Extras[parameter.Name]
+		if exists {
+			continue
+		}
+		filterValue, err := getResourceId(
+			c, api, parameter.Resource, jsopenapi, true, nil,
+		)
+		if err != nil {
+			return nil, err
+		}
+		query.Extras[parameter.Name] = filterValue
 	}
-	body, err := api.ListBody(resourceName, query.Encode())
+
+	queryString := ""
+	if query != nil {
+		queryString = query.Encode()
+	}
+	body, err := api.ListBody(resourceName, queryString)
 	if err != nil {
 		return nil, err
 	}
@@ -128,19 +110,16 @@ func getResourceId(
 	resourceName string,
 	jsopenapi *jsopenapi_t,
 	required bool,
+	query *jsonapi.Query,
 ) (string, error) {
 	resource := jsopenapi.Resources[resourceName]
-	resourceId := c.String(fmt.Sprintf("%s-id", resource.SingularName))
-	if resourceId != "" {
-		return resourceId, nil
-	}
 	resourceId, err := load(resource.SingularName)
 	if err != nil {
 		return "", err
 	}
 	if resourceId == "" {
 		resourceIds, err := selectResourceIds(
-			c, api, resourceName, "", jsopenapi, required, false,
+			c, api, resourceName, "", jsopenapi, required, false, query,
 		)
 		if err != nil {
 			return "", err

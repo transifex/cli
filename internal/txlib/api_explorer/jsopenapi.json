@@ -4073,7 +4073,7 @@
           "description": "Get the list of teams that belong to a single organization",
           "parameters": [
             {
-              "name": "filter[orgnanization]",
+              "name": "filter[organization]",
               "required": true,
               "resource": "organizations",
               "description": "Filter results by an organization"

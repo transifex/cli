@@ -1053,11 +1053,11 @@ func Main() {
 		Flags: flags,
 	}
 
-	apiExplorerCnd, err := api_explorer.Cmd()
+	apiExplorerCmd, err := api_explorer.Cmd()
 	if err != nil {
 		panic(err)
 	}
-	app.Commands = append(app.Commands, apiExplorerCnd)
+	app.Commands = append(app.Commands, apiExplorerCmd)
 
 	err = app.Run(os.Args)
 	if err != nil {
