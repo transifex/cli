@@ -9,3 +9,6 @@
 - [x] Support get-related even when there is no dedicated URL (eg /teams/:id
       instead of /projects/:id/team)
 - [x] On upload, show raw JSON response
+
+- [ ] cannot 'get project resources'
+- [ ] when `get project languages`, I get asked for an organization, even if I have selected a project

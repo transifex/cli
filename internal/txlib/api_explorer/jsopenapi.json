@@ -552,7 +552,6 @@
         "organization": {
           "type": "singular",
           "resource": "organizations",
-          "required": true,
           "description": "The `organization` whose translation activity you want to make a report for"
         },
         "user": {
@@ -1089,7 +1088,6 @@
         "project": {
           "type": "singular",
           "resource": "projects",
-          "required": true,
           "description": "The `project` whose translation activity you want to make a report for"
         },
         "user": {
@@ -1572,13 +1570,11 @@
       "relationships": {
         "project": {
           "type": "singular",
-          "required": true,
           "resource": "projects",
           "description": "The project the resource belongs to"
         },
         "i18n_format": {
           "type": "singular",
-          "required": true,
           "resource": "i18n_formats",
           "description": "The i18n format of the resource"
         },
@@ -1689,7 +1685,6 @@
         "resource": {
           "type": "singular",
           "resource": "resources",
-          "required": true,
           "description": "The `resource` whose translation activity you want to make a report for"
         },
         "user": {
@@ -1826,20 +1821,17 @@
       "request_relationships": {
         "resource": {
           "type": "singular",
-          "resource": "resources",
-          "required": true
+          "resource": "resources"
         }
       },
       "response_relationships": {
         "base": {
           "type": "singular",
-          "resource": "resources",
-          "required": true
+          "resource": "resources"
         },
         "head": {
           "type": "singular",
-          "resource": "resources",
-          "required": true
+          "resource": "resources"
         }
       },
       "display": "{{.Relationships.base.DataSingular.Id}} -> {{.Relationships.head.DataSingular.Id}}: {{.Attributes.status}}, {{.Attributes.conflict_resolution}}"
@@ -2073,13 +2065,11 @@
       "relationships": {
         "resource": {
           "type": "singular",
-          "resource": "resources",
-          "required": true
+          "resource": "resources"
         },
         "language": {
           "type": "singular",
-          "resource": "languages",
-          "required": true
+          "resource": "languages"
         }
       },
       "display": "{{.Relationships.resource.DataSingular.Id}} - {{.Relationships.language.DataSingular.Id}} ({{.Attributes.translated_strings}}/{{.Attributes.total_strings}})"
@@ -2238,7 +2228,6 @@
         "resource": {
           "type": "singular",
           "resource": "resources",
-          "required": true,
           "description": "Resource metadata relationships"
         }
       },
@@ -2589,17 +2578,14 @@
       "relationships": {
         "language": {
           "type": "plural",
-          "required": true,
           "resource": "languages"
         },
         "resource": {
           "type": "plural",
-          "required": true,
           "resource": "resources"
         },
         "committer": {
           "type": "plural",
-          "required": true,
           "resource": "users"
         }
       },
@@ -2799,6 +2785,12 @@
           "description": "Option to replace edited strings. \nIf true, updated strings modified in the editor will be overwritten.\n",
           "default": false,
           "example": false
+        },
+        "keep_translations": {
+          "type": "boolean",
+          "description": "Option to keep translations if a source string with the same key changes.",
+          "default": false,
+          "example": false
         }
       },
       "response_attributes": {
@@ -2891,7 +2883,8 @@
           ],
           "optional_fields": [
             "callback_url",
-            "replace_edited_strings"
+            "replace_edited_strings",
+            "keep_translations"
           ],
           "error_codes": [
             400,
@@ -3130,18 +3123,15 @@
       "relationships": {
         "resource_string": {
           "type": "singular",
-          "resource": "resource_strings",
-          "required": true
+          "resource": "resource_strings"
         },
         "resource": {
           "type": "singular",
-          "resource": "resources",
-          "required": true
+          "resource": "resources"
         },
         "language": {
           "type": "singular",
-          "resource": "languages",
-          "required": true
+          "resource": "languages"
         },
         "author": {
           "type": "singular",
@@ -3250,37 +3240,31 @@
         "resource": {
           "type": "singular",
           "resource": "resources",
-          "required": true,
           "description": "Resource object"
         },
         "language": {
           "type": "singular",
           "resource": "languages",
-          "required": true,
           "description": "Language object"
         },
         "resource_string": {
           "type": "singular",
           "resource": "resource_strings",
-          "required": true,
           "description": "Resource String object"
         },
         "translator": {
           "type": "singular",
           "resource": "users",
-          "required": true,
           "description": "User object"
         },
         "reviewer": {
           "type": "singular",
           "resource": "users",
-          "required": true,
           "description": "User object"
         },
         "proofreader": {
           "type": "singular",
           "resource": "users",
-          "required": true,
           "description": "User object"
         }
       },
@@ -3645,25 +3629,21 @@
         "resource": {
           "type": "singular",
           "resource": "resources",
-          "required": true,
           "description": "Resource object"
         },
         "language": {
           "type": "singular",
           "resource": "languages",
-          "required": true,
           "description": "Language object"
         },
         "resource_string": {
           "type": "singular",
           "resource": "resource_strings",
-          "required": true,
           "description": "Resource String object"
         },
         "translator": {
           "type": "singular",
           "resource": "users",
-          "required": true,
           "description": "User object"
         },
         "reviewer": {
@@ -3844,13 +3824,11 @@
       "relationships": {
         "resource": {
           "type": "singular",
-          "resource": "resources",
-          "required": true
+          "resource": "resources"
         },
         "language": {
           "type": "singular",
-          "resource": "languages",
-          "required": true
+          "resource": "languages"
         }
       }
     },
@@ -4016,13 +3994,11 @@
         "resource": {
           "type": "singular",
           "resource": "resources",
-          "required": true,
           "description": "The `resource` for which a translation file is uploaded"
         },
         "language": {
           "type": "singular",
           "resource": "languages",
-          "required": true,
           "description": "The language for which a translation file is uploaded"
         }
       }
@@ -4323,7 +4299,6 @@
         "team": {
           "type": "singular",
           "resource": "teams",
-          "required": true,
           "description": "The `team` whose translation activity you want to make a report for"
         },
         "user": {
@@ -4596,8 +4571,7 @@
       "relationships": {
         "project": {
           "type": "singular",
-          "resource": "projects",
-          "required": true
+          "resource": "projects"
         },
         "language": {
           "type": "singular",
@@ -4720,8 +4694,7 @@
       "relationships": {
         "project": {
           "type": "singular",
-          "resource": "projects",
-          "required": true
+          "resource": "projects"
         },
         "language": {
           "type": "singular",

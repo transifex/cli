@@ -1134,6 +1134,10 @@ func cliCmdUpload(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 	}
 	var uploadAttributes struct {
 		Status string `json:"status"`
+		Errors []struct {
+			Code   string `json:"code"`
+			Detail string `json:"detail"`
+		}
 	}
 	for {
 		err = upload.MapAttributes(&uploadAttributes)
@@ -1142,8 +1146,8 @@ func cliCmdUpload(c *cli.Context, resourceName string, jsopenapi *jsopenapi_t) e
 		}
 		if uploadAttributes.Status == "failed" {
 			var errorsMessages []string
-			for _, err := range upload.Attributes["errors"].([]map[string]string) {
-				errorsMessages = append(errorsMessages, err["detail"])
+			for _, err := range uploadAttributes.Errors {
+				errorsMessages = append(errorsMessages, err.Detail)
 			}
 			return fmt.Errorf("upload failed: %s", strings.Join(errorsMessages, ", "))
 		} else if uploadAttributes.Status == "succeeded" {

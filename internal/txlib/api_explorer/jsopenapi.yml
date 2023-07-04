@@ -1714,6 +1714,13 @@ resources:
           If true, updated strings modified in the editor will be overwritten.
         default: false
         example: false
+      keep_translations:
+        type: boolean
+        description:
+          Option to keep translations if a source string with the same key
+          changes.
+        default: false
+        example: false
     response_attributes:
       status:
         type: string
@@ -1780,7 +1787,8 @@ resources:
           - bearerAuth: []
           - OAuth2: ['*', manage_content]
         required_fields: [content, content_encoding, resource]
-        optional_fields: [callback_url, replace_edited_strings]
+        optional_fields: [callback_url, replace_edited_strings,
+                          keep_translations]
         error_codes: [400, 401, 403, 404, 409, 429, 500]
       get_one:
         summary: Get source upload
