@@ -33,6 +33,7 @@ type Resource struct {
 	MinimumPercentage    int
 	ResourceName         string
 	ReplaceEditedStrings bool
+	KeepTranslations     bool
 }
 
 func loadLocalConfig() (*LocalConfig, error) {
@@ -132,6 +133,16 @@ func loadLocalConfigFromBytes(data []byte) (*LocalConfig, error) {
 			}
 		}
 
+		keepTranslations := false
+		if section.HasKey("keep_translations") {
+			keepTranslations, err = section.Key("keep_translations").Bool()
+			if err != nil {
+				return nil, fmt.Errorf(
+					"'keep_translations' needs to be 'true' or 'false': %s", err,
+				)
+			}
+		}
+
 		resource := Resource{
 			OrganizationSlug:     organizationSlug,
 			ProjectSlug:          projectSlug,
@@ -145,6 +156,7 @@ func loadLocalConfigFromBytes(data []byte) (*LocalConfig, error) {
 			MinimumPercentage:    -1,
 			ResourceName:         section.Key("resource_name").String(),
 			ReplaceEditedStrings: replaceEditedStrings,
+			KeepTranslations:     keepTranslations,
 		}
 
 		// Get first the perc in string to check if exists because .Key returns
@@ -297,6 +309,10 @@ func (localCfg LocalConfig) saveToWriter(file io.Writer) error {
 
 		section.NewKey(
 			"replace_edited_strings", strconv.FormatBool(resource.ReplaceEditedStrings),
+		)
+
+		section.NewKey(
+			"keep_translations", strconv.FormatBool(resource.KeepTranslations),
 		)
 	}
 

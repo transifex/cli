@@ -264,6 +264,11 @@ func Main() {
 						Usage: "Whether to replace source strings that have been edited in the " +
 							"meantime",
 					},
+					&cli.BoolFlag{
+						Name: "keep-translations",
+						Usage: "Whether to not discard translations if a source string with a " +
+							"pre-existing key changes",
+					},
 				},
 				Action: func(c *cli.Context) error {
 					cfg, err := config.LoadFromPaths(
@@ -346,6 +351,7 @@ func Main() {
 						Workers:              workers,
 						Silent:               c.Bool("silent"),
 						ReplaceEditedStrings: c.Bool("replace-edited-strings"),
+						KeepTranslations:     c.Bool("keep-translations"),
 					}
 
 					if args.All && len(args.Languages) > 0 {

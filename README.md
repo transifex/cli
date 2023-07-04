@@ -595,6 +595,10 @@ fall back to taking the filesystem timestamp into account.
   file push and will instead be replaced. This can also be set on a
   per-resource level in the configuration file.
 
+- `--keep-transations`: If present, translations of source strings with the
+  same key whose content changes will not be discarded. This can also be set on
+  a per-resource level in the configuration file.
+
 ### Pulling Files from Transifex
 
 `tx pull` is used to pull language files (usually translation language files) from

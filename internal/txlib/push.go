@@ -31,6 +31,7 @@ type PushCommandArguments struct {
 	Workers              int
 	Silent               bool
 	ReplaceEditedStrings bool
+	KeepTranslations     bool
 }
 
 func PushCommand(
@@ -447,6 +448,7 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 			args,
 			resourceIsNew,
 			args.ReplaceEditedStrings || cfgResource.ReplaceEditedStrings,
+			args.KeepTranslations || cfgResource.KeepTranslations,
 		}
 	}
 	if args.Translation { // -t flag is set
@@ -574,6 +576,7 @@ type SourceFilePushTask struct {
 	args                 PushCommandArguments
 	resourceIsNew        bool
 	replaceEditedStrings bool
+	keepTranslations     bool
 }
 
 func (task *SourceFilePushTask) Run(send func(string), abort func()) {
@@ -584,6 +587,7 @@ func (task *SourceFilePushTask) Run(send func(string), abort func()) {
 	args := task.args
 	resourceIsNew := task.resourceIsNew
 	replaceEditedStrings := task.replaceEditedStrings
+	keepTranslations := task.keepTranslations
 
 	parts := strings.Split(resource.Id, ":")
 	sendMessage := func(body string, force bool) {
@@ -628,7 +632,9 @@ func (task *SourceFilePushTask) Run(send func(string), abort func()) {
 	err = handleThrottling(
 		func() error {
 			var err error
-			sourceUpload, err = txapi.UploadSource(api, resource, file, replaceEditedStrings)
+			sourceUpload, err = txapi.UploadSource(
+				api, resource, file, replaceEditedStrings, keepTranslations,
+			)
 			return err
 		},
 		"Uploading file",

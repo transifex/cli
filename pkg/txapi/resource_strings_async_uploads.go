@@ -40,6 +40,7 @@ func UploadSource(
 	resource *jsonapi.Resource,
 	file io.Reader,
 	replaceEditedStrings bool,
+	keepTranslations bool,
 ) (*jsonapi.Resource, error) {
 	data, err := io.ReadAll(file)
 	if err != nil {
@@ -54,6 +55,7 @@ func UploadSource(
 		Attributes: map[string]interface{}{
 			"content":                data,
 			"replace_edited_strings": replaceEditedStrings,
+			"keep_translations":      keepTranslations,
 		},
 	}
 	upload.SetRelated("resource", resource)
