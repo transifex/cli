@@ -36,7 +36,10 @@ func (err *ResourceStringAsyncUploadAttributes) Error() string {
 }
 
 func UploadSource(
-	api *jsonapi.Connection, resource *jsonapi.Resource, file io.Reader,
+	api *jsonapi.Connection,
+	resource *jsonapi.Resource,
+	file io.Reader,
+	replaceEditedStrings bool,
 ) (*jsonapi.Resource, error) {
 	data, err := io.ReadAll(file)
 	if err != nil {
@@ -49,7 +52,8 @@ func UploadSource(
 		// Setting attributes directly here because POST and GET attributes are
 		// different
 		Attributes: map[string]interface{}{
-			"content": data,
+			"content":                data,
+			"replace_edited_strings": replaceEditedStrings,
 		},
 	}
 	upload.SetRelated("resource", resource)

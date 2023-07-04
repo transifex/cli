@@ -590,6 +590,11 @@ fall back to taking the filesystem timestamp into account.
   any time.
 - `--silent`: Reduce verbosity of the output.
 
+- `--replace-edited-strings`: If present, source strings that have been edited
+  (in the editor UI or via the API) will not be protected from this source
+  file push and will instead be replaced. This can also be set on a
+  per-resource level in the configuration file.
+
 ### Pulling Files from Transifex
 
 `tx pull` is used to pull language files (usually translation language files) from
