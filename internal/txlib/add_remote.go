@@ -72,10 +72,8 @@ func AddRemoteCommand(
 		}
 		i18nFormat, exists := i18nFormats[i18nFormatRelationship.DataSingular.Id]
 		if !exists {
-			return fmt.Errorf(
-				"could not find file Format: %s",
-				resource.Relationships["i18n_format"].DataSingular.Id,
-			)
+			fmt.Printf("Resource %s skipped: Invalid file Format %s\n", resource.Id, i18nFormatRelationship.DataSingular.Id)
+			continue
 		}
 
 		// Construct file-filter
