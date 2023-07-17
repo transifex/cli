@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -680,10 +681,16 @@ func TestResourceMigrationFailed(t *testing.T) {
 		string(content), "projslug1.ares"))
 	assert.True(t, strings.Contains(
 		string(content), "o:org:p:projslug2:r:ares2"))
-	assert.True(t, strings.Contains(
-		string(content), "minimum_perc = 10"))
-	assert.True(t, strings.Contains(
-		string(content), "minimum_perc = 0"))
+	matched, err := regexp.MatchString(`minimum_perc\s*=\s*10`, string(content))
+	if err != nil {
+		t.Error(err)
+	}
+	assert.True(t, matched)
+	matched, err = regexp.MatchString(`minimum_perc\s*=\s*0`, string(content))
+	if err != nil {
+		t.Error(err)
+	}
+	assert.True(t, matched)
 }
 
 func TestBackUpFileCreated(t *testing.T) {
