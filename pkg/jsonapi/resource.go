@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"mime/multipart"
+	"strconv"
 )
 
 type Resource struct {
@@ -188,6 +189,11 @@ func (r *Resource) SaveAsMultipart(fields []string) error {
 			switch data := attribute.(type) {
 			case string:
 				err := writer.WriteField(field, data)
+				if err != nil {
+					return err
+				}
+			case bool:
+				err := writer.WriteField(field, strconv.FormatBool(data))
 				if err != nil {
 					return err
 				}

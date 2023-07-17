@@ -259,6 +259,16 @@ func Main() {
 						Name:  "silent",
 						Usage: "Whether to reduce verbosity of the output",
 					},
+					&cli.BoolFlag{
+						Name: "replace-edited-strings",
+						Usage: "Whether to replace source strings that have been edited in the " +
+							"meantime",
+					},
+					&cli.BoolFlag{
+						Name: "keep-translations",
+						Usage: "Whether to not discard translations if a source string with a " +
+							"pre-existing key changes",
+					},
 				},
 				Action: func(c *cli.Context) error {
 					cfg, err := config.LoadFromPaths(
@@ -327,19 +337,21 @@ func Main() {
 					}
 
 					args := txlib.PushCommandArguments{
-						Source:           c.Bool("source"),
-						Translation:      c.Bool("translation"),
-						Force:            c.Bool("force"),
-						Skip:             c.Bool("skip"),
-						Xliff:            c.Bool("xliff"),
-						Languages:        languages,
-						ResourceIds:      resourceIds,
-						UseGitTimestamps: c.Bool("use-git-timestamps"),
-						Branch:           c.String("branch"),
-						Base:             c.String("base"),
-						All:              c.Bool("all"),
-						Workers:          workers,
-						Silent:           c.Bool("silent"),
+						Source:               c.Bool("source"),
+						Translation:          c.Bool("translation"),
+						Force:                c.Bool("force"),
+						Skip:                 c.Bool("skip"),
+						Xliff:                c.Bool("xliff"),
+						Languages:            languages,
+						ResourceIds:          resourceIds,
+						UseGitTimestamps:     c.Bool("use-git-timestamps"),
+						Branch:               c.String("branch"),
+						Base:                 c.String("base"),
+						All:                  c.Bool("all"),
+						Workers:              workers,
+						Silent:               c.Bool("silent"),
+						ReplaceEditedStrings: c.Bool("replace-edited-strings"),
+						KeepTranslations:     c.Bool("keep-translations"),
 					}
 
 					if args.All && len(args.Languages) > 0 {

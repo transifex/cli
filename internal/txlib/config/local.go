@@ -21,17 +21,19 @@ type LocalConfig struct {
 }
 
 type Resource struct {
-	OrganizationSlug  string
-	ProjectSlug       string
-	ResourceSlug      string
-	FileFilter        string
-	SourceFile        string
-	SourceLanguage    string
-	Type              string
-	LanguageMappings  map[string]string
-	Overrides         map[string]string
-	MinimumPercentage int
-	ResourceName      string
+	OrganizationSlug     string
+	ProjectSlug          string
+	ResourceSlug         string
+	FileFilter           string
+	SourceFile           string
+	SourceLanguage       string
+	Type                 string
+	LanguageMappings     map[string]string
+	Overrides            map[string]string
+	MinimumPercentage    int
+	ResourceName         string
+	ReplaceEditedStrings bool
+	KeepTranslations     bool
 }
 
 func loadLocalConfig() (*LocalConfig, error) {
@@ -121,18 +123,40 @@ func loadLocalConfigFromBytes(data []byte) (*LocalConfig, error) {
 			return nil, err
 		}
 
+		replaceEditedStrings := false
+		if section.HasKey("replace_edited_strings") {
+			replaceEditedStrings, err = section.Key("replace_edited_strings").Bool()
+			if err != nil {
+				return nil, fmt.Errorf(
+					"'replace_edited_strings' needs to be 'true' or 'false': %s", err,
+				)
+			}
+		}
+
+		keepTranslations := false
+		if section.HasKey("keep_translations") {
+			keepTranslations, err = section.Key("keep_translations").Bool()
+			if err != nil {
+				return nil, fmt.Errorf(
+					"'keep_translations' needs to be 'true' or 'false': %s", err,
+				)
+			}
+		}
+
 		resource := Resource{
-			OrganizationSlug:  organizationSlug,
-			ProjectSlug:       projectSlug,
-			ResourceSlug:      resourceSlug,
-			FileFilter:        section.Key("file_filter").String(),
-			SourceFile:        section.Key("source_file").String(),
-			SourceLanguage:    section.Key("source_lang").String(),
-			Type:              section.Key("type").String(),
-			LanguageMappings:  make(map[string]string),
-			Overrides:         make(map[string]string),
-			MinimumPercentage: -1,
-			ResourceName:      section.Key("resource_name").String(),
+			OrganizationSlug:     organizationSlug,
+			ProjectSlug:          projectSlug,
+			ResourceSlug:         resourceSlug,
+			FileFilter:           section.Key("file_filter").String(),
+			SourceFile:           section.Key("source_file").String(),
+			SourceLanguage:       section.Key("source_lang").String(),
+			Type:                 section.Key("type").String(),
+			LanguageMappings:     make(map[string]string),
+			Overrides:            make(map[string]string),
+			MinimumPercentage:    -1,
+			ResourceName:         section.Key("resource_name").String(),
+			ReplaceEditedStrings: replaceEditedStrings,
+			KeepTranslations:     keepTranslations,
 		}
 
 		// Get first the perc in string to check if exists because .Key returns
@@ -282,6 +306,14 @@ func (localCfg LocalConfig) saveToWriter(file io.Writer) error {
 				return err
 			}
 		}
+
+		section.NewKey(
+			"replace_edited_strings", strconv.FormatBool(resource.ReplaceEditedStrings),
+		)
+
+		section.NewKey(
+			"keep_translations", strconv.FormatBool(resource.KeepTranslations),
+		)
 	}
 
 	_, err = cfg.WriteTo(file)
@@ -365,6 +397,10 @@ func localConfigsEqual(left, right *LocalConfig) bool {
 			if leftValue != rightValue {
 				return false
 			}
+		}
+
+		if leftResource.ReplaceEditedStrings != rightResource.ReplaceEditedStrings {
+			return false
 		}
 	}
 
