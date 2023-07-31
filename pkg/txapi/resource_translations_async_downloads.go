@@ -49,6 +49,11 @@ func PollTranslationDownload(download *jsonapi.Resource, filePath string) error 
 		}
 		if download.Redirect != "" {
 			break
+		} else if download.Attributes["status"] == "failed" {
+			return fmt.Errorf(
+				"download of translation '%s' failed",
+				download.Relationships["resource"].DataSingular.Id,
+			)
 		}
 	}
 	resp, err := http.Get(download.Redirect)
