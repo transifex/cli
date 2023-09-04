@@ -9,10 +9,11 @@ Usage:
 		i int
 	}
 
-	func (task *Task) Run(send func(string), abort funct()) {
+	func (task *Task) Run(send func(string), abort func()) bool {
 		send(fmt.Sprintf("Processing task %d\n", task.i))
 		time.Sleep(time.Duration(5) * time.Second)
 		send(fmt.Sprintf("Processed task %d\n", task.i))
+		return true
 	}
 
 	func main() {
@@ -41,9 +42,10 @@ listen to other channels that the tasks can write to at the same time:
 		resultChannel chan int
 	}
 
-	func (task Task) Run() {
+	func (task Task) Run(send func(string), abort func()) bool {
 		time.Sleep(time.Duration(5) * time.Second)
 		resultChannel <- task.i * task.i
+		return true
 	}
 
 	func main() {
@@ -76,12 +78,13 @@ done, you can check the IsAborted field to see if any of the tasks aborted.
 		i int
 	}
 
-	func (task Task) Run(send func(string), abort func()) {
+	func (task Task) Run(send func(string), abort func()) bool {
 		if task.i == 20 {
 			abort()
-			return
+			return false
 		}
 		// Do stuff
+		return true
 	}
 
 	func main() {
@@ -95,6 +98,11 @@ done, you can check the IsAborted field to see if any of the tasks aborted.
 			fmt.Pritnln("Something went wrong")
 		}
 	}
+
+You can indicate the success status of a completed task by returning true or
+false from the 'Run' method. The printed logs will show the number of
+successful tasks. Furthermore, you can inspect the 'pool.FinishedTasks' value
+after the worker pool has finished.
 */
 
 package worker_pool
@@ -111,7 +119,7 @@ import (
 )
 
 type Task interface {
-	Run(send func(string), abort func())
+	Run(send func(string), abort func()) bool
 }
 
 type taskContainer_t struct {
@@ -133,7 +141,8 @@ type Pool struct {
 	counter          int
 	forceNotTerminal bool
 
-	IsAborted bool
+	IsAborted     bool
+	FinishedTasks int32
 }
 
 func New(numWorkers, numTasks int, forceNotTerminal bool) *Pool {
@@ -160,22 +169,23 @@ func (pool *Pool) Start() {
 	}
 	pool.outerWaitGroup.Add(1)
 
-	var finishedTasks int32 = 0
-
 	for i := 0; i < pool.numWorkers; i++ {
 		go func() {
 			for taskContainer := range pool.taskChannel {
+				var success bool
 				if !pool.IsAborted {
 					send := func(body string) {
 						messageChannel <- message_t{taskContainer.i, body}
 					}
-					taskContainer.task.Run(send, pool.abort)
+					success = taskContainer.task.Run(send, pool.abort)
+				}
+				if success {
+					atomic.AddInt32(&pool.FinishedTasks, 1)
 				}
 				if !pool.forceNotTerminal && isatty.IsTerminal(os.Stdout.Fd()) {
-					atomic.AddInt32(&finishedTasks, 1)
 					messageChannel <- message_t{
 						pool.numTasks,
-						makeProgressBar(finishedTasks, pool.numTasks),
+						makeProgressBar(pool.FinishedTasks, pool.numTasks),
 					}
 				}
 				pool.innerWaitGroup.Done()
@@ -215,6 +225,8 @@ func (pool *Pool) Start() {
 				exitfor = true
 				if !pool.forceNotTerminal && isatty.IsTerminal(os.Stdout.Fd()) {
 					writer.Stop()
+				} else {
+					fmt.Printf("Completed %d / %d tasks\n", pool.FinishedTasks, pool.counter)
 				}
 				close(messageChannel)
 				pool.outerWaitGroup.Done()
@@ -225,7 +237,7 @@ func (pool *Pool) Start() {
 	if !pool.forceNotTerminal && isatty.IsTerminal(os.Stdout.Fd()) {
 		messageChannel <- message_t{
 			pool.numTasks,
-			makeProgressBar(finishedTasks, pool.numTasks),
+			makeProgressBar(pool.FinishedTasks, pool.numTasks),
 		}
 	}
 }
