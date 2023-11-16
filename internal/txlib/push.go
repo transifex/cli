@@ -17,19 +17,21 @@ import (
 )
 
 type PushCommandArguments struct {
-	Source           bool
-	Translation      bool
-	Force            bool
-	Skip             bool
-	Xliff            bool
-	Languages        []string
-	ResourceIds      []string
-	UseGitTimestamps bool
-	Branch           string
-	Base             string
-	All              bool
-	Workers          int
-	Silent           bool
+	Source               bool
+	Translation          bool
+	Force                bool
+	Skip                 bool
+	Xliff                bool
+	Languages            []string
+	ResourceIds          []string
+	UseGitTimestamps     bool
+	Branch               string
+	Base                 string
+	All                  bool
+	Workers              int
+	Silent               bool
+	ReplaceEditedStrings bool
+	KeepTranslations     bool
 }
 
 func PushCommand(
@@ -445,6 +447,8 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 			remoteStats[sourceLanguage.Id],
 			args,
 			resourceIsNew,
+			args.ReplaceEditedStrings || cfgResource.ReplaceEditedStrings,
+			args.KeepTranslations || cfgResource.KeepTranslations,
 		}
 	}
 	if args.Translation { // -t flag is set
@@ -565,12 +569,14 @@ func (task *LanguagePushTask) Run(send func(string), abort func()) {
 }
 
 type SourceFilePushTask struct {
-	api           *jsonapi.Connection
-	resource      *jsonapi.Resource
-	sourceFile    string
-	remoteStats   *jsonapi.Resource
-	args          PushCommandArguments
-	resourceIsNew bool
+	api                  *jsonapi.Connection
+	resource             *jsonapi.Resource
+	sourceFile           string
+	remoteStats          *jsonapi.Resource
+	args                 PushCommandArguments
+	resourceIsNew        bool
+	replaceEditedStrings bool
+	keepTranslations     bool
 }
 
 func (task *SourceFilePushTask) Run(send func(string), abort func()) {
@@ -580,6 +586,8 @@ func (task *SourceFilePushTask) Run(send func(string), abort func()) {
 	remoteStats := task.remoteStats
 	args := task.args
 	resourceIsNew := task.resourceIsNew
+	replaceEditedStrings := task.replaceEditedStrings
+	keepTranslations := task.keepTranslations
 
 	parts := strings.Split(resource.Id, ":")
 	sendMessage := func(body string, force bool) {
@@ -624,7 +632,9 @@ func (task *SourceFilePushTask) Run(send func(string), abort func()) {
 	err = handleThrottling(
 		func() error {
 			var err error
-			sourceUpload, err = txapi.UploadSource(api, resource, file)
+			sourceUpload, err = txapi.UploadSource(
+				api, resource, file, replaceEditedStrings, keepTranslations,
+			)
 			return err
 		},
 		"Uploading file",

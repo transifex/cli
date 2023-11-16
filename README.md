@@ -121,7 +121,7 @@ and the config file with the following content which is required for the configu
 
 ```shell
 [main]
-host=https://www.transifex.com
+host=https://app.transifex.com
 ```
 
 In case there is already a `.tx/config` file in the current directory, the users
@@ -249,7 +249,7 @@ Your `.tx/config` file should look like this:
 
 ```ini
 [main]
-host = https://www.transifex.com
+host = https://app.transifex.com
 
 [o:organization-1:p:project-1:r:en_php]
 source_file = locale/en.php
@@ -352,7 +352,7 @@ that, you can run the following command with Linux or Mac OS:
 ```sh
 tx add remote \
     --file-filter 'translations/<project_slug>.<resource_slug>/<lang>.<ext>'
-    https://www.transifex.com/myorganization/myproject/dashboard/
+    https://app.transifex.com/myorganization/myproject/dashboard/
 ```
 
 > The use of tx add remote appends the content in the .tx/config file and does not overwrite it. However, if the project and resource exist in the .tx/config file, then it will overwrite the previous information for the specific project & resource.
@@ -364,7 +364,7 @@ remote project. ie the configuration file may look like this:
 
 ```ini
 [main]
-host = https://www.transifex.com
+host = https://app.transifex.com
 
 [o:myorganization:p:myproject:r:resource1]
 file_filter = translations/myproject.resource1/<lang>.po
@@ -437,7 +437,7 @@ You can limit the resources you want to push with:
 A resource ID must refer to a resource that has already been configured with
 `tx add` and has the form `<project>.<resource>`. So, if the URL of your
 resource in Transifex is
-`https://www.transifex.com/myorganization/myproject/myresource`, then the
+`https://app.transifex.com/myorganization/myproject/myresource`, then the
 resource ID will be `myproject.myresource`.
 
 You can also use the `*` character to select multiple resources with the same
@@ -544,9 +544,9 @@ fall back to taking the filesystem timestamp into account.
 
 - `--branch`: Using this flag, you can access copies of the regular remote
   resource that are tied to the provided branch. So if `tx push proj.res`
-  pushes to the `https://www.transifex.com/org/proj/res` resource, then `tx
+  pushes to the `https://app.transifex.com/org/proj/res` resource, then `tx
   push --branch foo proj.res` will push to the
-  `https://www.transifex.com/org/proj/foo--res` resource. This way you can
+  `https://app.transifex.com/org/proj/foo--res` resource. This way you can
   separate the localization effort across different branches. If you supply an
   empty string as the branch (`--branch ''`), then the client will attempt to
   figure out the currently active branch in the local git repository. For
@@ -562,10 +562,10 @@ fall back to taking the filesystem timestamp into account.
   ```
 
   This way, the "regular"
-  `https://www.transifex.com/myorganization/myproject/myresource` resource will
+  `https://app.transifex.com/myorganization/myproject/myresource` resource will
   not be affected by the changes you did to the source strings and the
   localization effort can be done in parallel on the
-  `https://www.transifex.com/myorganization/myproject/new_feature--myresource`
+  `https://app.transifex.com/myorganization/myproject/new_feature--myresource`
   resource.
 
   > Note: Starting from version 1.5.0 resources created using the `--branch` flag,
@@ -589,6 +589,15 @@ fall back to taking the filesystem timestamp into account.
   speed. The `--workers` flag sets the number of concurrent uploads possible at
   any time.
 - `--silent`: Reduce verbosity of the output.
+
+- `--replace-edited-strings`: If present, source strings that have been edited
+  (in the editor UI or via the API) will not be protected from this source
+  file push and will instead be replaced. This can also be set on a
+  per-resource level in the configuration file.
+
+- `--keep-transations`: If present, translations of source strings with the
+  same key whose content changes will not be discarded. This can also be set on
+  a per-resource level in the configuration file.
 
 ### Pulling Files from Transifex
 
@@ -741,17 +750,20 @@ default to taking the filesystem timestamp into account.
   when using `-a/--all` flag and you don't want to change the existing files
   but only download other language files.
 
-`--mode/-m`: The translation mode of the downloaded file. This can be one of the 
+- `--keep-new-files`: Used with `--disable-ovewrite` to create new files
+	if file already exists locally with a '.new' extension.
+
+- `--mode/-m`: The translation mode of the downloaded file. This can be one of the
 following: `'default', 'reviewed'`, `'proofread'`, `'translator'`, `'untranslated'`,
- `'onlytranslated'`, `'onlyreviewed'`, `'onlyproofread'`, `'sourceastranslation'` **(default 
+ `'onlytranslated'`, `'onlyreviewed'`, `'onlyproofread'`, `'sourceastranslation'` **(default
  mode is: **`'default'`). Use like` 'tx pull -m proofread'` to download only proofread
- translations.   
+ translations.
 
 - `--branch`: Using this flag, you can access copies of the regular remote
   resource that are tied to the provided branch. So if `tx pull proj.res`
-  pulls from the `https://www.transifex.com/org/proj/res` resource, then `tx
+  pulls from the `https://app.transifex.com/org/proj/res` resource, then `tx
   pull --branch foo proj.res` will pull from the
-  `https://www.transifex.com/org/proj/foo--res` resource. This way you can
+  `https://app.transifex.com/org/proj/foo--res` resource. This way you can
   separate the localization effort across different branches. If you supply an
   empty string as the branch (`--branch ''`), then the client will attempt to
   figure out the currently active branch in the local git repository. For
@@ -766,10 +778,10 @@ following: `'default', 'reviewed'`, `'proofread'`, `'translator'`, `'untranslate
   ```
 
   This way, the "regular"
-    `https://www.transifex.com/myorganization/myproject/myresource` resource will
+    `https://app.transifex.com/myorganization/myproject/myresource` resource will
   not be affected by the changes one did, and the localization effort can be done
   in parallel on the
-  `https://www.transifex.com/myorganization/myproject/new_feature--myresource`
+  `https://app.transifex.com/myorganization/myproject/new_feature--myresource`
   resource.
 
 - `--skip`: Normally, if a download fails, the client will abort. This may not

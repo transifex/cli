@@ -21,7 +21,7 @@ func TestLoadLocalConfig(t *testing.T) {
 	}
 
 	expected := LocalConfig{
-		Host: "https://www.transifex.com",
+		Host: "https://app.transifex.com",
 		Path: path,
 		LanguageMappings: map[string]string{
 			"de":    "de-Br",

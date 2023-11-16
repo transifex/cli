@@ -73,7 +73,7 @@ func MigrateLegacyConfigFile(
 			}
 
 			fmt.Println("If you don't have an API token, you can generate " +
-				"one in https://www.transifex.com/user/settings/api/")
+				"one in https://app.transifex.com/user/settings/api/")
 			fmt.Print("> ")
 			var token string
 			_, err := fmt.Scanln(&token)

@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -154,9 +155,9 @@ func TestSuccessfulMigration(t *testing.T) {
 	defer f.Close()
 
 	_, err2 := f.WriteString(`
-		[https://www.transifex.com]
+		[https://app.transifex.com]
 		api_hostname  = https://api.transifex.com
-		hostname      = https://www.transifex.com
+		hostname      = https://app.transifex.com
 		username      = api
 		password      = apassword
 	`)
@@ -175,7 +176,7 @@ func TestSuccessfulMigration(t *testing.T) {
 
 	_, err2 = f.WriteString(`
 		[main]
-		host = https://www.transifex.com
+		host = https://app.transifex.com
 		[projslug.ares]
 		file_filter = locale/<lang>.po
 		minimum_perc = 0
@@ -283,9 +284,9 @@ func TestSuccessfulMigrationWithSourceFileConstruction(t *testing.T) {
 	defer f.Close()
 
 	_, err2 := f.WriteString(`
-		[https://www.transifex.com]
+		[https://app.transifex.com]
 		api_hostname  = https://api.transifex.com
-		hostname      = https://www.transifex.com
+		hostname      = https://app.transifex.com
 		username      = api
 		password      = apassword
 	`)
@@ -304,7 +305,7 @@ func TestSuccessfulMigrationWithSourceFileConstruction(t *testing.T) {
 
 	_, err2 = f.WriteString(`
 		[main]
-		host = https://www.transifex.com
+		host = https://app.transifex.com
 		[projslug.ares]
 		file_filter = locale/<lang>.po
 		minimum_perc = 0
@@ -385,9 +386,9 @@ func TestNeedsTokenInRootConfig(t *testing.T) {
 	defer f.Close()
 
 	_, err2 := f.WriteString(`
-		[https://www.transifex.com]
+		[https://app.transifex.com]
 		api_hostname  = https://api.transifex.com
-		hostname      = https://www.transifex.com
+		hostname      = https://app.transifex.com
 		username      = tk
 		password      = apassword
 	`)
@@ -406,7 +407,7 @@ func TestNeedsTokenInRootConfig(t *testing.T) {
 
 	_, err2 = f.WriteString(`
 		[main]
-		host = https://www.transifex.com
+		host = https://app.transifex.com
 		[projslug.ares]
 		file_filter = locale/<lang>.po
 		minimum_perc = 0
@@ -479,7 +480,7 @@ func TestNoTransifexRcFile(t *testing.T) {
 
 	_, err2 := f.WriteString(`
 		[main]
-		host = https://www.transifex.com
+		host = https://app.transifex.com
 		[projslug.ares]
 		file_filter = locale/<lang>.po
 		minimum_perc = 0
@@ -606,9 +607,9 @@ func TestResourceMigrationFailed(t *testing.T) {
 	defer f.Close()
 
 	_, err2 := f.WriteString(`
-		[https://www.transifex.com]
+		[https://app.transifex.com]
 		api_hostname  = https://api.transifex.com
-		hostname      = https://www.transifex.com
+		hostname      = https://app.transifex.com
 		username      = api
 		password      = apassword
 	`)
@@ -627,7 +628,7 @@ func TestResourceMigrationFailed(t *testing.T) {
 
 	_, err2 = f.WriteString(`
 		[main]
-		host = https://www.transifex.com
+		host = https://app.transifex.com
 		[projslug1.ares]
 		file_filter = locale/<lang>.po
 		minimum_perc = 10
@@ -680,10 +681,16 @@ func TestResourceMigrationFailed(t *testing.T) {
 		string(content), "projslug1.ares"))
 	assert.True(t, strings.Contains(
 		string(content), "o:org:p:projslug2:r:ares2"))
-	assert.True(t, strings.Contains(
-		string(content), "minimum_perc = 10"))
-	assert.True(t, strings.Contains(
-		string(content), "minimum_perc = 0"))
+	matched, err := regexp.MatchString(`minimum_perc\s*=\s*10`, string(content))
+	if err != nil {
+		t.Error(err)
+	}
+	assert.True(t, matched)
+	matched, err = regexp.MatchString(`minimum_perc\s*=\s*0`, string(content))
+	if err != nil {
+		t.Error(err)
+	}
+	assert.True(t, matched)
 }
 
 func TestBackUpFileCreated(t *testing.T) {
@@ -747,9 +754,9 @@ func TestBackUpFileCreated(t *testing.T) {
 	defer f.Close()
 
 	_, err2 := f.WriteString(`
-		[https://www.transifex.com]
+		[https://app.transifex.com]
 		api_hostname  = https://api.transifex.com
-		hostname      = https://www.transifex.com
+		hostname      = https://app.transifex.com
 		username      = api
 		password      = apassword
 	`)
@@ -768,7 +775,7 @@ func TestBackUpFileCreated(t *testing.T) {
 
 	_, err2 = f.WriteString(`
 		[main]
-		host = https://www.transifex.com
+		host = https://app.transifex.com
 		[projslug.ares]
 		file_filter = locale/<lang>.po
 		minimum_perc = 0
