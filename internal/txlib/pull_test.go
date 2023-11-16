@@ -2,7 +2,6 @@ package txlib
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -622,7 +621,6 @@ func TestKeepNewFilesSource(t *testing.T) {
 			ResourceIds:       nil,
 			MinimumPercentage: -1,
 			Workers:           1,
-			KeepNewFiles:      true,
 			DisableOverwrite:  true,
 		},
 	)
@@ -638,56 +636,6 @@ func TestKeepNewFilesSource(t *testing.T) {
 
 	assertFileContent(t, "aaa.json.new", "New source")
 	assertFileContent(t, "aaa.json", "")
-}
-
-func TestKeepNewFilesSourceOnlyWithDisableOverride(t *testing.T) {
-	afterTest := beforeTest(t, nil, nil)
-	defer afterTest()
-
-	cfg := getStandardConfig()
-	assertFileContent(t, "aaa.json", "")
-
-	ts := getNewTestServer("New source")
-	defer ts.Close()
-
-	mockData := jsonapi.MockData{
-		resourceUrl:            getResourceEndpoint(),
-		projectUrl:             getProjectEndpoint(),
-		statsUrlSourceLanguage: getStatsEndpointSourceLanguage(),
-		sourceDownloadsUrl:     getSourceDownloadsEndpoint(),
-		sourceDownloadUrl:      getDownloadEndpoint(ts.URL),
-	}
-
-	api := jsonapi.GetTestConnection(mockData)
-	err := PullCommand(
-		cfg,
-		&api,
-		&PullCommandArguments{
-			FileType:          "default",
-			Mode:              "default",
-			Force:             true,
-			Source:            true,
-			ResourceIds:       nil,
-			MinimumPercentage: -1,
-			Workers:           1,
-			KeepNewFiles:      true,
-		},
-	)
-	if err != nil {
-		t.Errorf("%s", err)
-	}
-
-	testSimpleGet(t, mockData, resourceUrl)
-	testSimpleGet(t, mockData, projectUrl)
-	testSimpleGet(t, mockData, statsUrlSourceLanguage)
-	testSimpleSourceDownload(t, mockData, "false")
-	testSimpleGet(t, mockData, sourceDownloadUrl)
-
-	assertFileContent(t, "aaa.json", "New source")
-	_, err = ioutil.ReadFile("aaa.json.new")
-	if err == nil {
-		t.Error("File not exist because DisableOverwrite is not true")
-	}
 }
 
 func TestKeepNewFilesTranslation(t *testing.T) {
@@ -717,7 +665,6 @@ func TestKeepNewFilesTranslation(t *testing.T) {
 		ResourceIds:       nil,
 		MinimumPercentage: -1,
 		Workers:           1,
-		KeepNewFiles:      true,
 		DisableOverwrite:  true,
 	}
 
