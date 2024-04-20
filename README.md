@@ -121,7 +121,7 @@ and the config file with the following content which is required for the configu
 
 ```shell
 [main]
-host=https://app.transifex.com
+host=https://www.transifex.com
 ```
 
 In case there is already a `.tx/config` file in the current directory, the users

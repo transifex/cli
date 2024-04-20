@@ -24,7 +24,7 @@ source_lang = en
 type = PO
 
 # Example resource language mapping (tranisfex language -> local languages)
-lang_map = pt_PT: pt-pt, pt_BR: pt-br
+lang_map = pt_PT: pt-pt, pt_BR: pt-br, zh_TW: zh_Hant
 
 # Overrides file locations for specific languages
 # NOTE: It uses the local language codes the
