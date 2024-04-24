@@ -153,11 +153,11 @@ func makeRemoteToLocalLanguageMappings(
 }
 
 /*
-Run 'do'. If the error returned by 'do' is a jsonapi.ThrottleError, sleep the number of
+Run 'do'. If the error returned by 'do' is a jsonapi.RetryError, sleep the number of
 seconds indicated by the error and try again. Meanwhile, inform the user of
 what's going on using 'send'.
 */
-func handleThrottling(do func() error, initialMsg string, send func(string)) error {
+func handleRetry(do func() error, initialMsg string, send func(string)) error {
 	for {
 		if len(initialMsg) > 0 {
 			send(initialMsg)
@@ -166,13 +166,13 @@ func handleThrottling(do func() error, initialMsg string, send func(string)) err
 		if err == nil {
 			return nil
 		} else {
-			var e *jsonapi.ThrottleError
+			var e *jsonapi.RetryError
 			if errors.As(err, &e) {
 				retryAfter := e.RetryAfter
 				if isatty.IsTerminal(os.Stdout.Fd()) {
 					for retryAfter > 0 {
 						send(fmt.Sprintf(
-							"Throttled, will retry after %d seconds",
+							"will retry after %d seconds",
 							retryAfter,
 						))
 						time.Sleep(time.Second)
@@ -180,7 +180,7 @@ func handleThrottling(do func() error, initialMsg string, send func(string)) err
 					}
 				} else {
 					send(fmt.Sprintf(
-						"Throttled, will retry after %d seconds",
+						"will retry after %d seconds",
 						retryAfter,
 					))
 					time.Sleep(time.Duration(retryAfter) * time.Second)

@@ -109,7 +109,7 @@ func (task *MergeResourcePollTask) Run(send func(string), abort func()) {
 		))
 	}
 
-	err := handleThrottling(
+	err := handleRetry(
 		func() error {
 			return txapi.PollResourceMerge(
 				merge,

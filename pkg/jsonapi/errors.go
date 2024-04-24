@@ -14,19 +14,19 @@ Error type for {json:api} errors.
 You can inspect the contents of the error response with type assertions.
 Example:
 
-    project := jsonapi.Resource{...}
-    err := project.Save() // Here the server responds with an error
-    switch e := err.(type) {
-    case *jsonapi.Error:
-		// "Smartly" inspect the contents of the error
-		for _, errorItem := range e.Errors {
-			if errorItem.Status == "404" {
-				fmt.Println("Something was not found")
+	    project := jsonapi.Resource{...}
+	    err := project.Save() // Here the server responds with an error
+	    switch e := err.(type) {
+	    case *jsonapi.Error:
+			// "Smartly" inspect the contents of the error
+			for _, errorItem := range e.Errors {
+				if errorItem.Status == "404" {
+					fmt.Println("Something was not found")
+				}
 			}
-		}
-    default:
-        fmt.Printf("%s\n", e)
-    }
+	    default:
+	        fmt.Printf("%s\n", e)
+	    }
 */
 type Error struct {
 	StatusCode int
@@ -77,21 +77,24 @@ func (m *RedirectError) Error() string {
 		"`var e *jsonapi.RedirectError; errors.As(err, &e); e.Location`"
 }
 
-type ThrottleError struct {
+type RetryError struct {
 	RetryAfter int
 }
 
-func (err ThrottleError) Error() string {
+func (err RetryError) Error() string {
 	return fmt.Sprintf("throttled; retry after %d", err.RetryAfter)
 }
 
-func parseThrottleResponse(response *http.Response) *ThrottleError {
-	if response.StatusCode != 429 {
+func parseRetryResponse(response *http.Response) *RetryError {
+	if response.StatusCode != 429 &&
+		response.StatusCode != 502 &&
+		response.StatusCode != 503 &&
+		response.StatusCode != 504 {
 		return nil
 	}
 	retryAfter, err := strconv.Atoi(response.Header.Get("Retry-After"))
 	if err != nil {
-		return &ThrottleError{1}
+		return &RetryError{1}
 	}
-	return &ThrottleError{retryAfter}
+	return &RetryError{retryAfter}
 }
