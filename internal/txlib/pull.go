@@ -409,7 +409,7 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 		// Creating download job
 
 		var download *jsonapi.Resource
-		err = handleThrottling(
+		err = handleRetry(
 			func() error {
 				var err error
 				download, err = txapi.CreateResourceStringsAsyncDownload(
@@ -434,7 +434,7 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 
 		// Polling
 
-		err = handleThrottling(
+		err = handleRetry(
 			func() error {
 				return txapi.PollResourceStringsDownload(download, sourceFile)
 			},
@@ -513,7 +513,7 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 		// Creating download job
 
 		var download *jsonapi.Resource
-		err = handleThrottling(
+		err = handleRetry(
 			func() error {
 				var err error
 				if args.Pseudo {
@@ -549,7 +549,7 @@ func (task *FilePullTask) Run(send func(string), abort func()) {
 
 		// Polling
 
-		err = handleThrottling(
+		err = handleRetry(
 			func() error {
 				return txapi.PollTranslationDownload(download, filePath)
 			},

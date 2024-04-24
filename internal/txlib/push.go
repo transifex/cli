@@ -629,7 +629,7 @@ func (task *SourceFilePushTask) Run(send func(string), abort func()) {
 	// Uploading file
 
 	var sourceUpload *jsonapi.Resource
-	err = handleThrottling(
+	err = handleRetry(
 		func() error {
 			var err error
 			sourceUpload, err = txapi.UploadSource(
@@ -650,7 +650,7 @@ func (task *SourceFilePushTask) Run(send func(string), abort func()) {
 
 	// Polling
 
-	err = handleThrottling(
+	err = handleRetry(
 		func() error {
 			return txapi.PollSourceUpload(sourceUpload)
 		},
@@ -722,7 +722,7 @@ func (task *TranslationFileTask) Run(send func(string), abort func()) {
 	// Uploading file
 
 	var upload *jsonapi.Resource
-	err := handleThrottling(
+	err := handleRetry(
 		func() error {
 			var err error
 			upload, err = pushTranslation(
@@ -742,7 +742,7 @@ func (task *TranslationFileTask) Run(send func(string), abort func()) {
 	}
 
 	// Polling
-	err = handleThrottling(
+	err = handleRetry(
 		func() error {
 			return txapi.PollTranslationUpload(upload)
 		},
