@@ -279,12 +279,16 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 		if args.Silent && !force {
 			return
 		}
-		send(fmt.Sprintf(
+		message := fmt.Sprintf(
 			"%s.%s - %s",
 			cfgResource.ProjectSlug,
 			cfgResource.ResourceSlug,
 			body,
-		))
+		)
+		if !args.Silent {
+			message = truncateMessage(message)
+		}
+		send(message)
 	}
 	sendMessage("Getting info", false)
 	resource, err := txapi.GetResourceById(api, cfgResource.GetAPv3Id())
@@ -542,12 +546,16 @@ func (task *LanguagePushTask) Run(send func(string), abort func()) {
 		if args.Silent && !force {
 			return
 		}
-		send(fmt.Sprintf(
+		message := fmt.Sprintf(
 			"%s (%s) - %s",
 			parts[3],
 			strings.Join(languages, ", "),
 			body,
-		))
+		)
+		if !args.Silent {
+			message = truncateMessage(message)
+		}
+		send(message)
 	}
 	sendMessage("Pushing", false)
 
@@ -594,7 +602,12 @@ func (task *SourceFilePushTask) Run(send func(string), abort func()) {
 		if args.Silent && !force {
 			return
 		}
-		send(fmt.Sprintf("%s.%s - %s", parts[3], parts[5], body))
+
+		message := fmt.Sprintf("%s.%s - %s", parts[3], parts[5], body)
+		if !args.Silent {
+			message = truncateMessage(message)
+		}
+		send(message)
 	}
 
 	file, err := os.Open(sourceFile)
@@ -693,10 +706,14 @@ func (task *TranslationFileTask) Run(send func(string), abort func()) {
 		if args.Silent && !force {
 			return
 		}
-		send(fmt.Sprintf(
+		message := fmt.Sprintf(
 			"%s.%s %s - %s", parts[3], parts[5],
 			cyan("["+languageCode+"]"), body,
-		))
+		)
+		if !args.Silent {
+			message = truncateMessage(message)
+		}
+		send(message)
 	}
 
 	// Only check timestamps if -f isn't set and if resource isn't new
