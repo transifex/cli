@@ -54,7 +54,7 @@ dockers:
       - "transifex/txcli:latest-386"
       - "transifex/txcli:v{{ .Major }}-386"
       - "transifex/txcli:v{{ .Major }}.{{ .Minor }}-386"
-      - "transifex/txcli:v{{ .Major }}.{{ .Minor }}.{{ .Patch }}-amd64"
+      - "transifex/txcli:v{{ .Major }}.{{ .Minor }}.{{ .Patch }}-386"
     build_flag_templates:
       - "--platform=linux/386"
     dockerfile: 'build/Dockerfile-goreleaser'
@@ -65,7 +65,7 @@ dockers:
       - "transifex/txcli:latest-arm64"
       - "transifex/txcli:v{{ .Major }}-arm64"
       - "transifex/txcli:v{{ .Major }}.{{ .Minor }}-arm64"
-      - "transifex/txcli:v{{ .Major }}.{{ .Minor }}.{{ .Patch }}-amd64"
+      - "transifex/txcli:v{{ .Major }}.{{ .Minor }}.{{ .Patch }}-arm64"
     build_flag_templates:
       - "--platform=linux/arm64/v8"
     dockerfile: 'build/Dockerfile-goreleaser'
