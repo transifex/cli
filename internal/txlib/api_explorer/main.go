@@ -1118,12 +1118,12 @@ func cliCmdReset(
 func cliCmdCreateOne(
 	c *cli.Context, resourceName string, jsopenapi *jsopenapi_t,
 ) error {
-	resource := jsopenapi.Resources[resourceName]
 	obj, err := createObject(c, resourceName, jsopenapi, false)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Created %s: %s\n", resource.SingularName, obj.Id)
+	body, err := json.Marshal(obj.AsJSON())
+	invokePager(c.String("pager"), body)
 	return nil
 }
 

@@ -515,3 +515,25 @@ func (r *Resource) SetRelated(field string, related *Resource) {
 		Fetched:      true,
 	}
 }
+
+func (r *Resource) AsJSON() PayloadResource {
+	result := PayloadResource{
+		Type: r.Type,
+		Id: r.Id,
+		Attributes: r.Attributes,
+		Relationships: make(map[string]interface{}),
+	}
+	for name, relationship := range r.Relationships {
+		if relationship.Type == NULL {
+			result.Relationships[name] = nil
+		} else if relationship.Type == SINGULAR {
+			result.Relationships[name] = PayloadRelationshipSingularWrite{
+				Data: ResourceIdentifier{
+					Type: relationship.DataSingular.Type,
+					Id: relationship.DataSingular.Id,
+				},
+			}
+		}
+	}
+	return result
+}
