@@ -22,7 +22,7 @@ var PromptMap = map[string]map[string]string{
 The Transifex Client syncs files between your local directory and Transifex.
 The mapping configuration between the two is stored in a file called .tx/config
 in your current directory. For more information, visit
-https://docs.transifex.com/client/config/.`,
+https://developers.transifex.com/docs/cli#installation.`,
 		"label": "What is the path of the source file?",
 	},
 	"fileFilter": {
