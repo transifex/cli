@@ -210,7 +210,7 @@ We will add the php file as a source language file in our local configuration. T
 The Transifex Client syncs files between your local directory and Transifex.
 The mapping configuration between the two is stored in a file called .tx/config
 in your current directory. For more information, visit
-https://docs.transifex.com/client/config/.
+https://developers.transifex.com/docs/cli#installation.
 
 What is the path of the source file? locale/en.php
 
