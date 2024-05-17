@@ -51,7 +51,7 @@ func PollTranslationDownload(download *jsonapi.Resource, filePath string) error 
 			break
 		} else if download.Attributes["status"] == "failed" {
 			return fmt.Errorf(
-				"download of translation '%s' failed",
+				"failed to download translation '%s'",
 				download.Relationships["resource"].DataSingular.Id,
 			)
 		}

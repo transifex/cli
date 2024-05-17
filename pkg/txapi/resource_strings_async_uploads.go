@@ -84,7 +84,7 @@ func PollSourceUpload(upload *jsonapi.Resource) error {
 
 		if uploadAttributes.Status == "failed" {
 			// Wrap the "error"
-			return fmt.Errorf("upload of resource '%s' failed - %w",
+			return fmt.Errorf("failed to upload of resource '%s' - %w",
 				upload.Relationships["resource"].DataSingular.Id,
 				&uploadAttributes)
 		} else if uploadAttributes.Status == "succeeded" {
