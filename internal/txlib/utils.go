@@ -210,3 +210,11 @@ func isValidResolutionPolicy(policy string) (IsValid bool) {
 	return false
 
 }
+
+func truncateMessage(message string) string {
+	maxLength := 80
+	if len(message) > maxLength {
+		return message[:maxLength-2] + ".."
+	}
+	return message
+}

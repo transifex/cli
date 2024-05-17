@@ -88,7 +88,7 @@ func PollTranslationUpload(upload *jsonapi.Resource) error {
 		if uploadAttributes.Status == "failed" {
 			// Wrap the "error"
 			return fmt.Errorf(
-				"upload of resource '%s', language '%s' failed - %w",
+				"failed to upload resource '%s', language '%s' - %w",
 				upload.Relationships["resource"].DataSingular.Id,
 				upload.Relationships["language"].DataSingular.Id,
 				&uploadAttributes)

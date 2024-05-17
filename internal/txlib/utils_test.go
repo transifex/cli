@@ -80,3 +80,27 @@ func TestConflictResolution(t *testing.T) {
 	}
 
 }
+
+func TestTruncateMessage(t *testing.T) {
+	result := truncateMessage("short message")
+	assert.Equal(t, result, "short message")
+
+	result = truncateMessage(
+		"this is a long message that needs to be truncated because it exceeds " +
+			"the maximum length of 75 characters",
+	)
+	assert.Equal(
+		t,
+		result,
+		"this is a long message that needs to be truncated because it exceeds the maxim..",
+	)
+
+	result = truncateMessage(
+		"a message with exactly 75 characters - this message should not be truncated",
+	)
+	assert.Equal(
+		t,
+		result,
+		"a message with exactly 75 characters - this message should not be truncated",
+	)
+}
