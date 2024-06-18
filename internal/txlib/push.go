@@ -290,8 +290,17 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 		}
 		send(message)
 	}
-	sendMessage("Getting info", false)
-	resource, err := txapi.GetResourceById(api, cfgResource.GetAPv3Id())
+
+	var resource *jsonapi.Resource
+	err := handleRetry(
+		func() error {
+			var err error
+			resource, err = txapi.GetResourceById(api, cfgResource.GetAPv3Id())
+			return err
+		},
+		"Getting info",
+		func(msg string) { sendMessage(msg, false) },
+	)
 	if err != nil {
 		sendMessage(fmt.Sprintf("Error while fetching resource: %s", err), true)
 		if !args.Skip {
@@ -341,7 +350,18 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 				cfgResource.ProjectSlug,
 				baseResourceSlug,
 			)
-			baseResource, err := txapi.GetResourceById(api, baseResourceId)
+
+			var baseResource *jsonapi.Resource
+			err = handleRetry(
+				func() error {
+					var err error
+					baseResource, err = txapi.GetResourceById(api, baseResourceId)
+					return err
+				},
+				"Getting info",
+				func(msg string) { sendMessage(msg, false) },
+			)
+
 			if err != nil {
 				sendMessage(fmt.Sprintf("Error while fetching base resource: %s", err), true)
 				if !args.Skip {
@@ -364,18 +384,27 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 			}
 		}
 
-		resource, err = txapi.CreateResource(
-			api,
-			fmt.Sprintf(
-				"o:%s:p:%s",
-				cfgResource.OrganizationSlug,
-				cfgResource.ProjectSlug,
-			),
-			resourceName,
-			cfgResource.ResourceSlug,
-			cfgResource.Type,
-			baseResourceId,
+		err = handleRetry(
+			func() error {
+				var err error
+				resource, err = txapi.CreateResource(
+					api,
+					fmt.Sprintf(
+						"o:%s:p:%s",
+						cfgResource.OrganizationSlug,
+						cfgResource.ProjectSlug,
+					),
+					resourceName,
+					cfgResource.ResourceSlug,
+					cfgResource.Type,
+					baseResourceId,
+				)
+				return err
+			},
+			"Create resource",
+			func(msg string) { sendMessage(msg, false) },
 		)
+
 		if err != nil {
 			sendMessage(fmt.Sprintf("Error while creating resource, %s", err), true)
 			if !args.Skip {
@@ -431,11 +460,19 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 	}
 	sourceLanguage := sourceLanguageRelationship.DataSingular
 	var remoteStats map[string]*jsonapi.Resource
-	if args.Translation {
-		remoteStats, err = txapi.GetResourceStats(api, resource, nil)
-	} else {
-		remoteStats, err = txapi.GetResourceStats(api, resource, sourceLanguage)
-	}
+	err = handleRetry(
+		func() error {
+			var err error
+			if args.Translation {
+				remoteStats, err = txapi.GetResourceStats(api, resource, nil)
+			} else {
+				remoteStats, err = txapi.GetResourceStats(api, resource, sourceLanguage)
+			}
+			return err
+		},
+		"Getting resource stats",
+		func(msg string) { sendMessage(msg, false) },
+	)
 	if err != nil {
 		sendMessage(fmt.Sprintf("Error while fetching stats, %s", err), true)
 		if !args.Skip {
@@ -496,7 +533,16 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 			return
 		}
 
-		allLanguages, err := txapi.GetLanguages(api)
+		var allLanguages map[string]*jsonapi.Resource
+		err = handleRetry(
+			func() error {
+				var err error
+				allLanguages, err = txapi.GetLanguages(api)
+				return err
+			},
+			"Getting languages",
+			func(msg string) { sendMessage(msg, false) },
+		)
 		if err != nil {
 			sendMessage(err.Error(), true)
 			abort()

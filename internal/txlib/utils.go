@@ -171,17 +171,15 @@ func handleRetry(do func() error, initialMsg string, send func(string)) error {
 				retryAfter := e.RetryAfter
 				if isatty.IsTerminal(os.Stdout.Fd()) {
 					for retryAfter > 0 {
-						send(fmt.Sprintf(
-							"will retry after %d seconds",
-							retryAfter,
+						send(fmt.Sprint(
+							err,
 						))
 						time.Sleep(time.Second)
 						retryAfter -= 1
 					}
 				} else {
-					send(fmt.Sprintf(
-						"will retry after %d seconds",
-						retryAfter,
+					send(fmt.Sprint(
+						err,
 					))
 					time.Sleep(time.Duration(retryAfter) * time.Second)
 				}

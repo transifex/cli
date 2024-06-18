@@ -178,7 +178,17 @@ func (task *ResourcePullTask) Run(send func(string), abort func()) {
 	)
 
 	var err error
-	resource, err := txapi.GetResourceById(api, cfgResource.GetAPv3Id())
+	var resource *jsonapi.Resource
+	err = handleRetry(
+		func() error {
+			var err error
+			resource, err = txapi.GetResourceById(api, cfgResource.GetAPv3Id())
+			return err
+		},
+		"Getting info",
+		func(msg string) { sendMessage(msg, false) },
+	)
+
 	if err != nil {
 		sendMessage(err.Error(), true)
 		if !args.Skip {
@@ -210,11 +220,19 @@ func (task *ResourcePullTask) Run(send func(string), abort func()) {
 	sourceLanguage := project.Relationships["source_language"].DataSingular
 
 	var stats map[string]*jsonapi.Resource
-	if args.Source && !args.Translations {
-		stats, err = txapi.GetResourceStats(api, resource, sourceLanguage)
-	} else {
-		stats, err = txapi.GetResourceStats(api, resource, nil)
-	}
+	err = handleRetry(
+		func() error {
+			if args.Source && !args.Translations {
+				stats, err = txapi.GetResourceStats(api, resource, sourceLanguage)
+			} else {
+				stats, err = txapi.GetResourceStats(api, resource, nil)
+			}
+			return err
+		},
+		"Get language stats",
+		func(msg string) { sendMessage(msg, false) },
+	)
+
 	if err != nil {
 		sendMessage(err.Error(), true)
 		if !args.Skip {
