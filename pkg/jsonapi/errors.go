@@ -78,11 +78,14 @@ func (m *RedirectError) Error() string {
 }
 
 type RetryError struct {
+	StatusCode int
 	RetryAfter int
 }
 
 func (err RetryError) Error() string {
-	return fmt.Sprintf("throttled; retry after %d", err.RetryAfter)
+	return fmt.Sprintf(
+		"Response error code %d, retry after %d", err.StatusCode, err.RetryAfter,
+	)
 }
 
 func parseRetryResponse(response *http.Response) *RetryError {
@@ -92,9 +95,14 @@ func parseRetryResponse(response *http.Response) *RetryError {
 		response.StatusCode != 504 {
 		return nil
 	}
+	if response.StatusCode == 502 ||
+		response.StatusCode == 503 ||
+		response.StatusCode == 504 {
+		return &RetryError{response.StatusCode, 10}
+	}
 	retryAfter, err := strconv.Atoi(response.Header.Get("Retry-After"))
 	if err != nil {
-		return &RetryError{1}
+		return &RetryError{response.StatusCode, 1}
 	}
-	return &RetryError{retryAfter}
+	return &RetryError{response.StatusCode, retryAfter}
 }
