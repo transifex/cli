@@ -12,6 +12,7 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/transifex/cli/internal/txlib/config"
 	"github.com/transifex/cli/pkg/jsonapi"
+	"golang.org/x/term"
 )
 
 func figureOutBranch(branch string) string {
@@ -209,8 +210,21 @@ func isValidResolutionPolicy(policy string) (IsValid bool) {
 
 }
 
+type getSizeFuncType func(fd int) (int, int, error)
+
+var getSizeFunc getSizeFuncType = term.GetSize
+
 func truncateMessage(message string) string {
-	maxLength := 80
+	width, _, err := getSizeFunc(int(os.Stdout.Fd()))
+	if err != nil {
+		width = 80
+	}
+
+	maxLength := width - 2
+	if maxLength < 0 {
+		maxLength = 0
+	}
+
 	if len(message) > maxLength {
 		return message[:maxLength-2] + ".."
 	}
