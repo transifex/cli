@@ -86,7 +86,7 @@ func TestTruncateMessage(t *testing.T) {
 	)
 	assert.Equal(
 		t,
-		"this is a long message that needs to be truncated because it exceeds the max..",
+		"this is a long message that needs to be truncated because it exceeds the maxim..",
 		result,
 	)
 
