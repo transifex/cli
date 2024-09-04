@@ -169,13 +169,11 @@ func (task *ResourcePullTask) Run(send func(string), abort func()) {
 	}
 	sendMessage("Getting info", false)
 
-	localToRemoteLanguageMappings := makeLocalToRemoteLanguageMappings(
+	remoteToLocalLanguageMappings := makeRemoteToLocalLanguageMappings(
 		*cfg,
 		*cfgResource,
 	)
-	remoteToLocalLanguageMappings := makeRemoteToLocalLanguageMappings(
-		localToRemoteLanguageMappings,
-	)
+	localToRemoteLanguageMappings := reverseMap(remoteToLocalLanguageMappings)
 
 	var err error
 	var resource *jsonapi.Resource

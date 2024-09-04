@@ -124,7 +124,7 @@ func stringSliceContains(haystack []string, needle string) bool {
 	return false
 }
 
-func makeLocalToRemoteLanguageMappings(
+func makeRemoteToLocalLanguageMappings(
 	cfg config.Config, cfgResource config.Resource,
 ) map[string]string {
 	// In the configuration, the language mappings are "remote code -> local
@@ -133,24 +133,22 @@ func makeLocalToRemoteLanguageMappings(
 	// reverse the maps
 
 	result := make(map[string]string)
-	for key, value := range cfg.Local.LanguageMappings {
-		result[value] = key
+	for transifexLanguageCode, localLanguageCode := range cfg.Local.LanguageMappings {
+		result[transifexLanguageCode] = localLanguageCode
 	}
-	for key, value := range cfgResource.LanguageMappings {
+	for transifexLanguageCode, localLanguageCode := range cfgResource.LanguageMappings {
 		// Resource language mappings overwrite "global" language mappings
-		result[value] = key
+		result[transifexLanguageCode] = localLanguageCode
 	}
 	return result
 }
 
-func makeRemoteToLocalLanguageMappings(
-	localToRemoteLanguageMappings map[string]string,
-) map[string]string {
-	result := make(map[string]string)
-	for key, value := range localToRemoteLanguageMappings {
-		result[value] = key
+func reverseMap(src map[string]string) map[string]string {
+	dst := make(map[string]string)
+	for key, value := range src {
+		dst[value] = key
 	}
-	return result
+	return dst
 }
 
 /*
