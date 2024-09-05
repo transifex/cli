@@ -493,9 +493,11 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 		}
 	}
 	if args.Translation { // -t flag is set
-		localToRemoteLanguageMappings := makeLocalToRemoteLanguageMappings(
-			*cfg,
-			*cfgResource,
+		localToRemoteLanguageMappings := reverseMap(
+			makeRemoteToLocalLanguageMappings(
+				*cfg,
+				*cfgResource,
+			),
 		)
 		overrides := cfgResource.Overrides
 
