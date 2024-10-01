@@ -266,7 +266,7 @@ type ResourcePushTask struct {
 	targetLanguagesChannel chan TargetLanguageMessage
 }
 
-func (task *ResourcePushTask) Run(send func(string), abort func()) {
+func (task *ResourcePushTask) Run(send func(string), abort func()) bool {
 	cfg := task.cfg
 	cfgResource := task.cfgResource
 	sourceTaskChannel := task.sourceTaskChannel
@@ -306,7 +306,7 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 		if !args.Skip {
 			abort()
 		}
-		return
+		return false
 	}
 
 	resourceIsNew := resource == nil
@@ -320,7 +320,7 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 			if !args.Skip {
 				abort()
 			}
-			return
+			return false
 		}
 		sendMessage("Resource does not exist; creating", false)
 		if cfgResource.Type == "" {
@@ -328,7 +328,7 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 			if !args.Skip {
 				abort()
 			}
-			return
+			return false
 		}
 		var resourceName string
 		var baseResourceId string
@@ -367,7 +367,7 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 				if !args.Skip {
 					abort()
 				}
-				return
+				return false
 			}
 			if args.Base != "-1" {
 				if baseResource == nil {
@@ -375,7 +375,7 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 					if !args.Skip {
 						abort()
 					}
-					return
+					return false
 				}
 			} else {
 				if baseResource == nil {
@@ -410,7 +410,7 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 			if !args.Skip {
 				abort()
 			}
-			return
+			return false
 		}
 	} else {
 		if args.Branch != "" && args.Base != "-1" {
@@ -431,7 +431,7 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 				if !args.Skip {
 					abort()
 				}
-				return
+				return false
 			}
 		}
 	}
@@ -443,7 +443,7 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 		if !args.Skip {
 			abort()
 		}
-		return
+		return false
 	}
 	project := projectRelationship.DataSingular
 	sourceLanguageRelationship, exists := project.Relationships["source_language"]
@@ -456,7 +456,7 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 		if !args.Skip {
 			abort()
 		}
-		return
+		return false
 	}
 	sourceLanguage := sourceLanguageRelationship.DataSingular
 	var remoteStats map[string]*jsonapi.Resource
@@ -478,7 +478,7 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 		if !args.Skip {
 			abort()
 		}
-		return
+		return false
 	}
 	if args.Source || !args.Translation {
 		sourceTaskChannel <- &SourceFilePushTask{
@@ -508,7 +508,7 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 			if !args.Skip {
 				abort()
 			}
-			return
+			return false
 		}
 		fileFilter := cfgResource.FileFilter
 		err = checkFileFilter(fileFilter)
@@ -517,7 +517,7 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 			if !args.Skip {
 				abort()
 			}
-			return
+			return false
 		}
 		if args.Xliff {
 			fileFilter = fmt.Sprintf("%s.xlf", fileFilter)
@@ -532,7 +532,7 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 			if !args.Skip {
 				abort()
 			}
-			return
+			return false
 		}
 
 		var allLanguages map[string]*jsonapi.Resource
@@ -548,7 +548,7 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 		if err != nil {
 			sendMessage(err.Error(), true)
 			abort()
-			return
+			return false
 		}
 		for _, languageCode := range newLanguageCodes {
 			_, exists := allLanguages[languageCode]
@@ -575,6 +575,7 @@ func (task *ResourcePushTask) Run(send func(string), abort func()) {
 		}
 	}
 	sendMessage("Done", false)
+	return true
 }
 
 type LanguagePushTask struct {
@@ -583,7 +584,7 @@ type LanguagePushTask struct {
 	args      PushCommandArguments
 }
 
-func (task *LanguagePushTask) Run(send func(string), abort func()) {
+func (task *LanguagePushTask) Run(send func(string), abort func()) bool {
 	project := task.project
 	languages := task.languages
 	args := task.args
@@ -618,10 +619,11 @@ func (task *LanguagePushTask) Run(send func(string), abort func()) {
 	if err != nil {
 		sendMessage(err.Error(), true)
 		abort()
-		return
+		return false
 	}
 
 	sendMessage("Done", false)
+	return true
 }
 
 type SourceFilePushTask struct {
@@ -635,7 +637,7 @@ type SourceFilePushTask struct {
 	keepTranslations     bool
 }
 
-func (task *SourceFilePushTask) Run(send func(string), abort func()) {
+func (task *SourceFilePushTask) Run(send func(string), abort func()) bool {
 	api := task.api
 	resource := task.resource
 	sourceFile := task.sourceFile
@@ -664,7 +666,7 @@ func (task *SourceFilePushTask) Run(send func(string), abort func()) {
 		if !args.Skip {
 			abort()
 		}
-		return
+		return false
 	}
 	defer file.Close()
 
@@ -676,14 +678,14 @@ func (task *SourceFilePushTask) Run(send func(string), abort func()) {
 		)
 		if skip {
 			sendMessage("Skipping", false)
-			return
+			return false
 		}
 		if err != nil {
 			sendMessage(err.Error(), true)
 			if !args.Skip {
 				abort()
 			}
-			return
+			return false
 		}
 	}
 
@@ -706,7 +708,7 @@ func (task *SourceFilePushTask) Run(send func(string), abort func()) {
 		if !args.Skip {
 			abort()
 		}
-		return
+		return false
 	}
 
 	// Polling
@@ -723,10 +725,11 @@ func (task *SourceFilePushTask) Run(send func(string), abort func()) {
 		if !args.Skip {
 			abort()
 		}
-		return
+		return false
 	}
 
 	sendMessage("Done", false)
+	return true
 }
 
 type TranslationFileTask struct {
@@ -739,7 +742,7 @@ type TranslationFileTask struct {
 	resourceIsNew bool
 }
 
-func (task *TranslationFileTask) Run(send func(string), abort func()) {
+func (task *TranslationFileTask) Run(send func(string), abort func()) bool {
 	api := task.api
 	languageCode := task.languageCode
 	path := task.path
@@ -775,11 +778,11 @@ func (task *TranslationFileTask) Run(send func(string), abort func()) {
 				if !args.Skip {
 					abort()
 				}
-				return
+				return false
 			}
 			if skip {
 				sendMessage("Skipping because remote file is newer than local", false)
-				return
+				return true
 			}
 		}
 	}
@@ -803,7 +806,7 @@ func (task *TranslationFileTask) Run(send func(string), abort func()) {
 		if !args.Skip {
 			abort()
 		}
-		return
+		return false
 	}
 
 	// Polling
@@ -819,9 +822,10 @@ func (task *TranslationFileTask) Run(send func(string), abort func()) {
 		if !args.Skip {
 			abort()
 		}
-		return
+		return false
 	}
 	sendMessage("Done", false)
+	return true
 }
 
 func getFilesToPush(

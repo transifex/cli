@@ -95,7 +95,7 @@ type MergeResourcePollTask struct {
 	args  MergeCommandArguments
 }
 
-func (task *MergeResourcePollTask) Run(send func(string), abort func()) {
+func (task *MergeResourcePollTask) Run(send func(string), abort func()) bool {
 	merge := task.merge
 	args := task.args
 
@@ -124,7 +124,8 @@ func (task *MergeResourcePollTask) Run(send func(string), abort func()) {
 		if !args.Skip {
 			abort()
 		}
-		return
+		return false
 	}
 	sendMessage("Done", false)
+	return true
 }
