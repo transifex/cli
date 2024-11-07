@@ -73,17 +73,31 @@ func Main() {
 						Client: client,
 					}
 
-					backUpFilePath, err := txlib.MigrateLegacyConfigFile(&cfg,
+					backUpFilePath, backUpRootFilePath, err := txlib.MigrateLegacyConfigFile(&cfg,
 						api)
 
 					if err != nil {
 						return cli.Exit(err, 1)
 					}
 					fmt.Printf(
-						"Migration ended! We have also created a backup "+
-							"file for your previous config file `%s`.\n",
+						"Migration ended! We have created a backup "+
+							"file for your previous `%s` at `%s`.\n",
+						cfg.Local.Path,
 						backUpFilePath,
 					)
+					if backUpRootFilePath != "" {
+						fmt.Printf(
+							"Additionally, we have created a backup "+
+								"file for your previous `%s` at `%s`.\n",
+							cfg.Root.Path,
+							backUpRootFilePath,
+						)
+					} else {
+						fmt.Printf(
+							"Additionally, we have created a new `%s` with your token.\n",
+							cfg.Root.Path,
+						)
+					}
 					return nil
 				},
 			},
