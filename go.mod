@@ -12,9 +12,9 @@ require (
 	github.com/mattn/go-isatty v0.0.14
 	github.com/rhysd/go-github-selfupdate v1.2.3
 	github.com/smartystreets/goconvey v1.6.4 // indirect
-	github.com/stretchr/testify v1.7.0 // indirect
+	github.com/stretchr/testify v1.7.0
 	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/term v0.0.0-20210220032956-6a3ed077a48d // indirect
 	gopkg.in/ini.v1 v1.62.0
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.0 // indirect
 )
