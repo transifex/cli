@@ -9,7 +9,7 @@ You can install the latest Transifex CLI by executing:
 curl -o- https://raw.githubusercontent.com/transifex/cli/master/install.sh | bash
 ```
 
-Or you can isntall a specific version if you need by executing:
+Or you can install a specific version if you need by executing:
 
 ```
 curl -o- https://raw.githubusercontent.com/transifex/cli/master/install.sh | bash -s -- yourVersion
@@ -33,6 +33,8 @@ Choose the binary according to your system, download it and unzip it.
 Copy the binary into the location you want and update the `PATH` variable
 of your system if necessary.
 
+### Building from source
+
 The other way to install Transifex CLI in the system is to use the code.
 
 Clone the [repository](https://github.com/transifex/cli) and go into the directory
@@ -40,8 +42,6 @@ Clone the [repository](https://github.com/transifex/cli) and go into the directo
 ```shell
 cd /path/to/transifex/cli
 ```
-### Building from source
-
 The default way to build the binary is
 
   ```shell
