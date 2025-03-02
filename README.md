@@ -65,7 +65,7 @@ You can skip the installation and run the Transifex client from Docker if it is
 available in your system. All you have to do is put this line:
 
 ```sh
-alias tx='touch ~/.transifexrc; docker run --rm -i -t -v `pwd`:/app -v ~/.transifexrc:/.transifexrc -v /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt transifex/txcli --root-config /.transifexrc'
+alias tx='touch ~/.transifexrc; docker run --rm -i -t --user `id -u`:`id -g` -v `pwd`:/app -v ~/.transifexrc:/.transifexrc -v /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt -v "/etc/group:/etc/group:ro" -v "/etc/passwd:/etc/passwd:ro" -v "/etc/shadow:/etc/shadow:ro" transifex/txcli --root-config /.transifexrc'
 ```
 
 to your `~/.bashrc` / `~/.zshrc`. (The first time you use it you will have to
