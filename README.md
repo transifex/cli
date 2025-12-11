@@ -394,7 +394,7 @@ The options for this command are:
   the resulting configuration. This is a pattern that accepts the following
   parameters:
 
-  - `<project_slug>`- use literally as placeholder or replace by any string
+  - `<project_slug>` use literally as placeholder or replace by any string
   - `<resource_slug>` _(required, literally)_
   - `<lang>` _(required, literally)_ - can be used multiple times in the filter path, but at least once
   - `<ext>` use literally as placeholder or replace by any string
