@@ -394,10 +394,10 @@ The options for this command are:
   the resulting configuration. This is a pattern that accepts the following
   parameters:
 
-  - `<project_slug>`
-  - `<resource_slug>` _(required)_
-  - `<lang>` _(required)_ - can be used multiple times in the filter path
-  - `<ext>`
+  - `<project_slug>` use literally as placeholder or replace by any string
+  - `<resource_slug>` _(required, literally)_
+  - `<lang>` _(required, literally)_ - can be used multiple times in the filter path, but at least once
+  - `<ext>` use literally as placeholder or replace by any string
 
   The default value for this option is
   `translations/<project_slug>.<resource_slug>/<lang>.<ext>` (the one we showed
