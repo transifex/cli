@@ -66,8 +66,7 @@ func MigrateLegacyConfigFile(
 		} else {
 			// No token for some reason get a new one
 			if cfg.GetActiveHost() != nil {
-				fmt.Println("API token not found. Please provide it and it will " +
-					"be saved in '~/.transifexrc'.")
+				fmt.Printf("API token not found. Please provide it and it will be saved in '%s'.\n", cfg.Root.Path)
 			} else {
 				fmt.Println("Please provide an API token to continue.")
 			}

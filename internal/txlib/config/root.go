@@ -92,6 +92,11 @@ func (rootCfg *RootConfig) save() error {
 }
 
 func (rootCfg *RootConfig) saveToPath() error {
+	dir := filepath.Dir(rootCfg.Path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+
 	file, err := os.OpenFile(rootCfg.Path,
 		os.O_RDWR|os.O_CREATE|os.O_TRUNC,
 		0755)
@@ -204,5 +209,21 @@ func GetRootPath() (string, error) {
 		}
 		homeDir = usr.HomeDir
 	}
-	return filepath.Join(homeDir, ".transifexrc"), nil
+
+	xdgConfigHome := os.Getenv("XDG_CONFIG_HOME")
+	if xdgConfigHome == "" {
+		xdgConfigHome = filepath.Join(homeDir, ".config")
+	}
+
+	xdgPath := filepath.Join(xdgConfigHome, "transifex", "transifexrc")
+	if _, err := os.Stat(xdgPath); err == nil {
+		return xdgPath, nil
+	}
+
+	legacyPath := filepath.Join(homeDir, ".transifexrc")
+	if _, err := os.Stat(legacyPath); err == nil {
+		return legacyPath, nil
+	}
+
+	return xdgPath, nil
 }

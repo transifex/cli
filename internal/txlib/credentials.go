@@ -107,24 +107,27 @@ func GetHostAndToken(
 			// for the hostname
 			token = selectedHost.Token
 		} else {
-			fmt.Println("API token not found. Please provide it and it will " +
-				"be saved in '~/.transifexrc'.")
-			fmt.Println("If you don't have an API token, you can generate " +
-				"one in https://app.transifex.com/user/settings/api/")
-			fmt.Print("> ")
-			_, err := fmt.Scanln(&token)
-			if err != nil {
-				return "", "", err
-			}
-
+			rootConfigPath := ""
 			if cfg.Root == nil {
-				rootConfigPath, err := config.GetRootPath()
+				var err error
+				rootConfigPath, err = config.GetRootPath()
 				if err != nil {
 					return "", "", err
 				}
 				cfg.Root = &config.RootConfig{
 					Path: rootConfigPath,
 				}
+			} else {
+				rootConfigPath = cfg.Root.Path
+			}
+
+			fmt.Printf("API token not found. Please provide it and it will be saved in '%s'.\n", rootConfigPath)
+			fmt.Println("If you don't have an API token, you can generate " +
+				"one in https://app.transifex.com/user/settings/api/")
+			fmt.Print("> ")
+			_, err := fmt.Scanln(&token)
+			if err != nil {
+				return "", "", err
 			}
 			cfg.Root.Hosts = append(cfg.Root.Hosts, config.Host{
 				Name:         hostname,
