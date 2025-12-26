@@ -46,7 +46,7 @@ type Config struct {
 /*
 Load Transifex configuration from the usual paths:
 
-- ~/.transifexrc for the root configuration
+- $XDG_CONFIG_HOME/transifex/transifexrc (or ~/.config/transifex/transifexrc if XDG_CONFIG_HOME is not set) for the root configuration, with fallback to ~/.transifexrc for legacy support
 
 - ./.tx/config for the local configuration
 
