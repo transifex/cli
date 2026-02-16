@@ -9,7 +9,7 @@ cli-build:
 	DOCKER_BUILDKIT=1 docker build -f ./build/Dockerfile --platform ${PLATFORM} -t go-cli:devel .
 
 cli-tests:
-	docker-compose run --rm cli-test
+	docker compose run --rm cli-test
 
 docker-build:
 	DOCKER_BUILDKIT=1 docker build -f ./build/Dockerfile-bin --output bin/ --platform ${PLATFORM} --target bin .

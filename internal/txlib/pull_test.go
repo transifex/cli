@@ -2,7 +2,6 @@ package txlib
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -684,7 +683,7 @@ func TestKeepNewFilesSourceOnlyWithDisableOverride(t *testing.T) {
 	testSimpleGet(t, mockData, sourceDownloadUrl)
 
 	assertFileContent(t, "aaa.json", "New source")
-	_, err = ioutil.ReadFile("aaa.json.new")
+	_, err = os.ReadFile("aaa.json.new")
 	if err == nil {
 		t.Error("File not exist because DisableOverwrite is not true")
 	}

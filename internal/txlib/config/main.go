@@ -101,7 +101,7 @@ The local configuration has a 'host' field in its 'main' section. That host
 points to a section in the root configuration. We return the rest_hostname of
 that section. The fallback value is `https://rest.api.transifex.com` */
 func (cfg *Config) GetActiveHost() *Host {
-	if cfg.Root.Hosts == nil || len(cfg.Root.Hosts) == 0 ||
+	if len(cfg.Root.Hosts) == 0 ||
 		cfg.Local == nil {
 		return nil
 	}
