@@ -13,7 +13,7 @@ type Resource struct {
 	API           *Connection
 	Type          string
 	Id            string
-	Attributes    map[string]interface{}
+	Attributes    map[string]any
 	Relationships map[string]*Relationship
 	Redirect      string
 	Links         Links
@@ -121,12 +121,12 @@ func (r *Resource) Save(fields []string) error {
 		relationship, relationshipsExists := r.Relationships[field]
 		if attributeExists {
 			if payload.Data.Attributes == nil {
-				payload.Data.Attributes = make(map[string]interface{})
+				payload.Data.Attributes = make(map[string]any)
 			}
 			payload.Data.Attributes[field] = attribute
 		} else if relationshipsExists && relationship.Type == SINGULAR {
 			if payload.Data.Relationships == nil {
-				payload.Data.Relationships = make(map[string]interface{})
+				payload.Data.Relationships = make(map[string]any)
 			}
 			payload.Data.Relationships[field] = PayloadRelationshipSingularWrite{
 				Data: ResourceIdentifier{
@@ -416,22 +416,21 @@ func (r *Resource) overwrite(body []byte) error {
 /*
 MapAttributes Map a resource's attributes to a struct. Usage:
 
-    type ProjectAttributes struct {
-        Name string
-        ...
-    }
+	type ProjectAttributes struct {
+	    Name string
+	    ...
+	}
 
-    func main() {
-        api := jsonapi.Connection{...}
-        project, _ := api.Get("projects", "XXX")
-        var projectAttributes ProjectAttributes
-        project.MapAttributes(&projectAttributes)
+	func main() {
+	    api := jsonapi.Connection{...}
+	    project, _ := api.Get("projects", "XXX")
+	    var projectAttributes ProjectAttributes
+	    project.MapAttributes(&projectAttributes)
 
-        fmt.Println(projectAttributes.Name)
-    }
-
+	    fmt.Println(projectAttributes.Name)
+	}
 */
-func (r *Resource) MapAttributes(result interface{}) error {
+func (r *Resource) MapAttributes(result any) error {
 	data, err := json.Marshal(r.Attributes)
 	if err != nil {
 		return err
@@ -449,23 +448,23 @@ calling 'Save').
 
 Usage:
 
-    type ProjectAttributes struct {
-        Name string
-        ...
-    }
+	type ProjectAttributes struct {
+	    Name string
+	    ...
+	}
 
-    func main() {
-        api := jsonapi.Connection{...}
-        project, _ := api.Get("projects", "XXX")
-        var projectAttributes ProjectAttributes
-        project.MapAttributes(&projectAttributes)
+	func main() {
+	    api := jsonapi.Connection{...}
+	    project, _ := api.Get("projects", "XXX")
+	    var projectAttributes ProjectAttributes
+	    project.MapAttributes(&projectAttributes)
 
-        projectAttributes.Name = "New name"
-        project.UnmapAttributes(projectAttributes)
-        project.Save([]string{"name"})
-    }
+	    projectAttributes.Name = "New name"
+	    project.UnmapAttributes(projectAttributes)
+	    project.Save([]string{"name"})
+	}
 */
-func (r *Resource) UnmapAttributes(source interface{}) error {
+func (r *Resource) UnmapAttributes(source any) error {
 	data, err := json.Marshal(source)
 	if err != nil {
 		return err
@@ -484,18 +483,18 @@ resource that is at hand.
 
 For saving:
 
-    parent := ...
-    child := ...
-    child.SetRelated("parent", parent)
-    child.Save("parent")
+	parent := ...
+	child := ...
+	child.SetRelated("parent", parent)
+	child.Save("parent")
 
 For "pre-fetching":
 
-    parent := ...
-    query := Query{Filters: map[string][string]{"parent": parent.Id}}.Encode()
-    page, _ := api.List("children", query)
-    child := page.Data[0]
-    child.SetRelated("parent", parent)
+	parent := ...
+	query := Query{Filters: map[string][string]{"parent": parent.Id}}.Encode()
+	page, _ := api.List("children", query)
+	child := page.Data[0]
+	child.SetRelated("parent", parent)
 */
 func (r *Resource) SetRelated(field string, related *Resource) {
 	var links Links

@@ -6,7 +6,7 @@ import (
 )
 
 // Equal checks if values are equal
-func Equal(t *testing.T, a interface{}, b interface{}) {
+func Equal(t *testing.T, a any, b any) {
 	if a == b {
 		return
 	}
@@ -14,7 +14,7 @@ func Equal(t *testing.T, a interface{}, b interface{}) {
 		a, reflect.TypeOf(a), b, reflect.TypeOf(b))
 }
 
-func True(t *testing.T, value bool, msgAndArgs ...interface{}) bool {
+func True(t *testing.T, value bool, msgAndArgs ...any) bool {
 	if value {
 		return true
 	}

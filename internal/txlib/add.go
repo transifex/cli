@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/fatih/color"
@@ -51,7 +52,7 @@ func validateFileFilter(input string) error {
 		return errors.New("you need to add an extension to your file")
 	}
 	input = normaliseFileFilter(input)
-	for _, part := range strings.Split(input, string(os.PathSeparator)) {
+	for part := range strings.SplitSeq(input, string(os.PathSeparator)) {
 		if strings.Count(part, "<lang>") > 1 {
 			return errors.New(
 				"<lang> cannot appear more than once in the same part of the path",
@@ -94,13 +95,7 @@ func validateNotEmpty(input string) error {
 }
 
 func i18nFormatExists(list []string, ext string) bool {
-	for _, value := range list {
-		if value == ext {
-			return true
-		}
-
-	}
-	return false
+	return slices.Contains(list, ext)
 }
 
 func getSelectTemplate(str string) *promptui.SelectTemplates {

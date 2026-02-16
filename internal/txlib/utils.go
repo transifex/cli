@@ -3,8 +3,10 @@ package txlib
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -116,12 +118,7 @@ func getBranchResourceSlug(cfgResource *config.Resource, branch string) string {
 }
 
 func stringSliceContains(haystack []string, needle string) bool {
-	for _, item := range haystack {
-		if item == needle {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(haystack, needle)
 }
 
 func makeRemoteToLocalLanguageMappings(
@@ -133,13 +130,9 @@ func makeRemoteToLocalLanguageMappings(
 	// reverse the maps
 
 	result := make(map[string]string)
-	for transifexLanguageCode, localLanguageCode := range cfg.Local.LanguageMappings {
-		result[transifexLanguageCode] = localLanguageCode
-	}
-	for transifexLanguageCode, localLanguageCode := range cfgResource.LanguageMappings {
-		// Resource language mappings overwrite "global" language mappings
-		result[transifexLanguageCode] = localLanguageCode
-	}
+	maps.Copy(result, cfg.Local.LanguageMappings)
+	// Resource language mappings overwrite "global" language mappings
+	maps.Copy(result, cfgResource.LanguageMappings)
 	return result
 }
 
@@ -218,10 +211,7 @@ func truncateMessage(message string) string {
 		width = 80
 	}
 
-	maxLength := width - 2
-	if maxLength < 0 {
-		maxLength = 0
-	}
+	maxLength := max(width-2, 0)
 
 	if len(message) > maxLength && maxLength > 0 {
 		return message[:maxLength] + ".."

@@ -12,62 +12,62 @@ GetHostAndToken
 Function for getting the *final* API server hostname and token from a
 combination of environment variables, flags, config files and/or user input.
 
-- 'cfg' is a 'config.Config' object that has already been loaded either based
-  on the default configuration paths or ones that have been supplied by the
-  user.
+  - 'cfg' is a 'config.Config' object that has already been loaded either based
+    on the default configuration paths or ones that have been supplied by the
+    user.
 
-- 'hostname' is an override for the hostname to used that the user has maybe
-  provided either as a flag or an environment variable.
+  - 'hostname' is an override for the hostname to used that the user has maybe
+    provided either as a flag or an environment variable.
 
-- 'token' is an override for the API token to be used that the user has maybe
-  provided either as a flag or an environment variable.
+  - 'token' is an override for the API token to be used that the user has maybe
+    provided either as a flag or an environment variable.
 
 The logic for retrieving the final hostname and token is:
 
-1. If the hostname flag/env variable is provided, use it as a section *key* in
-   the root configuration file. For example, if the user provides 'aaa' and the
-   root configuration file looks like this:
+ 1. If the hostname flag/env variable is provided, use it as a section *key* in
+    the root configuration file. For example, if the user provides 'aaa' and the
+    root configuration file looks like this:
 
-       [aaa]
-       rest_hostname = bbb
+    [aaa]
+    rest_hostname = bbb
 
-   Then, the returned hostname will be 'bbb'.
+    Then, the returned hostname will be 'bbb'.
 
-   If a matching host isn't found, then the returned hostname will be the
-   provided value.
+    If a matching host isn't found, then the returned hostname will be the
+    provided value.
 
-2. If the user didn't provide a hostname, try to find the "active host" based
-   on both the local and root configuration. For example, if the local
-   configuration looks like this:
+ 2. If the user didn't provide a hostname, try to find the "active host" based
+    on both the local and root configuration. For example, if the local
+    configuration looks like this:
 
-       [main]
-       host = ccc
+    [main]
+    host = ccc
 
-   And the root configuration looks like this:
+    And the root configuration looks like this:
 
-       [aaa]
-       rest_hostname = bbb
+    [aaa]
+    rest_hostname = bbb
 
-       [ccc]
-       rest_hostname = ddd
+    [ccc]
+    rest_hostname = ddd
 
-       [eee]
-       rest_hostname = fff
+    [eee]
+    rest_hostname = fff
 
-   Then the "active host" will be the second one and the returned hostname will
-   be 'ddd'.
+    Then the "active host" will be the second one and the returned hostname will
+    be 'ddd'.
 
-   If an active host cannot be found, then 'https://rest.api.transifex.com'
-   will be returned.
+    If an active host cannot be found, then 'https://rest.api.transifex.com'
+    will be returned.
 
 3. If a token was provided by the user, simply return it.
 
-4. If a token wasn't provided, retrieve the token from either the "matching
-   host" (see step 1) or the "active host" (see step 2). If a "matching" or
-   "active" host wasn't found during the resolution of the hostname, the
-   program will ask the user to provide a token. After the token is provided,
-   it will be saved in the root configuration using the appropriate section key
-   and hostname that were already retrieved.
+ 4. If a token wasn't provided, retrieve the token from either the "matching
+    host" (see step 1) or the "active host" (see step 2). If a "matching" or
+    "active" host wasn't found during the resolution of the hostname, the
+    program will ask the user to provide a token. After the token is provided,
+    it will be saved in the root configuration using the appropriate section key
+    and hostname that were already retrieved.
 */
 func GetHostAndToken(
 	cfg *config.Config, hostname, token string,

@@ -2,7 +2,7 @@ package txlib
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -435,7 +435,7 @@ func TestNeedsTokenInRootConfig(t *testing.T) {
 	_, _ = MigrateLegacyConfigFile(&cfg, api)
 
 	w.Close()
-	out, _ := ioutil.ReadAll(r)
+	out, _ := io.ReadAll(r)
 	os.Stdout = rescueStdout
 
 	assert.True(t, strings.Contains(string(out), "API token not found."))
@@ -507,7 +507,7 @@ func TestNoTransifexRcFile(t *testing.T) {
 	_, _ = MigrateLegacyConfigFile(&cfg, api)
 
 	w.Close()
-	out, _ := ioutil.ReadAll(r)
+	out, _ := io.ReadAll(r)
 	os.Stdout = rescueStdout
 
 	assert.True(t, strings.Contains(string(out), "Please provide an API token to continue."))
@@ -668,12 +668,12 @@ func TestResourceMigrationFailed(t *testing.T) {
 	}
 
 	w.Close()
-	out, _ := ioutil.ReadAll(r)
+	out, _ := io.ReadAll(r)
 	os.Stdout = rescueStdout
 	assert.True(t, strings.Contains(
 		string(out), "Could not migrate resource `ares`"))
 
-	content, err := ioutil.ReadFile(filepath.Join(tmpDir, "config"))
+	content, err := os.ReadFile(filepath.Join(tmpDir, "config"))
 	if err != nil {
 		t.Error(err)
 	}
@@ -798,11 +798,11 @@ func TestBackUpFileCreated(t *testing.T) {
 
 	backupFilePath, _ := MigrateLegacyConfigFile(&cfg, api)
 
-	newContent, err := ioutil.ReadFile(filepath.Join(tmpDir, "config"))
+	newContent, err := os.ReadFile(filepath.Join(tmpDir, "config"))
 	if err != nil {
 		t.Error(err)
 	}
-	buContent, err := ioutil.ReadFile(filepath.Join(backupFilePath))
+	buContent, err := os.ReadFile(filepath.Join(backupFilePath))
 	if err != nil {
 		t.Error(err)
 	}

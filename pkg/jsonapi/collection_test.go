@@ -42,35 +42,35 @@ func TestPaginationNext(t *testing.T) {
 
 	testCases := []struct {
 		name     string
-		getter   func() interface{}
-		expected interface{}
+		getter   func() any
+		expected any
 	}{
 		{"response's length",
-			func() interface{} { return len(secondPage.Data) },
+			func() any { return len(secondPage.Data) },
 			2},
 		{"response's next",
-			func() interface{} { return secondPage.Next },
+			func() any { return secondPage.Next },
 			""},
 		{"response's previous",
-			func() interface{} { return secondPage.Previous },
+			func() any { return secondPage.Previous },
 			""},
 		{"first student's type",
-			func() interface{} { return secondPage.Data[0].Type },
+			func() any { return secondPage.Data[0].Type },
 			"students"},
 		{"first student's id",
-			func() interface{} { return secondPage.Data[0].Id },
+			func() any { return secondPage.Data[0].Id },
 			"1"},
 		{"first student's name",
-			func() interface{} { return secondPage.Data[0].Attributes["name"] },
+			func() any { return secondPage.Data[0].Attributes["name"] },
 			"Student One"},
 		{"second student's type",
-			func() interface{} { return secondPage.Data[1].Type },
+			func() any { return secondPage.Data[1].Type },
 			"students"},
 		{"second student's id",
-			func() interface{} { return secondPage.Data[1].Id },
+			func() any { return secondPage.Data[1].Id },
 			"2"},
 		{"second student's name",
-			func() interface{} { return secondPage.Data[1].Attributes["name"] },
+			func() any { return secondPage.Data[1].Attributes["name"] },
 			"Student Two"},
 	}
 
@@ -124,35 +124,35 @@ func TestPaginationPrevious(t *testing.T) {
 
 	testCases := []struct {
 		name     string
-		getter   func() interface{}
-		expected interface{}
+		getter   func() any
+		expected any
 	}{
 		{"response's length",
-			func() interface{} { return len(secondPage.Data) },
+			func() any { return len(secondPage.Data) },
 			2},
 		{"response's next",
-			func() interface{} { return secondPage.Next },
+			func() any { return secondPage.Next },
 			""},
 		{"response's previous",
-			func() interface{} { return secondPage.Previous },
+			func() any { return secondPage.Previous },
 			""},
 		{"first student's type",
-			func() interface{} { return secondPage.Data[0].Type },
+			func() any { return secondPage.Data[0].Type },
 			"students"},
 		{"first student's id",
-			func() interface{} { return secondPage.Data[0].Id },
+			func() any { return secondPage.Data[0].Id },
 			"1"},
 		{"first student's name",
-			func() interface{} { return secondPage.Data[0].Attributes["name"] },
+			func() any { return secondPage.Data[0].Attributes["name"] },
 			"Student One"},
 		{"second student's type",
-			func() interface{} { return secondPage.Data[1].Type },
+			func() any { return secondPage.Data[1].Type },
 			"students"},
 		{"second student's id",
-			func() interface{} { return secondPage.Data[1].Id },
+			func() any { return secondPage.Data[1].Id },
 			"2"},
 		{"second student's name",
-			func() interface{} { return secondPage.Data[1].Attributes["name"] },
+			func() any { return secondPage.Data[1].Attributes["name"] },
 			"Student Two"},
 	}
 

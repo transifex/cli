@@ -156,7 +156,8 @@ func searchFileFilter(root, fileFilter string) map[string]string {
 	}
 }
 
-/**
+/*
+*
 Best effort try to figure out if we need to change the path separator
 Case: Someone creates the config paths for a linux machine but
 tries to use the CLI from a windows machine or the opposite

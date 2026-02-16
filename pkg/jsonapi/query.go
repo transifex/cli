@@ -22,7 +22,7 @@ func (q Query) Encode() string {
 	if q.Filters != nil {
 		for key, value := range q.Filters {
 			finalKey := "filter"
-			for _, part := range strings.Split(key, "__") {
+			for part := range strings.SplitSeq(key, "__") {
 				finalKey = finalKey + fmt.Sprintf("[%s]", part)
 			}
 			result.Add(finalKey, value)
