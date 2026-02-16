@@ -180,7 +180,7 @@ func deleteResource(
 				return err
 			}
 			if remoteStatAttributes.TranslatedStrings > 0 {
-				return fmt.Errorf("Aborting due to translations in %s",
+				return fmt.Errorf("aborting due to translations in %s",
 					cfgResource.ResourceSlug)
 			}
 		}
