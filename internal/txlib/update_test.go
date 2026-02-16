@@ -1,7 +1,7 @@
 package txlib
 
 import (
-	"io/ioutil"
+	"io"
 	"os"
 	"strings"
 	"testing"
@@ -20,7 +20,7 @@ func TestUpdateCommandVersionLessThanProduction(t *testing.T) {
 	os.Stdout = w
 	_ = UpdateCommand(arguments)
 	w.Close()
-	out, _ := ioutil.ReadAll(r)
+	out, _ := io.ReadAll(r)
 	os.Stdout = rescueStdout
 
 	result := string(out)
@@ -38,7 +38,7 @@ func TestUpdateCommandCheckGreaterThanProduction(t *testing.T) {
 	os.Stdout = w
 	_ = UpdateCommand(arguments)
 	w.Close()
-	out, _ := ioutil.ReadAll(r)
+	out, _ := io.ReadAll(r)
 	os.Stdout = rescueStdout
 
 	result := string(out)
@@ -60,7 +60,7 @@ func TestUpdateCommandCheckEQtoProduction(t *testing.T) {
 	os.Stdout = w
 	_ = UpdateCommand(arguments)
 	w.Close()
-	out, _ := ioutil.ReadAll(r)
+	out, _ := io.ReadAll(r)
 	os.Stdout = rescueStdout
 
 	result := string(out)
@@ -77,7 +77,7 @@ func TestUpdateCommandCheckLessThanProduction(t *testing.T) {
 	os.Stdout = w
 	_ = UpdateCommand(arguments)
 	w.Close()
-	out, _ := ioutil.ReadAll(r)
+	out, _ := io.ReadAll(r)
 	os.Stdout = rescueStdout
 
 	result := string(out)
@@ -98,7 +98,7 @@ func TestUpdateCommandGreaterThanProduction(t *testing.T) {
 	os.Stdout = w
 	_ = UpdateCommand(arguments)
 	w.Close()
-	out, _ := ioutil.ReadAll(r)
+	out, _ := io.ReadAll(r)
 	os.Stdout = rescueStdout
 
 	result := string(out)
@@ -119,7 +119,7 @@ func TestUpdateCommandEQtoProduction(t *testing.T) {
 	os.Stdout = w
 	_ = UpdateCommand(arguments)
 	w.Close()
-	out, _ := ioutil.ReadAll(r)
+	out, _ := io.ReadAll(r)
 	os.Stdout = rescueStdout
 
 	result := string(out)

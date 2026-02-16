@@ -2,7 +2,7 @@ package txlib
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/url"
 	"os"
 	"reflect"
@@ -147,7 +147,7 @@ func TestAddRemoteInvalidFileFormat(t *testing.T) {
 	// Restore stdout
 	w.Close()
 	os.Stdout = oldStdout
-	out, _ := ioutil.ReadAll(r)
+	out, _ := io.ReadAll(r)
 	r.Close()
 
 	testSimpleGet(t, mockData, projectUrl)

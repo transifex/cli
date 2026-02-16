@@ -2,7 +2,7 @@ package txlib
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -34,7 +34,7 @@ func MigrateLegacyConfigFile(
 	// Backup previous file before doing anything
 
 	//Read all the contents of the original config file
-	bytesRead, err := ioutil.ReadFile(cfg.Local.Path)
+	bytesRead, err := os.ReadFile(cfg.Local.Path)
 	if err != nil {
 		return "", fmt.Errorf("aborting, could not create backup file %w", err)
 	}
@@ -45,7 +45,7 @@ func MigrateLegacyConfigFile(
 	backUpFilePath := filepath.Join(filepath.Dir(cfg.Local.Path),
 		"config_"+currentTime.Format("20060102150405")+".bak")
 
-	err = ioutil.WriteFile(backUpFilePath, bytesRead, 0755)
+	err = os.WriteFile(backUpFilePath, bytesRead, 0755)
 
 	if err != nil {
 		return "", fmt.Errorf("aborting, could not create backup file %w", err)
