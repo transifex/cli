@@ -144,7 +144,7 @@ func CreateAsyncResourceMerge(
 	merge := &jsonapi.Resource{
 		API:  api,
 		Type: "resource_async_merges",
-		Attributes: map[string]interface{}{
+		Attributes: map[string]any{
 			"conflict_resolution": conflictResolution,
 			"force":               forceMerge,
 		},

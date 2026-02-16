@@ -331,10 +331,7 @@ func Main() {
 						languages = strings.Split(c.String("languages"), ",")
 					}
 
-					workers := c.Int("workers")
-					if workers > 20 {
-						workers = 20
-					}
+					workers := min(c.Int("workers"), 20)
 
 					args := txlib.PushCommandArguments{
 						Source:               c.Bool("source"),
@@ -541,10 +538,7 @@ func Main() {
 						resourceIds = append(resourceIds, extraResourceIds...)
 					}
 
-					workers := c.Int("workers")
-					if workers > 20 {
-						workers = 20
-					}
+					workers := min(c.Int("workers"), 20)
 
 					arguments := txlib.PullCommandArguments{
 						ContentEncoding:   c.String("content_encoding"),

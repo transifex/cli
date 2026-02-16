@@ -81,71 +81,71 @@ func TestGetI18nTypes(t *testing.T) {
 
 	testCases := []struct {
 		Name     string
-		Getter   func() interface{}
-		Expected interface{}
+		Getter   func() any
+		Expected any
 	}{
 		{"description",
-			func() interface{} { return ymlFormat.Attributes["description"] },
+			func() any { return ymlFormat.Attributes["description"] },
 			"YAML Files based on the content"},
 		{"type",
-			func() interface{} { return ymlFormat.Type },
+			func() any { return ymlFormat.Type },
 			"i18n_formats"},
 		{"id",
-			func() interface{} { return ymlFormat.Id },
+			func() any { return ymlFormat.Id },
 			"YML_KEY"},
 		{"name",
-			func() interface{} { return ymlFormat.Attributes["name"] },
+			func() any { return ymlFormat.Attributes["name"] },
 			"YML_KEY"},
 		{"description",
-			func() interface{} { return androidFormat.Attributes["description"] },
+			func() any { return androidFormat.Attributes["description"] },
 			"Android String Resources"},
 		{"type",
-			func() interface{} { return androidFormat.Type },
+			func() any { return androidFormat.Type },
 			"i18n_formats"},
 		{"id",
-			func() interface{} { return androidFormat.Id },
+			func() any { return androidFormat.Id },
 			"ANDROID"},
 		{"name",
-			func() interface{} { return androidFormat.Attributes["name"] },
+			func() any { return androidFormat.Attributes["name"] },
 			"ANDROID"},
 
 		{"organization relationship exists",
-			func() interface{} {
+			func() any {
 				_, ok := ymlFormat.Relationships["organization"]
 				return ok
 			},
 			true},
 		{
 			"organization relationship plurality",
-			func() interface{} {
+			func() any {
 				return ymlFormat.Relationships["organization"].Type
 			},
 			jsonapi.SINGULAR,
 		},
 		{
 			"organization relationship type",
-			func() interface{} {
+			func() any {
 				return ymlFormat.Relationships["organization"].DataSingular.Type
 			},
 			"organizations",
 		},
 		{
 			"organization relationship id",
-			func() interface{} {
+			func() any {
 				return ymlFormat.Relationships["organization"].DataSingular.Id
 			},
 			"o:orgslug",
 		},
 		{
 			"organization relationship fetched",
-			func() interface{} {
+			func() any {
 				return ymlFormat.Relationships["organization"].Fetched
 			},
 			true,
 		},
 		{
 			"organization relationship name",
-			func() interface{} {
+			func() any {
 				organizationRelationship := ymlFormat.Relationships["organization"]
 				organization := organizationRelationship.DataSingular
 				return organization.Attributes["name"]

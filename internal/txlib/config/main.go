@@ -4,33 +4,32 @@ Slightly object-oriented tx configuration package.
 
 Usage:
 
-    import "github.com/transifex/cli/internal/txlib/config"
+	import "github.com/transifex/cli/internal/txlib/config"
 
-    cfg, err := config.Load()  // Loads based on current directory
-    if err != nil { ... }
+	cfg, err := config.Load()  // Loads based on current directory
+	if err != nil { ... }
 
-    // Lets add a resource
-    cfg.AddResource(config.Resource{
-        OrganizationSlug: "my_org",
-        ProjectSlug: "my_project",
-        ResourceSlug: "my_resource",
-        FileFilter: "locale/<lang>.po",
-        SourceFile: "locale/en.po",
-        SourceLanguage: "en",
-        Type: "PO",
-    })
+	// Lets add a resource
+	cfg.AddResource(config.Resource{
+	    OrganizationSlug: "my_org",
+	    ProjectSlug: "my_project",
+	    ResourceSlug: "my_resource",
+	    FileFilter: "locale/<lang>.po",
+	    SourceFile: "locale/en.po",
+	    SourceLanguage: "en",
+	    Type: "PO",
+	})
 
-    cfg.Save()  // Saves changes to disk
+	cfg.Save()  // Saves changes to disk
 
-    resource := cfg.FindResource("my_org.my_project")
+	resource := cfg.FindResource("my_org.my_project")
 
-    file, err := os.Open(resource.SourceFile)
-    if err != nil { ... }
-    defer file.Close()
+	file, err := os.Open(resource.SourceFile)
+	if err != nil { ... }
+	defer file.Close()
 
-    resource.LanguageMappings["en_US"] = "en-us"
-    cfg.Save()
-
+	resource.LanguageMappings["en_US"] = "en-us"
+	cfg.Save()
 */
 package config
 
@@ -99,10 +98,10 @@ Return the URL that will be used based on the configuration.
 
 The local configuration has a 'host' field in its 'main' section. That host
 points to a section in the root configuration. We return the rest_hostname of
-that section. The fallback value is `https://rest.api.transifex.com` */
+that section. The fallback value is `https://rest.api.transifex.com`
+*/
 func (cfg *Config) GetActiveHost() *Host {
-	if cfg.Root.Hosts == nil || len(cfg.Root.Hosts) == 0 ||
-		cfg.Local == nil {
+	if len(cfg.Root.Hosts) == 0 || cfg.Local == nil {
 		return nil
 	}
 	activeHostName := cfg.Local.Host
@@ -117,7 +116,8 @@ func (cfg *Config) GetActiveHost() *Host {
 
 /*
 Save
-Save changes to disk */
+Save changes to disk
+*/
 func (cfg *Config) Save() error {
 	if cfg.Root != nil {
 		var oldRootConfig *RootConfig
@@ -193,7 +193,8 @@ func (cfg *Config) FindHost(hostname string) *Host {
 /*
 FindResource
 Return a Resource reference that matches the argument. The format of the
-argument is "<project_slug>.<resource_slug>" */
+argument is "<project_slug>.<resource_slug>"
+*/
 func (cfg *Config) FindResource(id string) *Resource {
 	parts := strings.Split(id, ".")
 	if len(parts) != 2 {

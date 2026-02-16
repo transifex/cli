@@ -136,12 +136,12 @@ func testMultipleRequests(t *testing.T, mockData jsonapi.MockData, path string, 
 			t.Errorf("Got wrong request %+v", actual)
 		}
 		if actual.Method != "GET" {
-			var actualPayload interface{}
+			var actualPayload any
 			err := json.Unmarshal(actual.Payload, &actualPayload)
 			if err != nil {
 				t.Error(err)
 			}
-			var expectedPayload interface{}
+			var expectedPayload any
 			err = json.Unmarshal([]byte(payloads[i]), &expectedPayload)
 			if err != nil {
 				t.Error(err)
@@ -165,12 +165,12 @@ func testSimplePost(
 	if actual.Method != "POST" || actual.ContentType != "" {
 		t.Errorf("Got wrong request %+v", actual)
 	}
-	var actualPayload interface{}
+	var actualPayload any
 	err := json.Unmarshal(actual.Payload, &actualPayload)
 	if err != nil {
 		t.Error(err)
 	}
-	var expectedPayload interface{}
+	var expectedPayload any
 	err = json.Unmarshal([]byte(payload), &expectedPayload)
 	if err != nil {
 		t.Error(err)

@@ -2,7 +2,7 @@ package txlib
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -86,7 +86,7 @@ func TestStatusWithNoResourcesAsParameters(t *testing.T) {
 	)
 
 	w.Close()
-	out, _ := ioutil.ReadAll(r)
+	out, _ := io.ReadAll(r)
 	os.Stdout = rescueStdout
 
 	result := string(out)
@@ -121,7 +121,7 @@ func TestStatusWithOverrides(t *testing.T) {
 	)
 
 	w.Close()
-	out, _ := ioutil.ReadAll(r)
+	out, _ := io.ReadAll(r)
 	os.Stdout = rescueStdout
 
 	result := string(out)
@@ -157,7 +157,7 @@ func TestStatusWithResourceAsParameter(t *testing.T) {
 	)
 
 	w.Close()
-	out, _ := ioutil.ReadAll(r)
+	out, _ := io.ReadAll(r)
 	os.Stdout = rescueStdout
 
 	result := string(out)

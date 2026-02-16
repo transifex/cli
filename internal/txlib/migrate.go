@@ -2,7 +2,7 @@ package txlib
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -18,15 +18,15 @@ MigrateLegacyConfigFile
 Edits legacy config files so they contain all the necessary information
 to use the 3rd version of the API.
 Steps taken:
-1. Check for token setting.
-   If not found check for API token in the old configuration.
-   If not found generate one.
-2. Check for rest_hostname setting. If not found add it.
-3. Check the section keys are using the legacy format
-   (`<project_slug>.<resource_slug>`)
-   If yes find the organization for each section key and reformat the
-   section key to conform to the new format
-   (o:<organization_slug>:p:<project_slug>:r:<resource_slug>)
+ 1. Check for token setting.
+    If not found check for API token in the old configuration.
+    If not found generate one.
+ 2. Check for rest_hostname setting. If not found add it.
+ 3. Check the section keys are using the legacy format
+    (`<project_slug>.<resource_slug>`)
+    If yes find the organization for each section key and reformat the
+    section key to conform to the new format
+    (o:<organization_slug>:p:<project_slug>:r:<resource_slug>)
 */
 func MigrateLegacyConfigFile(
 	cfg *config.Config, api jsonapi.Connection,
@@ -34,7 +34,7 @@ func MigrateLegacyConfigFile(
 	// Backup previous file before doing anything
 
 	//Read all the contents of the original config file
-	bytesRead, err := ioutil.ReadFile(cfg.Local.Path)
+	bytesRead, err := os.ReadFile(cfg.Local.Path)
 	if err != nil {
 		return "", fmt.Errorf("aborting, could not create backup file %w", err)
 	}
@@ -45,7 +45,7 @@ func MigrateLegacyConfigFile(
 	backUpFilePath := filepath.Join(filepath.Dir(cfg.Local.Path),
 		"config_"+currentTime.Format("20060102150405")+".bak")
 
-	err = ioutil.WriteFile(backUpFilePath, bytesRead, 0755)
+	err = os.WriteFile(backUpFilePath, bytesRead, 0755)
 
 	if err != nil {
 		return "", fmt.Errorf("aborting, could not create backup file %w", err)

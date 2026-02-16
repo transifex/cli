@@ -20,7 +20,7 @@ type PayloadSingular struct {
 
 type PayloadPluralRead struct {
 	Data     []PayloadResource `json:"data"`
-	Links    PaginationLinks   `json:"links,omitempty"`
+	Links    PaginationLinks   `json:"links"`
 	Included []PayloadResource `json:"included,omitempty"`
 }
 
@@ -34,19 +34,19 @@ type PaginationLinks struct {
 }
 
 type PayloadResource struct {
-	Type          string                 `json:"type"`
-	Id            string                 `json:"id,omitempty"`
-	Attributes    map[string]interface{} `json:"attributes,omitempty"`
-	Relationships map[string]interface{} `json:"relationships,omitempty"`
+	Type          string         `json:"type"`
+	Id            string         `json:"id,omitempty"`
+	Attributes    map[string]any `json:"attributes,omitempty"`
+	Relationships map[string]any `json:"relationships,omitempty"`
 }
 
 type PayloadRelationshipSingularRead struct {
-	Data  ResourceIdentifier `json:"data,omitempty"`
-	Links Links              `json:"links,omitempty"`
+	Data  ResourceIdentifier `json:"data"`
+	Links Links              `json:"links"`
 }
 
 type PayloadRelationshipSingularWrite struct {
-	Data ResourceIdentifier `json:"data,omitempty"`
+	Data ResourceIdentifier `json:"data"`
 }
 
 type PayloadRelationshipPlural struct {
@@ -146,13 +146,13 @@ func payloadToResource(
 }
 
 func jsonEqual(leftBytes, rightBytes []byte) (bool, error) {
-	var left interface{}
+	var left any
 	err := json.Unmarshal(leftBytes, &left)
 	if err != nil {
 		return false, err
 	}
 
-	var right interface{}
+	var right any
 	err = json.Unmarshal(rightBytes, &right)
 	if err != nil {
 		return false, err

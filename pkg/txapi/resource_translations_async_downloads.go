@@ -23,7 +23,7 @@ func CreateTranslationsAsyncDownload(
 	download := &jsonapi.Resource{
 		API:  api,
 		Type: "resource_translations_async_downloads",
-		Attributes: map[string]interface{}{
+		Attributes: map[string]any{
 			"content_encoding": contentEncoding,
 			"file_type":        fileType,
 			"mode":             mode,

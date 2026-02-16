@@ -48,20 +48,20 @@ func TestFetchSingular(t *testing.T) {
 
 	testCases := []struct {
 		name     string
-		getter   func() interface{}
-		expected interface{}
+		getter   func() any
+		expected any
 	}{
-		{"parent type", func() interface{} { return parent.Type }, SINGULAR},
-		{"fetched", func() interface{} { return parent.Fetched }, true},
+		{"parent type", func() any { return parent.Type }, SINGULAR},
+		{"fetched", func() any { return parent.Fetched }, true},
 		{
 			"type",
-			func() interface{} { return parent.DataSingular.Type },
+			func() any { return parent.DataSingular.Type },
 			"parents",
 		},
-		{"ID", func() interface{} { return parent.DataSingular.Id }, "2"},
+		{"ID", func() any { return parent.DataSingular.Id }, "2"},
 		{
 			"full_name",
-			func() interface{} {
+			func() any {
 				return parent.DataSingular.Attributes["full_name"]
 			},
 			"Zeus",
@@ -125,60 +125,60 @@ func TestFetchPlural(t *testing.T) {
 	}
 	testCases := []struct {
 		name     string
-		getter   func() interface{}
-		expected interface{}
+		getter   func() any
+		expected any
 	}{
 		{
 			"relationship type",
-			func() interface{} { return relationship.Type },
+			func() any { return relationship.Type },
 			PLURAL,
 		},
-		{"fetched", func() interface{} { return relationship.Fetched }, true},
+		{"fetched", func() any { return relationship.Fetched }, true},
 		{
 			"next",
-			func() interface{} { return relationship.DataPlural.Next },
+			func() any { return relationship.DataPlural.Next },
 			"",
 		},
 		{
 			"previous",
-			func() interface{} { return relationship.DataPlural.Previous },
+			func() any { return relationship.DataPlural.Previous },
 			"",
 		},
 		{
 			"API",
-			func() interface{} { return relationship.DataPlural.API },
+			func() any { return relationship.DataPlural.API },
 			resource.API,
 		},
 		{
 			"first child's type",
-			func() interface{} { return relationship.DataPlural.Data[0].Type },
+			func() any { return relationship.DataPlural.Data[0].Type },
 			"children",
 		},
 		{
 			"first child's ID",
-			func() interface{} { return relationship.DataPlural.Data[0].Id },
+			func() any { return relationship.DataPlural.Data[0].Id },
 			"2",
 		},
 		{
 			"first child's full_name",
-			func() interface{} {
+			func() any {
 				return relationship.DataPlural.Data[0].Attributes["full_name"]
 			},
 			"Child One",
 		},
 		{
 			"second child's type",
-			func() interface{} { return relationship.DataPlural.Data[1].Type },
+			func() any { return relationship.DataPlural.Data[1].Type },
 			"children",
 		},
 		{
 			"second child's ID",
-			func() interface{} { return relationship.DataPlural.Data[1].Id },
+			func() any { return relationship.DataPlural.Data[1].Id },
 			"3",
 		},
 		{
 			"second child's full_name",
-			func() interface{} {
+			func() any {
 				return relationship.DataPlural.Data[1].Attributes["full_name"]
 			},
 			"Child Two",
@@ -221,7 +221,7 @@ func TestSaveExisting(t *testing.T) {
 		}},
 		Type:       "students",
 		Id:         "1",
-		Attributes: map[string]interface{}{"name": "My name"},
+		Attributes: map[string]any{"name": "My name"},
 	}
 	err := resource.Save([]string{"name"})
 	if err != nil {
@@ -247,17 +247,17 @@ func TestSaveExisting(t *testing.T) {
 
 	testCases := []struct {
 		name     string
-		getter   func() interface{}
-		expected interface{}
+		getter   func() any
+		expected any
 	}{
 		{"name",
-			func() interface{} { return resource.Attributes["name"] },
+			func() any { return resource.Attributes["name"] },
 			"My Name"},
 		{"created",
-			func() interface{} { return resource.Attributes["created"] },
+			func() any { return resource.Attributes["created"] },
 			"yesterday"},
 		{"updated",
-			func() interface{} { return resource.Attributes["updated"] },
+			func() any { return resource.Attributes["updated"] },
 			"right now"},
 	}
 	for _, testCase := range testCases {
@@ -293,7 +293,7 @@ func TestSaveNew(t *testing.T) {
 			return []byte(response), nil
 		}},
 		Type:       "students",
-		Attributes: map[string]interface{}{"name": "My name"},
+		Attributes: map[string]any{"name": "My name"},
 	}
 	err := resource.Save([]string{"name"})
 	if err != nil {
@@ -318,20 +318,20 @@ func TestSaveNew(t *testing.T) {
 
 	testCases := []struct {
 		name     string
-		getter   func() interface{}
-		expected interface{}
+		getter   func() any
+		expected any
 	}{
 		{"ID",
-			func() interface{} { return resource.Id },
+			func() any { return resource.Id },
 			"1"},
 		{"name",
-			func() interface{} { return resource.Attributes["name"] },
+			func() any { return resource.Attributes["name"] },
 			"My Name"},
 		{"created",
-			func() interface{} { return resource.Attributes["created"] },
+			func() any { return resource.Attributes["created"] },
 			"right now"},
 		{"updated",
-			func() interface{} { return resource.Attributes["updated"] },
+			func() any { return resource.Attributes["updated"] },
 			"right now"},
 	}
 	for _, testCase := range testCases {
@@ -486,7 +486,7 @@ type TestAttributes struct {
 
 func TestMapAttributes(t *testing.T) {
 	resource := Resource{
-		Attributes: map[string]interface{}{
+		Attributes: map[string]any{
 			"name":    "John",
 			"age":     15,
 			"married": false,
@@ -607,12 +607,12 @@ func TestAdd(t *testing.T) {
 		t.Errorf("Got wrong request '%+v'", actual)
 	}
 
-	var actualPayload interface{}
+	var actualPayload any
 	err = json.Unmarshal(actual.Payload, &actualPayload)
 	if err != nil {
 		t.Error(err)
 	}
-	var expectedPayload interface{}
+	var expectedPayload any
 	err = json.Unmarshal([]byte(`{"data": [
 		{"type": "students", "id": "s1"},
 		{"type": "students", "id": "s2"}
@@ -680,12 +680,12 @@ func TestRemove(t *testing.T) {
 		t.Errorf("Got wrong request '%+v'", actual)
 	}
 
-	var actualPayload interface{}
+	var actualPayload any
 	err = json.Unmarshal(actual.Payload, &actualPayload)
 	if err != nil {
 		t.Error(err)
 	}
-	var expectedPayload interface{}
+	var expectedPayload any
 	err = json.Unmarshal([]byte(`{"data": [
 		{"type": "students", "id": "s1"},
 		{"type": "students", "id": "s2"}
@@ -753,12 +753,12 @@ func TestReset(t *testing.T) {
 		t.Errorf("Got wrong request '%+v'", actual)
 	}
 
-	var actualPayload interface{}
+	var actualPayload any
 	err = json.Unmarshal(actual.Payload, &actualPayload)
 	if err != nil {
 		t.Error(err)
 	}
-	var expectedPayload interface{}
+	var expectedPayload any
 	err = json.Unmarshal([]byte(`{"data": [
 		{"type": "students", "id": "s1"},
 		{"type": "students", "id": "s2"}

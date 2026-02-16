@@ -22,7 +22,7 @@ func CreateResourceStringsAsyncDownload(
 	download := &jsonapi.Resource{
 		API:  api,
 		Type: "resource_strings_async_downloads",
-		Attributes: map[string]interface{}{
+		Attributes: map[string]any{
 			"content_encoding": contentEncoding,
 			"file_type":        fileType,
 			"pseudo":           pseudo,

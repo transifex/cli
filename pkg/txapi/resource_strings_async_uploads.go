@@ -52,7 +52,7 @@ func UploadSource(
 		Type: "resource_strings_async_uploads",
 		// Setting attributes directly here because POST and GET attributes are
 		// different
-		Attributes: map[string]interface{}{
+		Attributes: map[string]any{
 			"content":                data,
 			"replace_edited_strings": replaceEditedStrings,
 			"keep_translations":      keepTranslations,

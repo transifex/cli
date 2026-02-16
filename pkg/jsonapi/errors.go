@@ -41,7 +41,7 @@ type ErrorItem struct {
 	Source struct {
 		Pointer   string `json:"pointer,omitempty"`
 		Parameter string `json:"parameter,omitempty"`
-	} `json:"source,omitempty"`
+	} `json:"source"`
 }
 
 func (e *Error) Error() string {

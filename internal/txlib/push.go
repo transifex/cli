@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -142,9 +143,7 @@ func PushCommand(
 
 		pool = worker_pool.New(args.Workers, len(targetLanguages), args.Silent)
 		for projectId, languages := range targetLanguages {
-			sort.Slice(languages, func(i, j int) bool {
-				return languages[i] < languages[j]
-			})
+			slices.Sort(languages)
 			pool.Add(&LanguagePushTask{projects[projectId], languages, args})
 		}
 		pool.Start()

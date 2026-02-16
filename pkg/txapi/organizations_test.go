@@ -88,30 +88,30 @@ func TestGetOrganizations(t *testing.T) {
 
 	testCases := []struct {
 		Name     string
-		Getter   func() interface{}
+		Getter   func() any
 		Expected string
 	}{
 		{"type",
-			func() interface{} { return organizations[0].Type },
+			func() any { return organizations[0].Type },
 			"organizations"},
-		{"id", func() interface{} { return organizations[0].Id }, "o:orgslug"},
+		{"id", func() any { return organizations[0].Id }, "o:orgslug"},
 		{"name",
-			func() interface{} { return organizations[0].Attributes["name"] },
+			func() any { return organizations[0].Attributes["name"] },
 			"Org Name"},
 		{"slug",
-			func() interface{} { return organizations[0].Attributes["slug"] },
+			func() any { return organizations[0].Attributes["slug"] },
 			"orgslug"},
 		{"type",
-			func() interface{} { return organizations[1].Type },
+			func() any { return organizations[1].Type },
 			"organizations"},
 		{"id",
-			func() interface{} { return organizations[1].Id },
+			func() any { return organizations[1].Id },
 			"o:orgslug2"},
 		{"name",
-			func() interface{} { return organizations[1].Attributes["name"] },
+			func() any { return organizations[1].Attributes["name"] },
 			"Org Name2"},
 		{"slug",
-			func() interface{} { return organizations[1].Attributes["slug"] },
+			func() any { return organizations[1].Attributes["slug"] },
 			"orgslug2"},
 	}
 

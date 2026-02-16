@@ -85,7 +85,7 @@ func loadLocalConfigFromBytes(data []byte) (*LocalConfig, error) {
 	}
 	languageMappings := mainSection.Key("lang_map").String()
 	if languageMappings != "" {
-		for _, mapping := range strings.Split(languageMappings, ",") {
+		for mapping := range strings.SplitSeq(languageMappings, ",") {
 			err := fmt.Errorf("invalid language mapping '%s'", mapping)
 
 			split := strings.Split(mapping, ":")
@@ -170,7 +170,7 @@ func loadLocalConfigFromBytes(data []byte) (*LocalConfig, error) {
 
 		languageMappings := section.Key("lang_map").String()
 		if languageMappings != "" {
-			for _, mapping := range strings.Split(languageMappings, ",") {
+			for mapping := range strings.SplitSeq(languageMappings, ",") {
 				err := fmt.Errorf("invalid language mapping %s", mapping)
 				split := strings.Split(mapping, ":")
 				if len(split) != 2 {

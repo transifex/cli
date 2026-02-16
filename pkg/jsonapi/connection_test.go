@@ -37,13 +37,13 @@ func TestGet(t *testing.T) {
 	}
 	testCases := []struct {
 		name     string
-		getter   func() interface{}
-		expected interface{}
+		getter   func() any
+		expected any
 	}{
-		{"type", func() interface{} { return student.Type }, "students"},
-		{"ID", func() interface{} { return student.Id }, "1"},
+		{"type", func() any { return student.Type }, "students"},
+		{"ID", func() any { return student.Id }, "1"},
 		{"full_name",
-			func() interface{} { return student.Attributes["full_name"] },
+			func() any { return student.Attributes["full_name"] },
 			"John Doe"},
 	}
 	for _, testCase := range testCases {
@@ -94,33 +94,33 @@ func TestList(t *testing.T) {
 
 	testCases := []struct {
 		name     string
-		getter   func() interface{}
-		expected interface{}
+		getter   func() any
+		expected any
 	}{
-		{"next", func() interface{} { return students.Next }, ""},
-		{"previous", func() interface{} { return students.Previous }, ""},
+		{"next", func() any { return students.Next }, ""},
+		{"previous", func() any { return students.Previous }, ""},
 		{"first student's type",
-			func() interface{} { return students.Data[0].Type },
+			func() any { return students.Data[0].Type },
 			"students"},
 		{"first student's Id",
-			func() interface{} { return students.Data[0].Id },
+			func() any { return students.Data[0].Id },
 			"1"},
 		{
 			"first student's full_name",
-			func() interface{} {
+			func() any {
 				return students.Data[0].Attributes["full_name"]
 			},
 			"Student One",
 		},
 		{"second student's type",
-			func() interface{} { return students.Data[1].Type },
+			func() any { return students.Data[1].Type },
 			"students"},
 		{"second student's Id",
-			func() interface{} { return students.Data[1].Id },
+			func() any { return students.Data[1].Id },
 			"2"},
 		{
 			"second student's full_name",
-			func() interface{} {
+			func() any {
 				return students.Data[1].Attributes["full_name"]
 			},
 			"Student Two",

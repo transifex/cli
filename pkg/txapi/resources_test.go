@@ -81,58 +81,58 @@ func TestGetResource(t *testing.T) {
 	}
 	testCases := []struct {
 		Name     string
-		Getter   func() interface{}
-		Expected interface{}
+		Getter   func() any
+		Expected any
 	}{
 		{"type",
-			func() interface{} { return resource.Type },
+			func() any { return resource.Type },
 			"resources"},
 		{"id",
-			func() interface{} { return resource.Id },
+			func() any { return resource.Id },
 			"o:orgslug:p:projslug:r:resslug"},
 		{"name",
-			func() interface{} { return resource.Attributes["name"] },
+			func() any { return resource.Attributes["name"] },
 			"Res Name"},
 		{"slug",
-			func() interface{} { return resource.Attributes["slug"] },
+			func() any { return resource.Attributes["slug"] },
 			"resslug"},
 		{"project relationship exists",
-			func() interface{} {
+			func() any {
 				_, ok := resource.Relationships["project"]
 				return ok
 			},
 			true},
 		{
 			"project relationship plurality",
-			func() interface{} {
+			func() any {
 				return resource.Relationships["project"].Type
 			},
 			jsonapi.SINGULAR,
 		},
 		{
 			"project relationship type",
-			func() interface{} {
+			func() any {
 				return resource.Relationships["project"].DataSingular.Type
 			},
 			"projects",
 		},
 		{
 			"project relationship id",
-			func() interface{} {
+			func() any {
 				return resource.Relationships["project"].DataSingular.Id
 			},
 			"o:orgslug:p:projslug",
 		},
 		{
 			"project relationship fetched",
-			func() interface{} {
+			func() any {
 				return resource.Relationships["project"].Fetched
 			},
 			true,
 		},
 		{
 			"organization relationship name",
-			func() interface{} {
+			func() any {
 				projectRelationship := resource.Relationships["project"]
 				project := projectRelationship.DataSingular
 				return project.Attributes["name"]
@@ -225,76 +225,76 @@ func TestGetResources(t *testing.T) {
 	}
 	testCases := []struct {
 		Name     string
-		Getter   func() interface{}
-		Expected interface{}
+		Getter   func() any
+		Expected any
 	}{
 		{"type",
-			func() interface{} { return resources[0].Type },
+			func() any { return resources[0].Type },
 			"resources"},
 		{"id",
-			func() interface{} { return resources[0].Id },
+			func() any { return resources[0].Id },
 			"o:orgslug:p:projslug:r:resslug"},
 		{"name",
-			func() interface{} { return resources[0].Attributes["name"] },
+			func() any { return resources[0].Attributes["name"] },
 			"Res Name"},
 		{"slug",
-			func() interface{} { return resources[0].Attributes["slug"] },
+			func() any { return resources[0].Attributes["slug"] },
 			"resslug"},
 		{"project relationship exists",
-			func() interface{} {
+			func() any {
 				_, ok := resources[0].Relationships["project"]
 				return ok
 			},
 			true},
 		{"type",
-			func() interface{} { return resources[1].Type },
+			func() any { return resources[1].Type },
 			"resources"},
 		{"id",
-			func() interface{} { return resources[1].Id },
+			func() any { return resources[1].Id },
 			"o:orgslug:p:projslug:r:resslug2"},
 		{"name",
-			func() interface{} { return resources[1].Attributes["name"] },
+			func() any { return resources[1].Attributes["name"] },
 			"Res Name2"},
 		{"slug",
-			func() interface{} { return resources[1].Attributes["slug"] },
+			func() any { return resources[1].Attributes["slug"] },
 			"resslug2"},
 		{"project relationship exists",
-			func() interface{} {
+			func() any {
 				_, ok := resources[0].Relationships["project"]
 				return ok
 			},
 			true},
 		{
 			"project relationship plurality",
-			func() interface{} {
+			func() any {
 				return resources[0].Relationships["project"].Type
 			},
 			jsonapi.SINGULAR,
 		},
 		{
 			"project relationship type",
-			func() interface{} {
+			func() any {
 				return resources[0].Relationships["project"].DataSingular.Type
 			},
 			"projects",
 		},
 		{
 			"project relationship id",
-			func() interface{} {
+			func() any {
 				return resources[0].Relationships["project"].DataSingular.Id
 			},
 			"o:orgslug:p:projslug",
 		},
 		{
 			"project relationship fetched",
-			func() interface{} {
+			func() any {
 				return resources[0].Relationships["project"].Fetched
 			},
 			true,
 		},
 		{
 			"organization relationship name",
-			func() interface{} {
+			func() any {
 				projectRelationship := resources[0].Relationships["project"]
 				project := projectRelationship.DataSingular
 				return project.Attributes["name"]
