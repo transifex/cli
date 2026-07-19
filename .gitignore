@@ -9,3 +9,4 @@ cli
 .DS_Store
 local_example/
 .envrc
+coverage.out
