@@ -152,6 +152,10 @@ func (pool *Pool) Add(task Task) {
 }
 
 func (pool *Pool) Start() {
+	if pool.numTasks == 0 {
+		return
+	}
+
 	messages := make([]string, pool.numTasks+1)
 	messageChannel := make(chan message_t)
 	writer := uilive.New()
@@ -246,6 +250,9 @@ func (pool *Pool) Wait() <-chan struct{} {
 
 func makeProgressBar(low int32, high int) string {
 	length := 30
+	if high == 0 {
+		return fmt.Sprintf("[%s] (0 / 0)", strings.Repeat("-", length))
+	}
 	dots := length * int(low) / high
 	return fmt.Sprintf(
 		"[%s%s] (%d / %d)",
