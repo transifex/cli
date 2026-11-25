@@ -152,6 +152,10 @@ func (pool *Pool) Add(task Task) {
 }
 
 func (pool *Pool) Start() {
+	if pool.numTasks == 0 {
+		return
+	}
+
 	messages := make([]string, pool.numTasks+1)
 	messageChannel := make(chan message_t)
 	writer := uilive.New()
